@@ -15,12 +15,15 @@
 ## 1. 故事分析 (Story Analysis)
 
 ### API端点
+
 `POST /api/analyze-story`
 
 ### 功能
+
 分析用户输入的故事，提取主要角色和设定信息。
 
 ### 输入参数
+
 ```json
 {
   "story": "用户输入的故事文本",
@@ -29,6 +32,7 @@
 ```
 
 ### 支持的风格类型
+
 - **manga**: 日式漫画风格（黑白配网点）
 - **comic**: 美式漫画风格（全彩色）
 - **wuxia**: 武侠修仙风格（古风意境）
@@ -41,6 +45,7 @@
 - **fantasy**: 奇幻史诗风格（宏大背景）
 
 ### 提示词模板
+
 ```
 Analyze this story and extract the main characters with their detailed characteristics:
 
@@ -61,6 +66,7 @@ Please provide:
 ```
 
 ### 输出格式
+
 ```json
 {
   "success": true,
@@ -85,6 +91,7 @@ Please provide:
 ```
 
 ### 限制
+
 - 故事最大500词
 - 最多提取4个主要角色
 - 使用Gemini 2.5 Flash模型
@@ -95,12 +102,15 @@ Please provide:
 ## 2. 故事分解 (Story Chunking)
 
 ### API端点
+
 `POST /api/chunk-story`
 
 ### 功能
+
 将故事分解为2-15个漫画面板，每个面板包含详细的视觉描述。
 
 ### 输入参数
+
 ```json
 {
   "story": "故事文本",
@@ -111,6 +121,7 @@ Please provide:
 ```
 
 ### 提示词模板
+
 ```
 Break down this story into individual comic panels with detailed descriptions.
 
@@ -136,6 +147,7 @@ Return as a flat array of panels with sequential panel numbers.
 ### 布局指导 (Layout Guidance)
 
 #### Manga风格
+
 ```
 Manga panel guidelines:
 - Dynamic panel shapes and sizes
@@ -147,6 +159,7 @@ Manga panel guidelines:
 ```
 
 #### American Comic风格
+
 ```
 American comic panel guidelines:
 - Rectangular panels with consistent borders
@@ -158,6 +171,7 @@ American comic panel guidelines:
 ```
 
 #### Wuxia风格
+
 ```
 Wuxia cultivation panel guidelines:
 - Flowing, organic panel shapes that follow natural elements
@@ -170,6 +184,7 @@ Wuxia cultivation panel guidelines:
 ```
 
 #### Healing风格
+
 ```
 Healing anime panel guidelines:
 - Soft, rounded panel borders
@@ -182,6 +197,7 @@ Healing anime panel guidelines:
 ```
 
 #### Manhwa风格
+
 ```
 Korean manhwa panel guidelines:
 - Clean, modern rectangular panels
@@ -194,6 +210,7 @@ Korean manhwa panel guidelines:
 ```
 
 #### Cinematic风格
+
 ```
 Cinematic panel guidelines:
 - Film-like aspect ratios (16:9, 2.35:1)
@@ -206,6 +223,7 @@ Cinematic panel guidelines:
 ```
 
 #### Shojo风格
+
 ```
 Shojo manga panel guidelines:
 - Tall, slender panels for elegant flow
@@ -217,6 +235,7 @@ Shojo manga panel guidelines:
 ```
 
 #### Seinen风格
+
 ```
 Seinen manga panel guidelines:
 - Realistic proportions and structured panels
@@ -228,6 +247,7 @@ Seinen manga panel guidelines:
 ```
 
 #### Chibi风格
+
 ```
 Chibi panel guidelines:
 - Small, rounded panels
@@ -239,6 +259,7 @@ Chibi panel guidelines:
 ```
 
 #### Fantasy风格
+
 ```
 Fantasy epic panel guidelines:
 - Large, sweeping landscape panels
@@ -250,6 +271,7 @@ Fantasy epic panel guidelines:
 ```
 
 ### 输出格式
+
 ```json
 {
   "success": true,
@@ -269,6 +291,7 @@ Fantasy epic panel guidelines:
 ```
 
 ### 特性
+
 - 使用thinkingBudget: 8192给模型更多思考时间
 - 根据故事复杂度动态调整面板数量
 - 支持不同风格的布局指导
@@ -278,12 +301,15 @@ Fantasy epic panel guidelines:
 ## 3. 角色参考生成 (Character Reference Generation)
 
 ### API端点
+
 `POST /api/generate-character-refs`
 
 ### 功能
+
 为每个角色生成参考图像，用于保持后续面板中的角色一致性。
 
 ### 输入参数
+
 ```json
 {
   "characters": [角色数组],
@@ -294,6 +320,7 @@ Fantasy epic panel guidelines:
 ```
 
 ### 提示词模板
+
 ```
 Character reference sheet in ${stylePrefix}. 
 
@@ -315,36 +342,43 @@ The character should be drawn in a neutral pose against a plain background, show
 ### 风格前缀 (Style Prefix)
 
 #### Manga风格
+
 ```
 Japanese manga style, black and white, detailed character design with clean line art and screentones, English text only
 ```
 
 #### Comic风格
+
 ```
 American comic book style, colorful superhero art with bold colors and clean line art
 ```
 
 #### Wuxia风格
+
 ```
 Chinese wuxia cultivation style, ancient costume, flowing long hair, immortal bearing, spiritual aura, traditional Chinese painting style, English annotations
 ```
 
 #### Healing风格
+
 ```
 Healing Japanese anime style, cute character design, warm colors, soft lines, friendly expressions, English annotations
 ```
 
 #### Manhwa风格
+
 ```
 Korean webtoon style, fashionable modern character design, refined facial features, urban style clothing, digital painting techniques, English annotations
 ```
 
 #### Cinematic风格
+
 ```
 Cinematic photorealistic style, realistic character modeling, professional lighting, cinematic texture, rich details, English annotations
 ```
 
 ### 输出格式
+
 ```json
 {
   "success": true,
@@ -359,6 +393,7 @@ Cinematic photorealistic style, realistic character modeling, professional light
 ```
 
 ### 特性
+
 - 使用Gemini 2.5 Flash Image Preview模型
 - 支持用户上传的参考图片
 - 智能匹配角色名称与上传图片
@@ -369,12 +404,15 @@ Cinematic photorealistic style, realistic character modeling, professional light
 ## 4. 漫画面板生成 (Panel Generation)
 
 ### API端点
+
 `POST /api/generate-panel`
 
 ### 功能
+
 生成单个漫画面板，支持多种AI模型和语言。
 
 ### 输入参数
+
 ```json
 {
   "panel": {面板对象},
@@ -388,6 +426,7 @@ Cinematic photorealistic style, realistic character modeling, professional light
 ```
 
 ### 基础提示词模板
+
 ```
 Create a single comic panel in ${stylePrefix}.
 
@@ -414,66 +453,79 @@ Generate a single comic panel image with proper framing and composition.
 ### 风格前缀 (Style Prefix)
 
 #### 中文 + Manga
+
 ```
 日式漫画风格（黑白配网点），使用中文文字和对话框，保持角色外观一致性，细腻的线条艺术，经典的网点阴影技法，动态的分镜构图
 ```
 
 #### 英文 + Manga
+
 ```
 Japanese manga style (black and white with screentones), using English text and speech bubbles, maintain character appearance consistency, detailed line art, classic screentone shading techniques, dynamic panel composition
 ```
 
 #### 中文 + Comic
+
 ```
 美式漫画风格，全彩色，清晰线条艺术，使用中文文字和对话框，保持角色外观一致性，鲜艳的色彩，戏剧性的光影效果，英雄主义构图
 ```
 
 #### 英文 + Comic
+
 ```
 American comic book style, full color, clean line art, using English text and speech bubbles, maintain character appearance consistency, vibrant colors, dramatic lighting effects, heroic composition
 ```
 
 #### 中文 + Wuxia
+
 ```
 中国武侠修仙风格，古风水墨意境，飘逸的服饰，仙气缭绕，山水背景，使用中文文字和对话框，保持角色外观一致性，传统中国画技法，意境深远的构图，灵气氛围
 ```
 
 #### 英文 + Wuxia
+
 ```
 Chinese wuxia cultivation style, ancient ink painting atmosphere, flowing robes, ethereal aura, landscape backgrounds, using English text and speech bubbles, maintain character appearance consistency, traditional Chinese painting techniques, profound artistic composition, spiritual atmosphere
 ```
 
 #### 中文 + Healing
+
 ```
 治愈系日本动漫风格，温暖柔和的色彩，可爱的角色设计，使用中文文字和对话框，保持角色外观一致性，柔和的光线，温馨的氛围，细腻的情感表达，日常生活场景
 ```
 
 #### 英文 + Healing
+
 ```
 Healing Japanese anime style, warm and soft colors, cute character design, using English text and speech bubbles, maintain character appearance consistency, soft lighting, cozy atmosphere, delicate emotional expression, daily life scenes
 ```
 
 #### 中文 + Manhwa
+
 ```
 韩国网络漫画风格，现代都市背景，时尚的角色设计，使用中文文字和对话框，保持角色外观一致性，精致的数字绘画技法，现代感强烈，都市生活场景，流行文化元素
 ```
 
 #### 英文 + Manhwa
+
 ```
 Korean webtoon style, modern urban background, fashionable character design, using English text and speech bubbles, maintain character appearance consistency, refined digital painting techniques, strong modern feel, urban life scenes, pop culture elements
 ```
 
 #### 中文 + Cinematic
+
 ```
 电影级视觉风格，写实主义，电影摄影构图，使用中文文字和对话框，保持角色外观一致性，专业的光影效果，景深控制，电影级色彩分级，戏剧性的视角
 ```
 
 #### 英文 + Cinematic
+
 ```
 Cinematic visual style, photorealism, cinematographic composition, using English text and speech bubbles, maintain character appearance consistency, professional lighting effects, depth of field control, cinematic color grading, dramatic perspectives
 ```
 
 ### 输出格式
+
 ```json
 {
   "success": true,
@@ -490,11 +542,13 @@ Cinematic visual style, photorealism, cinematographic composition, using English
 ## 5. AI模型选择逻辑
 
 ### 支持的模型
+
 - `auto`: 自动选择（基于语言）
 - `nanobanana`: Google Gemini 2.5 Flash Image Preview
 - `volcengine`: VolcEngine Doubao Seedream 4.0
 
 ### 自动选择规则
+
 ```javascript
 function selectAIModel(language, userPreference) {
   // 用户明确选择时优先使用用户选择
@@ -512,6 +566,7 @@ function selectAIModel(language, userPreference) {
 ```
 
 ### 语言检测
+
 ```javascript
 function detectLanguage(text) {
   const chineseRegex = /[\u4e00-\u9fff]/;
@@ -529,11 +584,13 @@ function detectLanguage(text) {
 ### NanoBanana (Gemini) 增强提示词
 
 #### 中文
+
 ```
 漫画风格插画：${prompt}。风格要求：清晰的线条艺术，动态构图，富有表现力的角色，清晰的视觉叙事。使用中文文字和对话框。重点突出戏剧性角度和典型的漫画视觉效果。
 ```
 
 #### 英文
+
 ```
 Manga style illustration: ${prompt}. Style requirements: Clean line art, dynamic composition, expressive characters, clear visual storytelling. Use English text and speech bubbles. Focus on dramatic angles and typical manga visual effects.
 ```
@@ -541,16 +598,19 @@ Manga style illustration: ${prompt}. Style requirements: Clean line art, dynamic
 ### VolcEngine 增强提示词
 
 #### 中文
+
 ```
 漫画风格插画：${prompt}。风格要求：一致的美式漫画风格，全彩色，清晰的线条艺术，动态构图，富有表现力的角色，清晰的视觉叙事。使用中文文字和对话框。保持角色外观一致性。重点突出戏剧性角度和典型的漫画视觉效果。
 ```
 
 #### 英文
+
 ```
 Comic book style illustration: ${prompt}. Style requirements: Consistent American comic book style, full color, clean line art, dynamic composition, expressive characters, clear visual storytelling. Use English text and speech bubbles. Maintain character appearance consistency. Focus on dramatic angles and typical comic visual effects.
 ```
 
 ### 参考图片处理
+
 - 最多支持4张参考图片
 - 角色参考图片优先（最多2张）
 - 场景参考图片补充（剩余槽位）
@@ -558,6 +618,7 @@ Comic book style illustration: ${prompt}. Style requirements: Consistent America
 - 支持CORS代理处理
 
 ### 错误处理和回退
+
 - 主模型失败时自动尝试备用模型
 - 详细的错误日志记录
 - 支持内容安全过滤检测
@@ -602,6 +663,7 @@ Story to Manga Machine使用了多层次的AI提示词系统：
 ## 6. 技术实现细节
 
 ### 面板数量限制
+
 当前系统在故事分解阶段设置了2-15个面板的限制：
 
 ```javascript
@@ -613,6 +675,7 @@ while complex narratives may require more (8-12).
 ```
 
 **如需生成更多面板，可以修改此限制：**
+
 1. 调整提示词中的数量范围
 2. 考虑API响应时间和模型处理能力
 3. 实现分批生成机制
@@ -620,11 +683,13 @@ while complex narratives may require more (8-12).
 ### 继续生成和角色一致性
 
 #### 当前实现
+
 - 每次生成都使用角色参考图片确保一致性
 - 通过`characterReferences`数组传递角色设计
 - 支持最多4张参考图片（角色+场景）
 
 #### 扩展建议
+
 ```javascript
 // 实现继续生成功能的建议结构
 {
@@ -646,6 +711,7 @@ while complex narratives may require more (8-12).
 ### JSON Schema 配置
 
 #### 故事分析 Schema
+
 ```javascript
 responseSchema: {
   type: Type.OBJECT,
@@ -679,6 +745,7 @@ responseSchema: {
 ```
 
 #### 故事分解 Schema
+
 ```javascript
 responseSchema: {
   type: Type.OBJECT,
@@ -712,6 +779,7 @@ responseSchema: {
 ### 模型配置参数
 
 #### Gemini 配置
+
 ```javascript
 // 故事分解使用思考预算
 config: {
@@ -727,6 +795,7 @@ model: "gemini-2.5-flash-image-preview"
 ```
 
 #### VolcEngine 配置
+
 ```javascript
 request: {
   prompt: enhancedPrompt,
@@ -745,6 +814,7 @@ request: {
 ### 图像处理流程
 
 #### 输入图像格式
+
 ```javascript
 // Base64 格式检测和转换
 function prepareImageForGemini(base64Image) {
@@ -759,10 +829,12 @@ function prepareImageForGemini(base64Image) {
 ```
 
 #### 输出图像格式
+
 - **NanoBanana**: `data:image/jpeg;base64,{base64数据}`
 - **VolcEngine**: `/api/image-proxy?url={编码后的URL}`
 
 #### 图像验证
+
 ```javascript
 const isValidUrl = imageData.startsWith('http://') || imageData.startsWith('https://');
 const isValidBase64 = imageData.startsWith('data:image/') || /^[A-Za-z0-9+/]+=*$/.test(imageData);
@@ -772,6 +844,7 @@ const isValidProxyUrl = imageData.startsWith('/api/image-proxy?url=');
 ### 错误处理机制
 
 #### 内容安全过滤
+
 ```javascript
 if (error.message.includes("PROHIBITED_CONTENT")) {
   return NextResponse.json({
@@ -782,6 +855,7 @@ if (error.message.includes("PROHIBITED_CONTENT")) {
 ```
 
 #### 模型回退逻辑
+
 ```javascript
 // 主模型失败时的回退机制
 const fallbackModel = selectedModel === "volcengine" ? "nanobanana" : "volcengine";
@@ -791,6 +865,7 @@ console.log(`Attempting fallback to ${fallbackModel}`);
 ### 日志记录系统
 
 #### API请求日志
+
 ```javascript
 logApiRequest(logger, endpoint);
 logApiResponse(logger, endpoint, success, duration, metadata);
@@ -798,6 +873,7 @@ logError(logger, error, context, additionalData);
 ```
 
 #### 详细调试信息
+
 ```javascript
 logger.debug({
   panel_number: panel.panelNumber,
@@ -814,21 +890,25 @@ logger.debug({
 ## 7. 优化建议
 
 ### 提高面板数量限制
+
 1. **修改故事分解提示词**：将"2-15"改为"2-50"或更高
 2. **实现分批处理**：将长故事分成多个段落处理
 3. **添加进度跟踪**：显示生成进度给用户
 
 ### 实现继续生成功能
+
 1. **保存生成状态**：记录最后生成的面板和角色状态
 2. **上下文传递**：在新的生成请求中包含之前的故事上下文
 3. **角色状态更新**：根据故事发展更新角色的外观和状态
 
 ### 提升角色一致性
+
 1. **增加参考图片数量**：支持更多角色参考图片
 2. **角色特征提取**：从生成的面板中提取角色特征用于后续生成
 3. **风格一致性检查**：实现生成后的质量检查机制
 
 ### 性能优化
+
 1. **并行生成**：同时生成多个面板
 2. **缓存机制**：缓存角色参考图片和常用设定
 3. **压缩优化**：优化图像大小和传输效率

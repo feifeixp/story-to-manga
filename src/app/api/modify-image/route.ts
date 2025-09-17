@@ -10,16 +10,16 @@ import {
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/modify-image";
-	let imageType: string;
-	let imageId: string;
+	let imageType: string = "";
+	let imageId: string = "";
 
 	logApiRequest(panelLogger, endpoint);
 
 	try {
 		const requestData = await request.json();
 		const {
-			imageType, // 'panel' or 'character'
-			imageId, // panel number or character name
+			imageType: requestImageType, // 'panel' or 'character'
+			imageId: requestImageId, // panel number or character name
 			originalImage, // base64 image data to use as reference
 			modificationPrompt, // what changes to make
 			originalPrompt, // original generation prompt for context
@@ -27,7 +27,11 @@ export async function POST(request: NextRequest) {
 			language = "en",
 			aiModel = "auto",
 			imageSize, // 图片尺寸配置
+			style = "manga", // 漫画风格，默认为manga
 		} = requestData;
+
+		imageType = requestImageType;
+		imageId = requestImageId;
 
 		panelLogger.debug(
 			{
@@ -84,9 +88,11 @@ export async function POST(request: NextRequest) {
 		} else if (imageType === 'character') {
 			result = await aiRouter.generateMangaPanel(
 				combinedPrompt,
+				language as "en" | "zh",
+				aiModel as any,
 				allReferenceImages,
 				[],
-				language as "en" | "zh",
+				style as any,
 			);
 		} else {
 			throw new Error(`Unsupported image type: ${imageType}`);

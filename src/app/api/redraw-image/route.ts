@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/redraw-image";
 	const requestId = Math.random().toString(36).substring(2, 15);
-	let imageType: string;
-	let imageId: string;
+	let imageType: string = "";
+	let imageId: string = "";
 
 	redrawLogger.info({ requestId }, "🎨 Starting image redraw request");
 	logApiRequest(panelLogger, endpoint);
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
 	try {
 		const requestData = await request.json();
 		const {
-			imageType, // 'panel' or 'character'
-			imageId, // panel number or character name
+			imageType: requestImageType, // 'panel' or 'character'
+			imageId: requestImageId, // panel number or character name
 			originalPrompt,
 			newPrompt, // optional, if user wants to modify the prompt
 			referenceImages = [],
@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
 			imageSize, // 图片尺寸配置
 			style = "manga", // 漫画风格
 		} = requestData;
+
+		imageType = requestImageType;
+		imageId = requestImageId;
 
 		redrawLogger.info(
 			{

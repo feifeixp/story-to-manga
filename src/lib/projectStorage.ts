@@ -183,7 +183,7 @@ export function createProject(params: CreateProjectParams): ProjectMetadata {
 	const metadata: ProjectMetadata = {
 		id: projectId,
 		name: params.name,
-		description: params.description,
+		...(params.description && { description: params.description }),
 		createdAt: now,
 		updatedAt: now,
 		panelCount: 0,
@@ -231,8 +231,13 @@ export function updateProjectMetadata(projectId: string, updates: UpdateProjectP
 		throw new Error(`Project ${projectId} not found`);
 	}
 
-	projects[projectIndex].metadata = {
-		...projects[projectIndex].metadata,
+	const project = projects[projectIndex];
+	if (!project) {
+		throw new Error(`Project ${projectId} not found`);
+	}
+
+	project.metadata = {
+		...project.metadata,
 		...updates,
 		updatedAt: Date.now(),
 	};
@@ -306,20 +311,25 @@ export async function saveProjectData(
 		}
 
 		// 更新项目元数据
-		const thumbnail = generatedPanels.length > 0 ? generatedPanels[0].image : undefined;
-		updateProjectMetadata(projectId, {
-			thumbnail,
-		});
+		const thumbnail = generatedPanels.length > 0 ? generatedPanels[0]?.image : undefined;
+		if (thumbnail) {
+			updateProjectMetadata(projectId, {
+				thumbnail,
+			});
+		}
 
 		// 更新项目统计信息
 		const projects = getProjectList();
 		const projectIndex = projects.findIndex(p => p.metadata.id === projectId);
 		if (projectIndex !== -1) {
-			projects[projectIndex].metadata.panelCount = generatedPanels.length;
-			projects[projectIndex].metadata.characterCount = characterReferences.length;
-			projects[projectIndex].metadata.style = style;
-			projects[projectIndex].metadata.updatedAt = Date.now();
-			saveProjectList(projects);
+			const project = projects[projectIndex];
+			if (project) {
+				project.metadata.panelCount = generatedPanels.length;
+				project.metadata.characterCount = characterReferences.length;
+				project.metadata.style = style;
+				project.metadata.updatedAt = Date.now();
+				saveProjectList(projects);
+			}
 		}
 
 		console.log(`✅ Project ${projectId} saved successfully`);

@@ -54,11 +54,13 @@ export default function ProjectManager({
 
 		setIsCreating(true);
 		try {
+			const trimmedDescription = newProjectDescription.trim();
+			const selectedImageSize = IMAGE_SIZE_PRESETS[newProjectImageSize];
 			const params: CreateProjectParams = {
 				name: newProjectName.trim(),
-				description: newProjectDescription.trim() || undefined,
+				...(trimmedDescription && { description: trimmedDescription }),
 				style: newProjectStyle,
-				imageSize: IMAGE_SIZE_PRESETS[newProjectImageSize],
+				...(selectedImageSize && { imageSize: selectedImageSize }),
 			};
 
 			const metadata = createProject(params);

@@ -123,4 +123,9 @@ export const IMAGE_SIZE_PRESETS: Record<string, ImageSizeConfig> = {
 };
 
 // 默认图片尺寸配置
-export const DEFAULT_IMAGE_SIZE: ImageSizeConfig = IMAGE_SIZE_PRESETS.landscape_16_9;
+export const DEFAULT_IMAGE_SIZE: ImageSizeConfig = IMAGE_SIZE_PRESETS["landscape_16_9"] || {
+	width: 1920,
+	height: 1080,
+	aspectRatio: "16:9",
+	volcEngineSize: "2K"
+};

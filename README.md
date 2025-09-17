@@ -24,6 +24,7 @@ Transform your written stories into stunning visual manga or comic book pages us
 ## 🆕 Latest Updates (v2.2.0) - December 2024
 
 ### 🎯 **Critical Bug Fixes & Stability**
+
 - **🔧 Character Reference System**: Fixed critical issue where wrong character references were used in panel generation
 - **🎨 Style Consistency**: Resolved redraw functionality producing inconsistent styles (manga vs wuxia issue)
 - **🌐 Language Localization**: Implemented comprehensive Chinese language support for all AI-generated content
@@ -31,18 +32,21 @@ Transform your written stories into stunning visual manga or comic book pages us
 - **🔗 Repository Links**: Updated all GitHub links to point to correct project repository
 
 ### 🚀 **Enhanced AI Generation**
+
 - **🎭 Dynamic Character Matching**: Panels now automatically use correct character references based on scene content
 - **📝 Intelligent Prompt Construction**: Language-aware prompts ensure Chinese users get Chinese content
 - **🎨 Style Prefix Standardization**: All 10 comic styles now use consistent, optimized prompt formats
 - **🔄 Improved Redraw Logic**: Fixed black/white manga bias in redraw functionality
 
 ### 🌍 **Internationalization Improvements**
+
 - **📖 Story Analysis**: Chinese language stories now generate Chinese titles, character descriptions, and settings
 - **🎬 Panel Generation**: Scene descriptions and dialogue properly localized based on user language
 - **🎨 Character Creation**: Style-appropriate character generation with language-specific annotations
 - **🔧 API Consistency**: All endpoints now respect user language preferences
 
 ### 🛠️ **Developer Experience**
+
 - **📊 Comprehensive Logging**: Added detailed debugging logs for all AI generation processes
 - **🔍 Error Tracking**: Enhanced error reporting with request IDs and detailed context
 - **⚙️ Code Quality**: Resolved all linting issues, spell check warnings, and type safety problems
@@ -53,21 +57,27 @@ Transform your written stories into stunning visual manga or comic book pages us
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="screenshots/story-to-manga-homepage.png" alt="Story to Manga Homepage" width="100%"/>
+      <img src="screenshots/homepage.png" alt="Story to Manga Homepage" width="100%"/>
       <br><sub><b>Main Interface</b></sub>
     </td>
     <td align="center" width="50%">
-      <img src="screenshots/story-to-manga-character-refs.png" alt="Character Design Generation" width="100%"/>
-      <br><sub><b>Character Design</b></sub>
+      <img src="screenshots/chardesign.png" alt="Character Design Generation" width="100%"/>
+      <br>
+      <img src="screenshots/Layout.png" alt="Layerout Design Generation" width="100%"/>
+      <br><sub><b>Design</b></sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="screenshots/story-to-manga-panels-progress.png" alt="Panel Generation Progress" width="100%"/>
+      <img src="screenshots/drawpagepanel.png" alt="Panel Generation Progress" width="100%"/>
+     <br>
+      <img src="screenshots/edit.png" alt="Panel Generation Progress" width="100%"/>
       <br><sub><b>Generation Progress</b></sub>
     </td>
     <td align="center" width="50%">
-      <img src="screenshots/story-to-manga-meta-panels.png" alt="Final Manga Output" width="100%"/>
+      <img src="screenshots/output.png" alt="Final Manga Output" width="100%"/>
+      <br>
+<img src="screenshots/comic-page-1-of-2-wuxia-1758130023797.png" alt="Final Manga Output" width="100%"/>
       <br><sub><b>Final Output</b></sub>
     </td>
   </tr>
@@ -76,11 +86,13 @@ Transform your written stories into stunning visual manga or comic book pages us
 ## 🌟 Core Features
 
 ### 🤖 Multi-AI Model Support
+
 - **Google Gemini 2.5 Flash**: High-quality image generation with excellent character consistency
 - **VolcEngine Doubao**: Alternative AI model for diverse artistic styles
 - **Automatic Model Selection**: Smart fallback system for optimal results
 
 ### 🎨 Ten Distinct Comic Styles
+
 - **Japanese Manga**: Traditional manga aesthetics with detailed linework
 - **American Comic**: Bold superhero comic book style
 - **Chinese Wuxia**: Martial arts and cultivation themes with Eastern aesthetics
@@ -93,24 +105,28 @@ Transform your written stories into stunning visual manga or comic book pages us
 - **Fantasy**: Epic fantasy art with magical and mythical elements
 
 ### 📁 Advanced Project Management
+
 - **Multiple Projects**: Create and manage separate story projects
 - **Auto-Save**: Never lose your work with automatic state persistence
 - **Project Switching**: Seamlessly switch between different stories
 - **Generation History**: Track and resume interrupted generations
 
 ### 🖼️ Professional Image Editing
+
 - **Panel Redrawing**: Regenerate individual panels with new prompts
 - **Reference Images**: Upload custom reference images or use character designs
 - **Image Modification**: Advanced editing with AI-powered modifications
 - **Custom Sizing**: Configure image dimensions per project (1K, 2K, 4K options)
 
 ### ⚡ Performance & Scalability
+
 - **Parallel Processing**: Generate multiple panels simultaneously
 - **Smart Caching**: Intelligent caching system for faster regeneration
 - **Lazy Loading**: Handle large projects (50+ panels) efficiently
 - **Pagination**: Organized display with auto-download for all pages
 
 ### 🌍 International Support
+
 - **Bilingual Interface**: Full Chinese and English language support
 - **Localized Content**: Culturally appropriate prompts and styles
 - **Regional AI Models**: Optimized for different markets and preferences
@@ -118,28 +134,33 @@ Transform your written stories into stunning visual manga or comic book pages us
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Next.js 15**: Latest React framework with App Router
 - **TypeScript**: Full type safety and developer experience
 - **Tailwind CSS v4**: Modern utility-first CSS framework
 - **React i18next**: Internationalization and localization
 
 ### AI Models & APIs
+
 - **Google Gemini 2.5 Flash**: Primary AI model for image generation
 - **VolcEngine Doubao**: Secondary AI model with unique capabilities
 - **Smart Model Router**: Automatic model selection and fallback
 
 ### Storage & Performance
+
 - **Hybrid Storage**: localStorage (text) + IndexedDB (images)
 - **Advanced Caching**: LRU cache with automatic cleanup
 - **Image Optimization**: Client-side compression and format conversion
 - **Parallel Processing**: Concurrent API requests for faster generation
 
 ### Image Processing
+
 - **HTML2Canvas**: Social media composite generation
 - **Custom Image Proxy**: Secure image handling and caching
 - **Multi-format Support**: JPEG, PNG, WebP optimization
 
 ### Development & Deployment
+
 - **Biome**: Fast linting and formatting
 - **TypeScript**: Strict type checking
 - **Knip**: Dead code elimination
@@ -160,6 +181,7 @@ curl -fsSL https://raw.githubusercontent.com/feifeixp/story-to-manga-enhanced/ma
 ### 手动部署
 
 #### Prerequisites
+
 - Node.js 18+
 - pnpm (recommended) or npm
 
@@ -179,6 +201,7 @@ pnpm install
 ### 3. Configure API Keys
 
 Copy the environment template:
+
 ```bash
 cp .env.local.example .env.local
 ```
@@ -199,12 +222,14 @@ NODE_ENV=development
 #### Getting API Keys:
 
 **Google AI API Key:**
+
 1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Sign in with your Google account
 3. Create a new API key
 4. Copy the API key
 
 **VolcEngine API Key (Optional):**
+
 1. Visit [VolcEngine Console](https://console.volcengine.com/)
 2. Create an account and verify
 3. Navigate to AI Services → Image Generation
@@ -227,6 +252,7 @@ This version includes significant improvements to character reference handling a
 ### For Existing Installations
 
 #### Method 1: Git Pull (Recommended)
+
 ```bash
 cd story-to-manga-enhanced
 git pull origin main
@@ -235,7 +261,9 @@ pnpm dev      # Restart development server
 ```
 
 #### Method 2: Fresh Installation
+
 If you encounter issues with git pull, you can do a fresh installation:
+
 ```bash
 # Backup your .env.local file first
 cp .env.local .env.local.backup
@@ -279,7 +307,9 @@ pnpm dev
 ```
 
 # Start development server
+
 pnpm dev
+
 ```
 
 ### For Production Deployments
@@ -303,12 +333,13 @@ pm2 restart your-app-name  # or your process manager
 ### 📋 Update Checklist
 
 After updating, verify these features are working:
-- [ ] Project creation and management
-- [ ] Story analysis and character generation
-- [ ] Panel generation with your preferred AI model
-- [ ] Image editing and redraw functionality
-- [ ] Export and download features
-- [ ] Language switching (Chinese/English)
+
+- [ ]  Project creation and management
+- [ ]  Story analysis and character generation
+- [ ]  Panel generation with your preferred AI model
+- [ ]  Image editing and redraw functionality
+- [ ]  Export and download features
+- [ ]  Language switching (Chinese/English)
 
 ### 🆘 Update Troubleshooting
 
@@ -328,31 +359,37 @@ After updating, verify these features are working:
 ## 🔄 How It Works
 
 ### 1. **Project Creation & Setup**
+
 - Create a new project with custom settings
 - Choose from 6 distinct comic styles
 - Configure image dimensions and language preferences
 
 ### 2. **Intelligent Story Analysis**
+
 - AI analyzes your narrative structure and themes
 - Extracts characters, settings, and emotional arcs
 - Identifies key scenes and dialogue moments
 
 ### 3. **Character Design Generation**
+
 - Creates consistent character reference sheets
 - Generates detailed visual descriptions
 - Maintains character consistency across all panels
 
 ### 4. **Smart Panel Planning**
+
 - Intelligently breaks story into sequential panels (up to 50)
 - Optimizes scene descriptions and dialogue placement
 - Plans visual composition and pacing
 
 ### 5. **Multi-Model Panel Generation**
+
 - Generates panels using selected AI model
 - Maintains character consistency with reference sheets
 - Supports parallel processing for faster generation
 
 ### 6. **Advanced Editing & Export**
+
 - Edit individual panels with redraw functionality
 - Add custom reference images for better results
 - Export individual panels or create paginated composites
@@ -411,11 +448,13 @@ Docker support will be added in future releases for easy self-hosting.
 ### ✅ Best Practices for Optimal Results
 
 **Story Length:**
+
 - **Optimal**: 500-2000 words
 - **Minimum**: 200 words for meaningful content
 - **Maximum**: 2000 words (longer stories will be chunked)
 
 **Content Structure:**
+
 - Clear character introductions and descriptions
 - Well-defined settings and environments
 - Dialogue-heavy scenes work exceptionally well
@@ -423,6 +462,7 @@ Docker support will be added in future releases for easy self-hosting.
 - Emotional moments and character interactions
 
 **Character Guidelines:**
+
 - Provide physical descriptions (appearance, clothing, distinctive features)
 - Limit to 3-5 main characters for best consistency
 - Include personality traits that affect visual presentation
@@ -440,23 +480,27 @@ Docker support will be added in future releases for easy self-hosting.
 ### Common Issues
 
 **"Failed to generate character references"**
+
 - Verify API keys are correctly configured
 - Check if you've exceeded rate limits (wait 1-2 minutes)
 - Ensure stable internet connection
 - Try switching AI models in settings
 
 **"Generation stopped unexpectedly"**
+
 - Use "Continue Generation" feature to resume
 - Check browser console for specific error messages
 - Verify sufficient browser storage space
 
 **"Images not displaying"**
+
 - Clear browser cache and cookies
 - Disable ad blockers temporarily
 - Check network connectivity
 - Try refreshing the page
 
 **"Project not saving"**
+
 - Ensure browser allows localStorage and IndexedDB
 - Check available storage space
 - Try creating a new project
@@ -499,6 +543,7 @@ MIT License - This project is open source and free to use for personal and comme
 This enhanced version is built upon the excellent foundation of the original [Story to Manga Machine](https://github.com/victorhuangwq/story-to-manga) by victorhuangwq. We extend our gratitude for the initial concept and implementation.
 
 ### Key Enhancements Added:
+
 - Multi-AI model support and intelligent routing
 - Comprehensive project management system
 - Advanced image editing and modification tools

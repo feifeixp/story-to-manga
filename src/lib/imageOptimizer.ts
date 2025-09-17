@@ -176,9 +176,10 @@ class ImageOptimizer {
         return result.value;
       } else {
         console.error(`Failed to optimize image ${index}:`, result.reason);
-        const originalSize = Math.round((images[index].length * 3) / 4);
+        const originalImage = images[index] || '';
+        const originalSize = Math.round((originalImage.length * 3) / 4);
         return {
-          data: images[index],
+          data: originalImage,
           originalSize,
           optimizedSize: originalSize,
           compressionRatio: 1,
@@ -197,18 +198,19 @@ class ImageOptimizer {
     size: number;
     format: string;
   }> {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !base64Image) {
       return {
         width: 0,
         height: 0,
-        size: Math.round((base64Image.length * 3) / 4),
+        size: base64Image ? Math.round((base64Image.length * 3) / 4) : 0,
         format: 'unknown',
       };
     }
 
     try {
       const canvas = await this.base64ToCanvas(base64Image);
-      const format = base64Image.split(';')[0].split('/')[1] || 'unknown';
+      const formatParts = base64Image.split(';')[0]?.split('/');
+      const format = formatParts?.[1] || 'unknown';
       
       return {
         width: canvas.width,
