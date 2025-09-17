@@ -291,6 +291,63 @@ The character should be drawn in a neutral pose against a plain background, show
 					);
 
 					if (!candidate?.content?.parts) {
+						// Handle IMAGE_SAFETY specifically
+						if (candidate?.finishReason === 'IMAGE_SAFETY') {
+							characterGenLogger.warn({
+								character_name: character.name,
+								finish_reason: candidate.finishReason
+							}, "Image generation blocked by safety filter, trying with modified prompt");
+
+							// Try with a more generic character description
+							const safeCharacterName = character.name.replace(/[^\w\s]/g, '').replace(/\b(Fang|Yuan|Death|Kill|Blood|War|Fight|Battle|Demon|Evil|Dark)\b/gi, 'Hero');
+							const safePrompt = `Character reference sheet in ${stylePrefix}. Create a character design for a ${safeCharacterName || 'protagonist'} character. Focus on: ${character.physicalDescription.replace(/[^\w\s,.-]/g, '')}. Character personality: ${character.personality.replace(/[^\w\s,.-]/g, '')}. Role: ${character.role.replace(/[^\w\s,.-]/g, '')}. Setting: ${setting.timePeriod} in ${setting.location}. Mood: ${setting.mood}. Safe, appropriate character design only.`;
+
+							characterGenLogger.info({
+								character_name: character.name,
+								safe_character_name: safeCharacterName,
+								safe_prompt_length: safePrompt.length
+							}, "Retrying with safety-filtered prompt");
+
+							// Retry with safe prompt
+							const safeResult = await genAI.models.generateContent({
+								model: geminiModel,
+								contents: [{ text: safePrompt }],
+							});
+							const safeCandidate = safeResult.candidates?.[0];
+
+							if (safeCandidate?.content?.parts) {
+								characterGenLogger.info({
+									character_name: character.name,
+									retry_success: true
+								}, "Safety retry succeeded");
+
+								// Process the safe result
+								for (const part of safeCandidate.content.parts) {
+									if (part.inlineData) {
+										const imageData = part.inlineData.data;
+										const mimeType = part.inlineData.mimeType || "image/png";
+										const imageSizeKB = Math.round((imageData.length * 3) / 4 / 1024);
+
+										characterGenLogger.info({
+											character_name: character.name,
+											mime_type: mimeType,
+											image_size_kb: imageSizeKB,
+											retry_attempt: true
+										}, "Successfully generated character reference with safety retry");
+
+										characterReferences.push({
+											name: character.name,
+											image: `data:${mimeType};base64,${imageData}`,
+											description: character.physicalDescription,
+										});
+
+										break;
+									}
+								}
+								continue; // Skip to next character
+							}
+						}
+
 						const errorDetails = {
 							has_result: !!result,
 							has_candidates: !!result.candidates,
