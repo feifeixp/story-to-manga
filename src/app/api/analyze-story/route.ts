@@ -51,12 +51,13 @@ export async function POST(request: NextRequest) {
 	logApiRequest(storyAnalysisLogger, endpoint);
 
 	try {
-		const { story, style } = await request.json();
+		const { story, style, language = "en" } = await request.json();
 
 		storyAnalysisLogger.debug(
 			{
 				story_length: story?.length || 0,
 				style,
+				language,
 			},
 			"Received story analysis request",
 		);
@@ -101,7 +102,35 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		const prompt = `
+		// 根据语言构建提示词
+		const prompt = language === 'zh' ? `
+分析这个故事并提取主要角色、设定和具体场景：
+
+故事："${story}"
+
+风格：${style}
+
+请提供：
+1. 这个故事的标题（如果没有明确提到，请创建一个吸引人的、合适的标题）
+
+2. 主要角色列表（最多1-4个，根据故事复杂性选择）包含：
+   - 姓名
+   - 外貌描述（年龄、体型、头发、服装、显著特征）
+   - 性格特征
+   - 在故事中的角色
+
+3. 全局设定描述（时代背景、大致地点、整体氛围）
+
+4. 具体场景列表（2-8个场景，根据故事需要）每个场景包含：
+   - 场景名称
+   - 具体位置
+   - 场景描述
+   - 一天中的时间
+   - 场景氛围
+   - 关键视觉元素
+
+请用中文回答所有内容。确保角色描述详细且适合${style}风格的视觉表现。
+` : `
 Analyze this story and extract the main characters, setting, and specific scenes:
 
 Story: "${story}"
@@ -129,6 +158,7 @@ Please provide:
    - Key visual elements that should be consistent (architecture, furniture, landscape features, etc.)
 
 Focus on identifying distinct locations where story events occur to ensure visual consistency across panels.
+Provide all content in English and ensure character descriptions are detailed and suitable for ${style} style visual representation.
 `;
 
 		storyAnalysisLogger.info(

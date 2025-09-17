@@ -1738,7 +1738,11 @@ export default function Home() {
 				analysisResponse = await fetch("/api/analyze-story", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ story, style }),
+					body: JSON.stringify({
+						story,
+						style,
+						language: i18n?.language || 'en'
+					}),
 					signal: controller.signal,
 				});
 				clearTimeout(timeoutId);
@@ -1824,6 +1828,7 @@ export default function Home() {
 					setting: analysis.setting,
 					scenes: analysis.scenes,
 					style,
+					language: i18n?.language || 'en',
 				}),
 			});
 
@@ -2492,7 +2497,11 @@ export default function Home() {
 			response = await fetch("/api/analyze-story", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ story, style }),
+				body: JSON.stringify({
+					story,
+					style,
+					language: i18n?.language || 'en'
+				}),
 				signal: controller.signal,
 			});
 			clearTimeout(timeoutId);
@@ -2662,7 +2671,11 @@ export default function Home() {
 				response = await fetch("/api/analyze-story", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ story, style }),
+					body: JSON.stringify({
+						story,
+						style,
+						language: i18n?.language || 'en'
+					}),
 					signal: controller.signal,
 				});
 				clearTimeout(timeoutId);
@@ -2783,7 +2796,9 @@ export default function Home() {
 					story,
 					characters: storyAnalysis.characters,
 					setting: storyAnalysis.setting,
+					scenes: storyAnalysis.scenes,
 					style,
+					language: i18n?.language || 'en',
 				}),
 			});
 

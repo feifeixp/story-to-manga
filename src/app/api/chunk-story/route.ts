@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 	logApiRequest(storyChunkingLogger, endpoint);
 
 	try {
-		const { story, characters, setting, scenes, style } = await request.json();
+		const { story, characters, setting, scenes, style, language = "en" } = await request.json();
 
 		storyChunkingLogger.debug(
 			{
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
 				scenes_count: scenes?.length || 0,
 				style,
 				setting: !!setting,
+				language,
 			},
 			"Received story chunking request",
 		);
@@ -206,7 +207,35 @@ General comic panel guidelines:
 			`${scene.id}: ${scene.name} - ${scene.description} (Location: ${scene.location}, Time: ${scene.timeOfDay || 'unspecified'}, Mood: ${scene.mood}, Visual Elements: ${scene.visualElements.join(', ')})`
 		).join('\n');
 
-		const prompt = `
+		// 根据语言构建提示词
+		const prompt = language === 'zh' ? `
+将这个故事分解为单独的漫画面板，并提供详细描述。
+
+故事："${story}"
+角色：${characterNames}
+全局设定：${setting.location}，${setting.timePeriod}，氛围：${setting.mood}
+
+可用场景：
+${sceneInfo}
+
+风格：${style}
+
+${layoutGuidance}
+
+根据故事的复杂性和节奏需要创建2-50个面板。选择最佳的面板数量来有效地讲述这个故事 - 简单的故事可能需要较少的面板（2-8个），而复杂的叙述可能需要更多（10-50个）。对于很长的故事，将其分解为逻辑段落并创建详细的面板序列。
+
+重要：对于每个面板，您必须通过其ID（scene1、scene2等）引用可用场景之一，以确保视觉一致性。根据故事中动作发生的地点选择最合适的场景。
+
+对于每个面板，请描述：
+- 出现的角色
+- 场景ID（必须匹配上述可用场景之一）
+- 动作/场景描述（应与引用的场景一致）
+- 对话（如果有）
+- 镜头角度（特写、中景、远景等）
+- 视觉氛围/气氛（应与场景的氛围相辅相成）
+
+请用中文描述所有内容，并返回具有连续面板编号的平面面板数组。
+` : `
 Break down this story into individual comic panels with detailed descriptions.
 
 Story: "${story}"
@@ -232,7 +261,7 @@ For each panel, describe:
 - Camera angle (close-up, medium shot, wide shot, etc.)
 - Visual mood/atmosphere (should complement the scene's mood)
 
-Return as a flat array of panels with sequential panel numbers.
+Provide all content in English and return as a flat array of panels with sequential panel numbers.
 `;
 
 		storyChunkingLogger.info(
