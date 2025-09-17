@@ -1,5 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
 import { type NextRequest, NextResponse } from "next/server";
+import { getAIModelRouter } from "@/lib/aiModelRouter";
+import { cacheHelpers } from "@/lib/cacheManager";
 import {
 	logApiRequest,
 	logApiResponse,
@@ -7,35 +8,25 @@ import {
 	panelLogger,
 } from "@/lib/logger";
 
-const genAI = new GoogleGenAI({ apiKey: process.env["GOOGLE_AI_API_KEY"]! });
-const model = "gemini-2.5-flash-image-preview";
-
-// Helper function to convert base64 to format expected by Gemini
-function prepareImageForGemini(base64Image: string) {
-	// Remove data:image/xxx;base64, prefix if present
-	const base64Data = base64Image.replace(/^data:image\/[^;]+;base64,/, "");
-	return {
-		inlineData: {
-			data: base64Data,
-			mimeType: "image/jpeg",
-		},
-	};
-}
-
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/generate-panel";
+	let panel: any;
 
 	logApiRequest(panelLogger, endpoint);
 
 	try {
+		const requestData = await request.json();
+		panel = requestData.panel;
 		const {
-			panel,
 			characterReferences,
 			setting,
 			style,
 			uploadedSettingReferences = [],
-		} = await request.json();
+			language = "en", // 添加语言参数，默认为英文
+			aiModel = "auto", // 添加AI模型选择参数，默认为自动选择
+			imageSize, // 添加图片尺寸参数
+		} = requestData;
 
 		panelLogger.debug(
 			{
@@ -44,6 +35,8 @@ export async function POST(request: NextRequest) {
 				character_refs_count: characterReferences?.length || 0,
 				uploaded_setting_refs_count: uploadedSettingReferences?.length || 0,
 				style,
+				ai_model: aiModel,
+				language,
 			},
 			"Received panel generation request",
 		);
@@ -69,10 +62,42 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// 检查面板图片缓存
+		const panelDescription = panel.description || panel.panelDescription;
+		const cachedPanel = cacheHelpers.getCachedPanelImage(
+			panel.panelNumber,
+			panelDescription,
+			characterReferences,
+			style,
+			imageSize
+		);
+
+		if (cachedPanel) {
+			panelLogger.info("Returning cached panel image");
+			logApiResponse(panelLogger, endpoint, true, Date.now() - startTime, {
+				cached: true,
+				panel_number: panel.panelNumber,
+			});
+			return NextResponse.json({
+				success: true,
+				generatedPanel: {
+					panelNumber: panel.panelNumber,
+					description: panelDescription,
+					image: cachedPanel,
+				},
+				cached: true,
+			});
+		}
+
+		// 根据语言和风格调整样式描述，确保一致性
 		const stylePrefix =
 			style === "manga"
-				? "Japanese manga visual style (black and white with screentones), but with English text"
-				: "American comic book style, full color, clean line art";
+				? language === "zh"
+					? "日式漫画风格（黑白配网点），使用中文文字和对话框，保持角色外观一致性"
+					: "Japanese manga visual style (black and white with screentones), use English text and speech bubbles, maintain character appearance consistency"
+				: language === "zh"
+					? "美式漫画风格，全彩色，清晰线条艺术，使用中文文字和对话框，保持角色外观一致性"
+					: "American comic book style, full color, clean line art, use English text and speech bubbles, maintain character appearance consistency";
 
 		// Process single panel
 		panelLogger.debug(
@@ -124,208 +149,142 @@ The panel should include:
 Generate a single comic panel image with proper framing and composition.
 `;
 
-		// Prepare reference images for input
-		const inputParts: Array<
-			{ text: string } | { inlineData: { data: string; mimeType: string } }
-		> = [{ text: prompt }];
+		// 准备参考图片
+		const referenceImages: string[] = [];
 
-		// Add character reference images
+		// 添加角色参考图片
 		characterReferences.forEach((charRef: { name: string; image?: string }) => {
 			if (charRef.image) {
-				inputParts.push(prepareImageForGemini(charRef.image));
+				referenceImages.push(charRef.image);
 			}
 		});
 
-		// Add uploaded setting reference images
+		// 添加场景参考图片
 		uploadedSettingReferences.forEach((settingRef: { image?: string }) => {
 			if (settingRef.image) {
-				inputParts.push(prepareImageForGemini(settingRef.image));
+				referenceImages.push(settingRef.image);
 			}
 		});
 
 		panelLogger.info(
 			{
-				model: model,
 				panel_number: panel.panelNumber,
 				prompt_length: prompt.length,
 				character_refs_attached: characterReferences.length,
 				uploaded_setting_refs_attached: uploadedSettingReferences.length,
-				input_parts_count: inputParts.length,
+				reference_images_count: referenceImages.length,
+				language: language,
 			},
-			"Calling Gemini API for panel generation",
+			"Calling AI Model Router for panel generation",
 		);
 
-		// Helper function to attempt generation with retry logic
-		const attemptGeneration = async (attemptNumber: number) => {
-			const result = await genAI.models.generateContent({
-				model: model,
-				contents: inputParts,
-			});
+		// 使用AI模型路由器生成漫画面板
+		const aiRouter = getAIModelRouter();
+		const result = await aiRouter.generateComicPanel(
+			prompt,
+			referenceImages,
+			language as "en" | "zh",
+			aiModel as any, // 传递用户选择的模型
+			imageSize, // 传递图片尺寸配置
+			style, // 传递漫画风格
+		);
 
-			panelLogger.debug(
-				{
-					panel_number: panel.panelNumber,
-					attempt: attemptNumber,
-				},
-				"Received response from Gemini API",
-			);
+		if (!result.success || !result.imageData) {
+			throw new Error(result.error || "Failed to generate panel");
+		}
 
-			// Process the response following the official pattern
-			const candidate = result.candidates?.[0];
+		// Validate imageData format
+		const imageData = result.imageData;
 
-			// Check for prohibited content finish reason
-			if (candidate?.finishReason === "PROHIBITED_CONTENT") {
-				panelLogger.warn(
-					{
-						panel_number: panel.panelNumber,
-						finish_reason: candidate.finishReason,
-						attempt: attemptNumber,
-					},
-					"Content blocked by safety filters",
-				);
-				throw new Error(
-					"PROHIBITED_CONTENT: Your content was blocked by Gemini safety filters.",
-					{ cause: result },
-				);
-			}
+		panelLogger.debug({
+			panel_number: panel.panelNumber,
+			imageData_type: typeof imageData,
+			imageData_preview: typeof imageData === 'string' ? imageData.substring(0, 100) + '...' : imageData,
+			imageData_length: typeof imageData === 'string' ? imageData.length : 'N/A'
+		}, "Validating image data format");
 
-			if (!candidate?.content?.parts) {
-				throw new Error("No content parts received", { cause: result });
-			}
+		const isValidUrl = typeof imageData === 'string' && (imageData.startsWith('http://') || imageData.startsWith('https://'));
+		const isValidBase64 = typeof imageData === 'string' && (imageData.startsWith('data:image/') || /^[A-Za-z0-9+/]+=*$/.test(imageData));
+		const isValidProxyUrl = typeof imageData === 'string' && imageData.startsWith('/api/image-proxy?url=');
 
-			for (const part of candidate.content.parts) {
-				if (part.text) {
-					panelLogger.info(
-						{
-							panel_number: panel.panelNumber,
-							text_response: part.text,
-							text_length: part.text.length,
-							attempt: attemptNumber,
-						},
-						"Received text response from model (full content)",
-					);
-				} else if (part.inlineData) {
-					const imageData = part.inlineData.data;
-					const mimeType = part.inlineData.mimeType || "image/jpeg";
+		panelLogger.debug({
+			panel_number: panel.panelNumber,
+			isValidUrl,
+			isValidBase64,
+			isValidProxyUrl
+		}, "Image data validation results");
 
-					panelLogger.info(
-						{
-							panel_number: panel.panelNumber,
-							mime_type: mimeType,
-							image_size_kb: imageData
-								? Math.round((imageData.length * 0.75) / 1024)
-								: 0,
-							duration_ms: Date.now() - startTime,
-							attempt: attemptNumber,
-						},
-						"Successfully generated panel",
-					);
+		if (!isValidUrl && !isValidBase64 && !isValidProxyUrl) {
+			throw new Error(`Invalid image data format. Expected URL, base64, or proxy URL, got: ${typeof imageData} - "${imageData}"`);
+		}
 
-					logApiResponse(panelLogger, endpoint, true, Date.now() - startTime, {
-						panel_number: panel.panelNumber,
-						image_size_kb: imageData
-							? Math.round((imageData.length * 0.75) / 1024)
-							: 0,
-						attempt: attemptNumber,
-					});
-
-					return NextResponse.json({
-						success: true,
-						generatedPanel: {
-							panelNumber: panel.panelNumber,
-							image: `data:${mimeType};base64,${imageData}`,
-						},
-					});
-				}
-			}
-
-			throw new Error("No image data received in response parts");
-		};
-
-		try {
-			// Try generation with single retry for transient failures
-			try {
-				return await attemptGeneration(1);
-			} catch (error) {
-				const shouldRetry =
-					error instanceof Error &&
-					!error.message.startsWith("PROHIBITED_CONTENT:") &&
-					(error.message === "No content parts received" ||
-						error.message.includes("fetch failed") ||
-						error.message.includes("network error") ||
-						error.message.includes("timeout"));
-
-				if (shouldRetry) {
-					panelLogger.warn(
-						{
-							panel_number: panel.panelNumber,
-							error_message: error.message,
-							error_cause: error.cause,
-							duration_ms: Date.now() - startTime,
-						},
-						"First attempt failed with transient error, retrying once",
-					);
-
-					// Wait 1.5 seconds before retry
-					await new Promise((resolve) => setTimeout(resolve, 1500));
-
-					try {
-						return await attemptGeneration(2);
-					} catch (retryError) {
-						panelLogger.error(
-							{
-								panel_number: panel.panelNumber,
-								original_error: error.message,
-								retry_error:
-									retryError instanceof Error
-										? retryError.message
-										: "Unknown error",
-								duration_ms: Date.now() - startTime,
-							},
-							"Retry also failed, giving up",
-						);
-						throw retryError;
-					}
-				}
-				// Re-throw error for the outer catch block to handle
-				throw error;
-			}
-		} catch (error) {
-			logError(panelLogger, error, "panel generation", {
+		panelLogger.info(
+			{
 				panel_number: panel.panelNumber,
+				model_used: result.modelUsed,
+				image_size_kb: result.imageData
+					? Math.round((result.imageData.length * 0.75) / 1024)
+					: 0,
 				duration_ms: Date.now() - startTime,
-			});
-			logApiResponse(panelLogger, endpoint, false, Date.now() - startTime, {
-				error: "Panel generation failed",
-				panel_number: panel.panelNumber,
-			});
+			},
+			"Successfully generated panel",
+		);
 
-			// Handle prohibited content with appropriate status and message
-			if (
-				error instanceof Error &&
-				error.message.startsWith("PROHIBITED_CONTENT:")
-			) {
-				return NextResponse.json(
-					{
-						error: error.message.replace("PROHIBITED_CONTENT: ", ""),
-						errorType: "PROHIBITED_CONTENT",
-					},
-					{ status: 400 },
-				);
-			}
+		// 缓存生成的面板图片
+		if (result.imageData) {
+			cacheHelpers.cachePanelImage(
+				panel.panelNumber,
+				panelDescription,
+				characterReferences,
+				style,
+				imageSize,
+				result.imageData
+			);
+			panelLogger.info("Cached panel image for future use");
+		}
 
+		logApiResponse(panelLogger, endpoint, true, Date.now() - startTime, {
+			panel_number: panel.panelNumber,
+			model_used: result.modelUsed,
+			image_size_kb: result.imageData
+				? Math.round((result.imageData.length * 0.75) / 1024)
+				: 0,
+		});
+
+		return NextResponse.json({
+			success: true,
+			generatedPanel: {
+				panelNumber: panel.panelNumber,
+				image: result.imageData,
+				modelUsed: result.modelUsed,
+			},
+		});
+	} catch (error) {
+		logError(panelLogger, error, "panel generation", {
+			panel_number: panel?.panelNumber,
+			duration_ms: Date.now() - startTime,
+		});
+		logApiResponse(panelLogger, endpoint, false, Date.now() - startTime, {
+			error: "Panel generation failed",
+			panel_number: panel?.panelNumber,
+		});
+
+		// 处理特定错误类型
+		if (
+			error instanceof Error &&
+			error.message.includes("PROHIBITED_CONTENT")
+		) {
 			return NextResponse.json(
-				{ error: `Failed to generate panel ${panel.panelNumber}` },
-				{ status: 500 },
+				{
+					error: "Content was blocked by safety filters",
+					errorType: "PROHIBITED_CONTENT",
+				},
+				{ status: 400 },
 			);
 		}
-	} catch (error) {
-		logError(panelLogger, error, "panel generation");
-		logApiResponse(panelLogger, endpoint, false, Date.now() - startTime, {
-			error: "Unexpected error",
-		});
+
 		return NextResponse.json(
-			{ error: "Failed to generate panel" },
+			{ error: `Failed to generate panel ${panel?.panelNumber || "unknown"}` },
 			{ status: 500 },
 		);
 	}

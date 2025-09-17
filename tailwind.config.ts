@@ -27,6 +27,33 @@ const config: Config = {
 					"accent-gold": "#FF8F00",
 				},
 			},
+			fontFamily: {
+				// 中文优化字体配置
+				chinese: [
+					'"Noto Sans SC"',
+					'"PingFang SC"',
+					'"Microsoft YaHei"',
+					'"Hiragino Sans GB"',
+					"sans-serif",
+				],
+				"chinese-serif": [
+					'"Noto Serif SC"',
+					'"Source Han Serif SC"',
+					'"STSong"',
+					"serif",
+				],
+				// 日文字体（用于漫画风格）
+				japanese: [
+					'"M PLUS 1"',
+					'"Sawarabi Gothic"',
+					'"Noto Sans JP"',
+					"sans-serif",
+				],
+				"japanese-serif": ['"Zen Old Mincho"', '"Noto Serif JP"', "serif"],
+				// 英文字体
+				comic: ['"Comfortaa"', '"Bangers"', "sans-serif"],
+				handwriting: ['"Permanent Marker"', "cursive"],
+			},
 		},
 	},
 	// Force Tailwind to use hex/rgb colors instead of modern color functions

@@ -1,0 +1,164 @@
+{
+	"title": "Story to Manga",
+	"subtitle": "Transform your stories into beautiful manga panels with AI",
+	"description": "Create stunning manga-style artwork from your written stories using advanced AI technology. Perfect for storytellers, artists, and manga enthusiasts.",
+	"navigation": {
+		"home": "Home",
+		"create": "Create",
+		"gallery": "Gallery",
+		"settings": "Settings"
+	},
+	"buttons": {
+		"getStarted": "Get Started",
+		"createStory": "Create Story",
+		"generate": "Generate",
+		"download": "Download",
+		"share": "Share",
+		"retry": "Retry",
+		"generationFailed": "Generation Failed",
+		"retryGeneration": "Retry Generation",
+		"edit": "Edit",
+		"save": "Save",
+		"cancel": "Cancel",
+		"editContent": "Edit Content",
+		"regenerateFromHere": "Regenerate from Here",
+		"charactersGenerated": "Characters Generated",
+		"panelsGenerated": "Panels Generated",
+		"back": "Back",
+		"next": "Next",
+		"save": "Save",
+		"cancel": "Cancel",
+		"upload": "Upload",
+		"clear": "Clear"
+	},
+	"forms": {
+		"storyInput": {
+			"label": "Your Story",
+			"placeholder": "Enter your story here... Describe characters, setting, and plot.",
+			"characterCount": "{{count}} characters",
+			"wordCount": "{{count}} words"
+		},
+		"styleSelection": {
+			"label": "Manga Style",
+			"options": {
+				"shonen": "Shonen",
+				"shoujo": "Shoujo",
+				"seinen": "Seinen",
+				"josei": "Josei"
+			}
+		},
+		"characterRefs": {
+			"label": "Character References",
+			"description": "Upload images to help AI understand your characters"
+		}
+	},
+	"status": {
+		"generating": "Generating manga panels...",
+		"processing": "Processing your story...",
+		"complete": "Generation complete!",
+		"error": "Something went wrong. Please try again.",
+		"loading": "Loading..."
+	},
+	"settings": {
+		"language": "Language",
+		"aiModel": "AI Model",
+		"theme": "Theme",
+		"preferences": "Preferences"
+	},
+	"aiModels": {
+		"auto": "Auto Select",
+		"nanobanana": "NanoBanana (Gemini Flash Image)",
+		"volcengine": "VolcEngine (Doubao Seedream)",
+		"description": {
+			"auto": "Automatically select the best model based on language",
+			"nanobanana": "Google's Gemini Flash Image model, optimized for English content and better character consistency",
+			"volcengine": "VolcEngine's Doubao Seedream 4.0, optimized for Chinese content and supports reference images"
+		}
+	},
+	"languages": {
+		"en": "English",
+		"zh": "中文"
+	},
+	"settings": {
+		"title": "Settings",
+		"language": "Language",
+		"theme": "Theme",
+		"aiModel": "AI Model"
+	},
+	"errors": {
+		"networkError": "Network error. Please check your connection.",
+		"apiError": "API error. Please try again later.",
+		"invalidInput": "Please enter a valid story.",
+		"fileTooLarge": "File size too large. Please upload a smaller image.",
+		"unsupportedFormat": "Unsupported file format."
+	},
+	"footer": {
+		"poweredBy": "Powered by AI",
+		"version": "Version {{version}}"
+	},
+	"comicStyle": "Comic Style",
+	"japaneseManga": "Japanese Manga",
+	"americanComic": "American Comic",
+	"wuxiaCultivation": "Wuxia Cultivation",
+	"healingAnime": "Healing Anime",
+	"koreanManhwa": "Korean Manhwa",
+	"cinematicStyle": "Cinematic Style",
+	"yourStory": "Your Story",
+	"words": "words",
+	"projectManager": "Project Manager",
+	"createNewProject": "Create New Project",
+	"projectName": "Project Name",
+	"projectDescription": "Project Description",
+	"enterProjectName": "Enter project name",
+	"enterProjectDescription": "Enter project description (optional)",
+	"creating": "Creating...",
+	"create": "Create",
+	"existingProjects": "Existing Projects",
+	"noProjectsFound": "No projects found",
+	"createFirstProject": "Create your first project to get started",
+	"panels": "Panels",
+	"characters": "Characters",
+	"updated": "Updated",
+	"current": "Current",
+	"open": "Open",
+	"delete": "Delete",
+	"confirmDeleteProject": "Are you sure you want to delete project '{{name}}'? This action cannot be undone.",
+	"projects": "Projects",
+	"editImage": "Edit Image",
+	"originalImage": "Original Image",
+	"originalPrompt": "Original Prompt",
+	"editOptions": "Edit Options",
+	"redraw": "Redraw",
+	"modify": "Modify",
+	"editPrompt": "Edit Prompt",
+	"editPromptPlaceholder": "Modify the prompt to regenerate the image...",
+	"redrawDescription": "Modify the prompt and regenerate, or keep it the same for a direct redraw",
+	"modificationInstructions": "Modification Instructions",
+	"modificationPlaceholder": "Describe the changes you want to make to the image...",
+	"modifyDescription": "Use the original image as reference and generate a new image based on modification instructions",
+	"redrawImage": "Redraw Image",
+	"modifyImage": "Modify Image",
+	"continueGeneration": "Continue Generation",
+	"generationProgress": "Generation Progress",
+	"panelsGenerated": "Panels Generated",
+	"totalPanels": "Total Panels",
+	"generationComplete": "Generation Complete",
+	"generationPaused": "Generation Paused",
+	"resumeGeneration": "Resume Generation",
+	"pauseGeneration": "Pause Generation",
+	"batchProcessing": "Batch Processing",
+	"processingBatch": "Processing batch {{current}} of {{total}}",
+	"redrawing": "Redrawing",
+	"modifying": "Modifying",
+	"processing": "Processing",
+	"close": "Close",
+	"editImageButton": "Edit",
+	"imageSize": "Image Size",
+	"imageSizeDescription": "Choose uniform size for all images in this project",
+	"pause": "Pause",
+	"resume": "Resume",
+	"generating": "Generating...",
+	"failedPanels": "Failed Panels",
+	"currentPanel": "Current Panel",
+	"batch": "Batch"
+}

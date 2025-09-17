@@ -1,0 +1,26 @@
+{
+	"title": "故事转漫画",
+	"subtitle": "将您的故事转换为漫画风格的作品",
+	"inputPlaceholder": "在此输入您的故事...",
+	"generateButton": "生成漫画",
+	"generating": "生成中...",
+	"downloadAll": "下载全部",
+	"downloadPanel": "下载面板",
+	"downloadCharacter": "下载角色",
+	"languageSelector": "语言选择器",
+	"storyAnalysis": "故事分析",
+	"characterDesigns": "角色设计",
+	"storyLayout": "故事布局",
+	"comicPanels": "漫画面板",
+	"settings": {
+		"title": "设置",
+		"aiModel": "AI模型",
+		"style": "艺术风格",
+		"language": "语言"
+	},
+	"errors": {
+		"generation": "生成失败，请重试。",
+		"network": "网络错误，请检查您的连接。",
+		"invalidInput": "请输入有效的故事。"
+	}
+}

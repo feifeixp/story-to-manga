@@ -1,0 +1,26 @@
+{
+	"title": "Story to Manga",
+	"subtitle": "Transform your stories into manga-style comics",
+	"inputPlaceholder": "Enter your story here...",
+	"generateButton": "Generate Comic",
+	"generating": "Generating...",
+	"downloadAll": "Download All",
+	"downloadPanel": "Download Panel",
+	"downloadCharacter": "Download Character",
+	"languageSelector": "Language Selector",
+	"storyAnalysis": "Story Analysis",
+	"characterDesigns": "Character Designs",
+	"storyLayout": "Story Layout",
+	"comicPanels": "Comic Panels",
+	"settings": {
+		"title": "Settings",
+		"aiModel": "AI Model",
+		"style": "Art Style",
+		"language": "Language"
+	},
+	"errors": {
+		"generation": "Generation failed. Please try again.",
+		"network": "Network error. Please check your connection.",
+		"invalidInput": "Please enter a valid story."
+	}
+}

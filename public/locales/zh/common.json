@@ -1,0 +1,164 @@
+{
+	"title": "故事转漫画",
+	"subtitle": "用AI将您的故事转换为精美的漫画面板",
+	"description": "使用先进的AI技术将您的文字故事创作成令人惊艳的漫画风格艺术作品。完美适合故事创作者、艺术家和漫画爱好者。",
+	"navigation": {
+		"home": "首页",
+		"create": "创作",
+		"gallery": "作品集",
+		"settings": "设置"
+	},
+	"buttons": {
+		"getStarted": "开始使用",
+		"createStory": "创作故事",
+		"generate": "生成",
+		"download": "下载",
+		"share": "分享",
+		"retry": "重试",
+		"generationFailed": "生成失败",
+		"retryGeneration": "重新生成",
+		"edit": "编辑",
+		"save": "保存",
+		"cancel": "取消",
+		"editContent": "编辑内容",
+		"regenerateFromHere": "从此处重新生成",
+		"charactersGenerated": "角色设计已生成",
+		"panelsGenerated": "面板已生成",
+		"back": "返回",
+		"next": "下一步",
+		"save": "保存",
+		"cancel": "取消",
+		"upload": "上传",
+		"clear": "清空"
+	},
+	"forms": {
+		"storyInput": {
+			"label": "您的故事",
+			"placeholder": "在此输入您的故事...描述角色、场景和情节。",
+			"characterCount": "{{count}} 个字符",
+			"wordCount": "{{count}} 个字"
+		},
+		"styleSelection": {
+			"label": "漫画风格",
+			"options": {
+				"shonen": "少年漫画",
+				"shoujo": "少女漫画",
+				"seinen": "青年漫画",
+				"josei": "女性漫画"
+			}
+		},
+		"characterRefs": {
+			"label": "角色参考图",
+			"description": "上传图片帮助AI理解您的角色"
+		}
+	},
+	"status": {
+		"generating": "正在生成漫画面板...",
+		"processing": "正在处理您的故事...",
+		"complete": "生成完成！",
+		"error": "出现错误，请重试。",
+		"loading": "加载中..."
+	},
+	"settings": {
+		"language": "语言",
+		"aiModel": "AI模型",
+		"theme": "主题",
+		"preferences": "偏好设置"
+	},
+	"aiModels": {
+		"auto": "自动选择",
+		"nanobanana": "NanoBanana (Gemini Flash Image)",
+		"volcengine": "火山引擎 (豆包 Seedream)",
+		"description": {
+			"auto": "根据语言自动选择最佳模型",
+			"nanobanana": "Google的Gemini Flash Image模型，针对英文内容优化，角色一致性更好",
+			"volcengine": "火山引擎的豆包Seedream 4.0，针对中文内容优化，支持参考图片"
+		}
+	},
+	"languages": {
+		"en": "English",
+		"zh": "中文"
+	},
+	"settings": {
+		"title": "设置",
+		"language": "语言",
+		"theme": "主题",
+		"aiModel": "AI模型"
+	},
+	"errors": {
+		"networkError": "网络错误，请检查您的连接。",
+		"apiError": "API错误，请稍后重试。",
+		"invalidInput": "请输入有效的故事内容。",
+		"fileTooLarge": "文件过大，请上传较小的图片。",
+		"unsupportedFormat": "不支持的文件格式。"
+	},
+	"footer": {
+		"poweredBy": "由AI驱动",
+		"version": "版本 {{version}}"
+	},
+	"comicStyle": "漫画风格",
+	"japaneseManga": "日式漫画",
+	"americanComic": "美式漫画",
+	"wuxiaCultivation": "武侠修仙",
+	"healingAnime": "治愈系日漫",
+	"koreanManhwa": "韩漫风格",
+	"cinematicStyle": "电影风格",
+	"yourStory": "您的故事",
+	"words": "字",
+	"projectManager": "项目管理",
+	"createNewProject": "创建新项目",
+	"projectName": "项目名称",
+	"projectDescription": "项目描述",
+	"enterProjectName": "请输入项目名称",
+	"enterProjectDescription": "请输入项目描述（可选）",
+	"creating": "创建中...",
+	"create": "创建",
+	"existingProjects": "现有项目",
+	"noProjectsFound": "暂无项目",
+	"createFirstProject": "创建您的第一个项目开始使用",
+	"panels": "面板",
+	"characters": "角色",
+	"updated": "更新",
+	"current": "当前",
+	"open": "打开",
+	"delete": "删除",
+	"confirmDeleteProject": "确定要删除项目「{{name}}」吗？此操作无法撤销。",
+	"projects": "项目",
+	"editImage": "编辑图片",
+	"originalImage": "原始图片",
+	"originalPrompt": "原始提示词",
+	"editOptions": "编辑选项",
+	"redraw": "重绘",
+	"modify": "修改",
+	"editPrompt": "编辑提示词",
+	"editPromptPlaceholder": "修改提示词来重新生成图片...",
+	"redrawDescription": "修改提示词后重新生成图片，或保持原样直接重绘",
+	"modificationInstructions": "修改指令",
+	"modificationPlaceholder": "描述你想要对图片进行的修改...",
+	"modifyDescription": "使用原图作为参考，根据修改指令生成新图片",
+	"redrawImage": "重绘图片",
+	"modifyImage": "修改图片",
+	"continueGeneration": "继续生成",
+	"generationProgress": "生成进度",
+	"panelsGenerated": "已生成面板",
+	"totalPanels": "总面板数",
+	"generationComplete": "生成完成",
+	"generationPaused": "生成已暂停",
+	"resumeGeneration": "恢复生成",
+	"pauseGeneration": "暂停生成",
+	"batchProcessing": "分批处理中",
+	"processingBatch": "正在处理第 {{current}} 批，共 {{total}} 批",
+	"redrawing": "重绘中",
+	"modifying": "修改中",
+	"processing": "处理中",
+	"close": "关闭",
+	"editImageButton": "编辑",
+	"imageSize": "图片尺寸",
+	"imageSizeDescription": "选择项目中所有图片的统一尺寸",
+	"pause": "暂停",
+	"resume": "恢复",
+	"generating": "生成中...",
+	"failedPanels": "失败的面板",
+	"currentPanel": "当前面板",
+	"batch": "批次"
+}

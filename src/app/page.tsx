@@ -3,7 +3,10 @@
 import html2canvas from "html2canvas";
 import JSZip from "jszip";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
+import { useTranslation } from "react-i18next";
 import ImageUpload from "@/components/ImageUpload";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
 	trackDownload,
 	trackError,
@@ -17,6 +20,15 @@ import {
 	loadState,
 	saveState,
 } from "@/lib/storage";
+import {
+	getCurrentProjectId,
+	setCurrentProject,
+	saveProjectData,
+	loadProjectData,
+	createProject,
+} from "@/lib/projectStorage";
+import ProjectManager from "@/components/ProjectManager";
+import { ImageEditModal } from "@/components/ImageEditModal";
 import type {
 	CharacterReference,
 	ComicStyle,
@@ -26,6 +38,12 @@ import type {
 	UploadedCharacterReference,
 	UploadedSettingReference,
 } from "@/types";
+import type {
+	ImageSizeConfig,
+} from "@/types/project";
+import { DEFAULT_IMAGE_SIZE } from "@/types/project";
+import { imageOptimizer, OPTIMIZATION_PRESETS, imageUtils } from "@/lib/imageOptimizer";
+import { cacheManager } from "@/lib/cacheManager";
 
 type FailedStep = "analysis" | "characters" | "layout" | "panels" | null;
 type FailedPanel = { step: "panel"; panelNumber: number } | null;
@@ -269,6 +287,7 @@ interface CharacterCardProps {
 	showImage?: boolean;
 	onImageClick?: (imageUrl: string, name: string) => void;
 	onDownload?: () => void;
+	onEdit?: () => void;
 }
 
 function CharacterCard({
@@ -276,36 +295,56 @@ function CharacterCard({
 	showImage = false,
 	onImageClick,
 	onDownload,
+	onEdit,
 }: CharacterCardProps) {
+	const { t } = useTranslation();
 	return (
 		<div className={showImage ? "text-center" : "card-manga"}>
 			{showImage && character.image ? (
 				<>
 					<img
-						src={character.image}
+						src={character.image && typeof character.image === 'string' && character.image.trim() ? character.image : '/placeholder-character.svg'}
 						alt={character.name}
 						className="w-full h-48 object-cover rounded mb-2 border-2 border-manga-black shadow-comic transition-transform hover:scale-105 cursor-pointer"
-						onClick={() => onImageClick?.(character.image!, character.name)}
+						onClick={() => character.image && typeof character.image === 'string' && character.image.trim() && onImageClick?.(character.image, character.name)}
 						onKeyDown={(e) => {
 							if (e.key === "Enter" || e.key === " ") {
 								e.preventDefault();
-								onImageClick?.(character.image!, character.name);
+								if (character.image && typeof character.image === 'string' && character.image.trim()) {
+									onImageClick?.(character.image, character.name);
+								}
 							}
 						}}
+						onError={(e) => {
+									const target = e.target as HTMLImageElement;
+									console.warn(`Failed to load character image: ${character.image}`);
+									target.src = '/placeholder-character.svg';
+								}}
 					/>
 					<h6 className="font-semibold">{character.name}</h6>
 					<p className="text-sm text-manga-medium-gray mb-2">
 						{character.description}
 					</p>
-					{onDownload && (
-						<DownloadButton
-							onClick={onDownload}
-							isLoading={false}
-							label="Download Character"
-							loadingText=""
-							variant="outline"
-						/>
-					)}
+					<div className="flex gap-2 mt-2">
+						{onDownload && (
+							<DownloadButton
+								onClick={onDownload}
+								isLoading={false}
+								label="Download Character"
+								loadingText=""
+								variant="outline"
+							/>
+						)}
+						{onEdit && (
+							<button
+								onClick={onEdit}
+								className="btn-manga-outline text-sm px-3 py-1"
+								title={t("editImageButton")}
+							>
+								✏️ {t("editImageButton")}
+							</button>
+						)}
+					</div>
 				</>
 			) : (
 				<div className="card-body">
@@ -333,6 +372,7 @@ interface PanelCardProps {
 	showImage?: boolean;
 	onImageClick?: (imageUrl: string, altText: string) => void;
 	onDownload?: () => void;
+	onEdit?: () => void;
 }
 
 function PanelCard({
@@ -340,38 +380,60 @@ function PanelCard({
 	showImage = false,
 	onImageClick,
 	onDownload,
+	onEdit,
 }: PanelCardProps) {
+	const { t } = useTranslation();
+
 	return (
 		<div className={showImage ? "text-center" : "card-manga"}>
 			{showImage && panel.image ? (
 				<>
 					<img
-						src={panel.image}
+						src={panel.image && typeof panel.image === 'string' && panel.image.trim() ? panel.image : '/placeholder-panel.svg'}
 						alt={`Comic Panel ${panel.panelNumber}`}
 						className="w-full rounded mb-2 comic-panel cursor-pointer transition-transform hover:scale-[1.02]"
-						onClick={() =>
-							onImageClick?.(panel.image!, `Comic Panel ${panel.panelNumber}`)
-						}
+						onClick={() => {
+							if (panel.image && typeof panel.image === 'string' && panel.image.trim()) {
+								onImageClick?.(panel.image, `Comic Panel ${panel.panelNumber}`);
+							}
+						}}
 						onKeyDown={(e) => {
 							if (e.key === "Enter" || e.key === " ") {
 								e.preventDefault();
-								onImageClick?.(
-									panel.image!,
-									`Comic Panel ${panel.panelNumber}`,
-								);
+								if (panel.image && typeof panel.image === 'string' && panel.image.trim()) {
+									onImageClick?.(panel.image, `Comic Panel ${panel.panelNumber}`);
+								}
 							}
+						}}
+						onError={(e) => {
+							const target = e.target as HTMLImageElement;
+							console.warn(`Failed to load panel image: ${panel.image}`);
+							target.src = '/placeholder-panel.svg';
+							// Show error message to user
+							alert(`Failed to load panel ${panel.panelNumber} image. Please try regenerating this panel.`);
 						}}
 					/>
 					<h6 className="font-semibold">Panel {panel.panelNumber}</h6>
-					{onDownload && (
-						<DownloadButton
-							onClick={onDownload}
-							isLoading={false}
-							label="Download Panel"
-							loadingText=""
-							variant="outline"
-						/>
-					)}
+					<div className="flex gap-2 mt-2">
+						{onDownload && (
+							<DownloadButton
+								onClick={onDownload}
+								isLoading={false}
+								label="Download Panel"
+								loadingText=""
+								variant="outline"
+							/>
+						)}
+						{onEdit && (
+							<button
+								onClick={onEdit}
+								className="btn-manga-outline text-sm px-3 py-1"
+								title={t("editImageButton")}
+							>
+								✏️ {t("editImageButton")}
+							</button>
+						)}
+					</div>
 				</>
 			) : (
 				<div className="card-body">
@@ -412,6 +474,9 @@ interface ShareableComicLayoutProps {
 	style: ComicStyle;
 	isPreview?: boolean;
 	compositorRef?: React.RefObject<HTMLDivElement | null>;
+	getProxyImageUrl?: (url: string) => string;
+	isLazyLoadingEnabled?: boolean;
+	visiblePanelRange?: { start: number; end: number };
 }
 
 function ShareableComicLayout({
@@ -421,6 +486,9 @@ function ShareableComicLayout({
 	style,
 	isPreview = false,
 	compositorRef,
+	getProxyImageUrl,
+	isLazyLoadingEnabled = false,
+	visiblePanelRange = { start: 0, end: 10 },
 }: ShareableComicLayoutProps) {
 	const title =
 		storyAnalysis?.title || `${style === "manga" ? "Manga" : "Comic"} Story`;
@@ -446,9 +514,14 @@ function ShareableComicLayout({
 									className="bg-gray-200 rounded aspect-square"
 								>
 									<img
-										src={panel.image}
+										src={panel.image && typeof panel.image === 'string' && panel.image.trim() ? (getProxyImageUrl ? getProxyImageUrl(panel.image) : panel.image) : '/placeholder-panel.svg'}
 										alt={`Panel ${panel.panelNumber}`}
 										className="w-full h-full object-cover rounded"
+										onError={(e) => {
+									const target = e.target as HTMLImageElement;
+									console.warn(`Failed to load composite panel image: ${panel.image}`);
+									target.src = '/placeholder-panel.svg';
+								}}
 									/>
 								</div>
 							))}
@@ -471,10 +544,14 @@ function ShareableComicLayout({
 									className="bg-gray-200 rounded mb-1 aspect-square"
 								>
 									<img
-										src={char.image}
-										alt={char.name}
-										className="w-full h-full object-cover rounded"
-									/>
+									src={char.image && typeof char.image === 'string' && char.image.trim() ? (getProxyImageUrl ? getProxyImageUrl(char.image) : char.image) : '/placeholder-character.svg'}
+									alt={char.name}
+									className="w-full h-full object-cover rounded"
+									onError={(e) => {
+										const target = e.target as HTMLImageElement;
+										target.src = '/placeholder-character.svg';
+									}}
+								/>
 								</div>
 							))}
 							{remainingCharacters > 0 && (
@@ -538,6 +615,33 @@ function ShareableComicLayout({
 				</div>
 			</div>
 
+			{/* 分页信息提示 */}
+			{isLazyLoadingEnabled && (
+				<div
+					style={{
+						background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+						border: "1px solid #f59e0b",
+						borderRadius: "8px",
+						padding: "12px",
+						marginBottom: "16px",
+						display: "flex",
+						alignItems: "center",
+						gap: "8px",
+					}}
+				>
+					<span style={{ fontSize: "16px" }}>📄</span>
+					<div>
+						<div style={{ fontWeight: "600", color: "#92400e" }}>
+							分页显示已启用
+						</div>
+						<div style={{ fontSize: "14px", color: "#b45309" }}>
+							检测到 {generatedPanels.length} 个面板，分为 {Math.ceil(generatedPanels.length / 12)} 页显示。
+							当前显示：第 {Math.floor(visiblePanelRange.start / 12) + 1} 页 ({visiblePanelRange.start + 1}-{Math.min(visiblePanelRange.end, generatedPanels.length)} / {generatedPanels.length})
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Main content area */}
 			<div style={{ display: "flex", height: "970px" }}>
 				{/* Panels section - 75% width */}
@@ -565,7 +669,10 @@ function ShareableComicLayout({
 											: "1fr 1fr",
 						}}
 					>
-						{generatedPanels.map((panel) => (
+						{(isLazyLoadingEnabled
+							? generatedPanels.slice(visiblePanelRange.start, visiblePanelRange.end)
+							: generatedPanels
+						).map((panel) => (
 							<div
 								key={`composite-panel-${panel.panelNumber}`}
 								style={{
@@ -577,7 +684,7 @@ function ShareableComicLayout({
 								}}
 							>
 								<img
-									src={panel.image}
+									src={panel.image && typeof panel.image === 'string' && panel.image.trim() ? (getProxyImageUrl ? getProxyImageUrl(panel.image) : panel.image) : '/placeholder-panel.svg'}
 									alt={`Panel ${panel.panelNumber}`}
 									style={{
 										maxWidth: "100%",
@@ -589,6 +696,11 @@ function ShareableComicLayout({
 										border: "2px solid #d1d5db",
 									}}
 									crossOrigin="anonymous"
+									loading={isLazyLoadingEnabled ? "lazy" : "eager"}
+									onError={(e) => {
+										const target = e.target as HTMLImageElement;
+										target.src = '/placeholder-panel.svg';
+									}}
 								/>
 							</div>
 						))}
@@ -642,7 +754,7 @@ function ShareableComicLayout({
 									}}
 								>
 									<img
-										src={char.image}
+										src={char.image && typeof char.image === 'string' && char.image.trim() ? char.image : '/placeholder-character.svg'}
 										alt={char.name}
 										style={{
 											maxWidth: "100%",
@@ -653,6 +765,10 @@ function ShareableComicLayout({
 											borderRadius: "4px",
 										}}
 										crossOrigin="anonymous"
+										onError={(e) => {
+											const target = e.target as HTMLImageElement;
+											target.src = '/placeholder-character.svg';
+										}}
 									/>
 								</div>
 								<div
@@ -709,6 +825,9 @@ The timer flipped to 00:01:00.
 “Submit before you jinx it,” Kingston said.`;
 
 export default function Home() {
+	// Initialize i18n hooks
+	const { t, i18n } = useI18n();
+
 	// Generate unique IDs for form elements
 	const mangaRadioId = useId();
 	const comicRadioId = useId();
@@ -755,6 +874,8 @@ export default function Home() {
 	// Main state
 	const [story, setStory] = useState("");
 	const [style, setStyle] = useState<ComicStyle>("manga");
+	const [imageSize, setImageSize] = useState<ImageSizeConfig>(DEFAULT_IMAGE_SIZE); // 图片尺寸配置
+	const [aiModel, setAiModel] = useState<string>("auto"); // AI模型选择状态
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [currentStepText, setCurrentStepText] = useState("");
 
@@ -799,13 +920,114 @@ export default function Home() {
 		null,
 	);
 	const [generatedPanels, setGeneratedPanels] = useState<GeneratedPanel[]>([]);
+	const [failedPanels, setFailedPanels] = useState<Set<number>>(new Set()); // 跟踪失败的面板
 	const [error, setError] = useState<string | null>(null);
 	const [failedStep, setFailedStep] = useState<FailedStep>(null);
 	const [failedPanel, setFailedPanel] = useState<FailedPanel>(null);
 
+	// Edit mode states
+	const [editingStoryAnalysis, setEditingStoryAnalysis] = useState(false);
+	const [editingStoryBreakdown, setEditingStoryBreakdown] = useState(false);
+	const [editingPanelIndex, setEditingPanelIndex] = useState<number | null>(null);
+
+	// Temporary edit data
+	const [tempStoryAnalysis, setTempStoryAnalysis] = useState<StoryAnalysis | null>(null);
+	const [tempStoryBreakdown, setTempStoryBreakdown] = useState<StoryBreakdown | null>(null);
+
 	// Storage state
 	const [isLoadingState, setIsLoadingState] = useState(true);
 	const [isSavingState, setIsSavingState] = useState(false);
+
+	// Project management state
+	const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+	const [showProjectManager, setShowProjectManager] = useState(false);
+
+	// Image editing state
+	const [showImageEditModal, setShowImageEditModal] = useState(false);
+	const [editingImage, setEditingImage] = useState<{
+		type: 'panel' | 'character';
+		id: string | number;
+		image: string;
+		originalPrompt: string;
+	} | null>(null);
+	const [isImageProcessing, setIsImageProcessing] = useState(false);
+
+	// 生成状态管理
+	const [generationState, setGenerationState] = useState<{
+		isGenerating: boolean;
+		isPaused: boolean;
+		currentPanel: number;
+		totalPanels: number;
+		completedPanels: number;
+		failedPanels: number[];
+		batchInfo?: {
+			currentBatch: number;
+			totalBatches: number;
+			batchSize: number;
+		};
+	}>({
+		isGenerating: false,
+		isPaused: false,
+		currentPanel: 0,
+		totalPanels: 0,
+		completedPanels: 0,
+		failedPanels: [],
+	});
+
+	// 图像优化统计
+	const [optimizationStats, setOptimizationStats] = useState({
+		totalOriginalSize: 0,
+		totalOptimizedSize: 0,
+		totalSavings: 0,
+		optimizedCount: 0,
+	});
+
+	// 分页显示状态 - 处理大量面板
+	const PANELS_PER_PAGE = 12;
+	const totalPages = Math.ceil(generatedPanels.length / PANELS_PER_PAGE);
+	const [currentPage, setCurrentPage] = useState(1);
+
+	// 计算当前页面显示的面板范围
+	const startIndex = (currentPage - 1) * PANELS_PER_PAGE;
+	const endIndex = Math.min(startIndex + PANELS_PER_PAGE, generatedPanels.length);
+	const currentPagePanels = generatedPanels.slice(startIndex, endIndex);
+
+	// 为了兼容现有的 ShareableComicLayout 组件
+	const visiblePanelRange = { start: startIndex, end: endIndex };
+	const isLazyLoadingEnabled = generatedPanels.length > 20;
+
+	// 检测大量面板并启用分页优化
+	useEffect(() => {
+		if (generatedPanels.length > 20) {
+			console.log(`🚀 启用分页优化：检测到 ${generatedPanels.length} 个面板，共 ${totalPages} 页`);
+
+			// 监控内存使用情况
+			if (typeof window !== 'undefined' && 'performance' in window && 'memory' in (window.performance as any)) {
+				const memory = (window.performance as any).memory;
+				console.log(`📊 内存使用情况：`, {
+					used: `${Math.round(memory.usedJSHeapSize / 1024 / 1024)}MB`,
+					total: `${Math.round(memory.totalJSHeapSize / 1024 / 1024)}MB`,
+					limit: `${Math.round(memory.jsHeapSizeLimit / 1024 / 1024)}MB`
+				});
+			}
+		}
+	}, [generatedPanels.length, totalPages]);
+
+	// 页面切换时滚动到面板区域顶部
+	useEffect(() => {
+		if (isLazyLoadingEnabled && currentPage > 1) {
+			const panelsSection = document.querySelector('[data-section="panels"]');
+			if (panelsSection) {
+				panelsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}
+	}, [currentPage, isLazyLoadingEnabled]);
+
+	// 清除缓存的辅助函数（用于调试）
+	const clearCache = () => {
+		cacheManager.clear();
+		console.log('🗑️ 缓存已清除');
+	};
 
 	// Accordion state
 	const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
@@ -843,6 +1065,455 @@ export default function Home() {
 		setOpenAccordions(new Set());
 	};
 
+	// 生成单个面板的辅助函数（优化版）
+	const generateSinglePanel = async (panel: any, retryCount = 0) => {
+		const maxRetries = 2;
+
+		try {
+			// 添加请求超时控制
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+
+			const response = await fetch('/api/generate-panel', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					panel: {
+						description: panel.description,
+						panelNumber: panel.panelNumber,
+					},
+					characterReferences: characterReferences,
+					setting: storyAnalysis?.setting || '',
+					style: style,
+					uploadedSettingReferences: uploadedSettingReferences || [],
+					language: i18n?.language || 'en',
+					aiModel: aiModel,
+					imageSize: imageSize,
+				}),
+				signal: controller.signal,
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const result = await response.json();
+			if (result.success && result.generatedPanel?.image) {
+				// 优化图像
+				let optimizedImage = result.generatedPanel.image;
+				try {
+					const optimization = await imageOptimizer.optimizeImage(
+						result.generatedPanel.image,
+						OPTIMIZATION_PRESETS.STANDARD
+					);
+
+					optimizedImage = optimization.data;
+
+					// 更新优化统计
+					setOptimizationStats(prev => ({
+						totalOriginalSize: prev.totalOriginalSize + optimization.originalSize,
+						totalOptimizedSize: prev.totalOptimizedSize + optimization.optimizedSize,
+						totalSavings: prev.totalSavings + (optimization.originalSize - optimization.optimizedSize),
+						optimizedCount: prev.optimizedCount + 1,
+					}));
+
+					console.log(`Panel ${panel.panelNumber} optimized: ${(optimization.originalSize / 1024 / 1024).toFixed(2)}MB → ${(optimization.optimizedSize / 1024 / 1024).toFixed(2)}MB (${(optimization.compressionRatio * 100).toFixed(1)}% compression)`);
+				} catch (error) {
+					console.warn(`Failed to optimize panel ${panel.panelNumber}:`, error);
+				}
+
+				const newPanel = {
+					panelNumber: panel.panelNumber,
+					description: panel.description,
+					image: optimizedImage,
+				};
+
+				setGeneratedPanels(prev => {
+					const updated = [...prev];
+					const existingIndex = updated.findIndex(p => p.panelNumber === panel.panelNumber);
+					if (existingIndex >= 0) {
+						updated[existingIndex] = newPanel;
+					} else {
+						updated.push(newPanel);
+						updated.sort((a, b) => a.panelNumber - b.panelNumber);
+					}
+					return updated;
+				});
+
+				// 异步保存到项目（不阻塞生成流程）
+				if (currentProjectId) {
+					saveProjectData(
+						currentProjectId,
+						story,
+						style,
+						storyAnalysis,
+						storyBreakdown,
+						characterReferences,
+						[...generatedPanels, newPanel],
+						uploadedCharacterReferences,
+						uploadedSettingReferences,
+						imageSize,
+						generationState
+					).catch(error => {
+						console.error('Failed to save project data:', error);
+					});
+				}
+
+				return newPanel;
+			}
+			return null;
+		} catch (error) {
+			console.error(`Error generating panel ${panel.panelNumber} (attempt ${retryCount + 1}):`, error);
+
+			// 自动重试机制
+			if (retryCount < maxRetries && !generationState.isPaused) {
+				console.log(`Retrying panel ${panel.panelNumber} in 2 seconds...`);
+				await new Promise(resolve => setTimeout(resolve, 2000));
+				return generateSinglePanel(panel, retryCount + 1);
+			}
+
+			throw error;
+		}
+	};
+
+	// 继续生成功能
+	const continueGeneration = async () => {
+		if (!storyBreakdown || generationState.isGenerating) return;
+
+		const remainingPanels = storyBreakdown.panels.filter(
+			panel => !generatedPanels.some(generated => generated.panelNumber === panel.panelNumber)
+		);
+
+		if (remainingPanels.length === 0) {
+			alert("所有面板都已生成完成！");
+			return;
+		}
+
+		setGenerationState(prev => ({
+			...prev,
+			isGenerating: true,
+			isPaused: false,
+			totalPanels: storyBreakdown.panels.length,
+			completedPanels: generatedPanels.length,
+			currentPanel: remainingPanels && remainingPanels.length > 0 ? remainingPanels[0].panelNumber : 0,
+		}));
+
+		try {
+			// 检查是否有剩余面板需要生成
+			if (!remainingPanels || remainingPanels.length === 0) {
+				console.log('No remaining panels to generate');
+				setGenerationState(prev => ({
+					...prev,
+					isGenerating: false,
+				}));
+				return;
+			}
+
+			// 动态批次大小：根据剩余面板数量和模型类型调整，针对大量面板优化
+			const getDynamicBatchSize = () => {
+				const totalPanels = remainingPanels.length;
+				const isVolcEngine = aiModel === 'volcengine';
+
+				// 如果面板数量很多，减少批次大小以避免前端性能问题
+				if (totalPanels > 30) {
+					return isVolcEngine ? 2 : 3; // 大量面板时使用更小的批次
+				}
+				if (totalPanels <= 3) return totalPanels;
+				if (isVolcEngine) return Math.min(3, totalPanels); // VolcEngine限制更严格
+				return Math.min(5, totalPanels); // Gemini可以更多并行
+			};
+
+			const batchSize = getDynamicBatchSize();
+			const batches = [];
+			for (let i = 0; i < remainingPanels.length; i += batchSize) {
+				batches.push(remainingPanels.slice(i, i + batchSize));
+			}
+
+			setGenerationState(prev => ({
+				...prev,
+				batchInfo: {
+					currentBatch: 1,
+					totalBatches: batches.length,
+					batchSize,
+				},
+			}));
+
+			// 性能监控
+			const batchStartTime = Date.now();
+			let totalGenerationTime = 0;
+
+			for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+				if (generationState.isPaused) break;
+
+				const batch = batches[batchIndex];
+				const batchStart = Date.now();
+
+				setGenerationState(prev => ({
+					...prev,
+					batchInfo: {
+						...prev.batchInfo!,
+						currentBatch: batchIndex + 1,
+					},
+				}));
+
+				// 并行生成当前批次的面板，带有进度更新
+				const batchPromises = (batch || []).map(async (panel, index) => {
+					if (generationState.isPaused) return null;
+
+					// 错开请求时间，避免同时发送
+					if (index > 0) {
+						await new Promise(resolve => setTimeout(resolve, index * 200));
+					}
+
+					setGenerationState(prev => ({
+						...prev,
+						currentPanel: panel.panelNumber,
+					}));
+
+					try {
+						const result = await generateSinglePanel(panel);
+						if (result) {
+							setGenerationState(prev => ({
+								...prev,
+								completedPanels: prev.completedPanels + 1,
+							}));
+						}
+						return result;
+					} catch (error) {
+						console.error(`Failed to generate panel ${panel.panelNumber}:`, error);
+						setGenerationState(prev => ({
+							...prev,
+							failedPanels: [...prev.failedPanels, panel.panelNumber],
+						}));
+						return null;
+					}
+				});
+
+				const batchResults = await Promise.allSettled(batchPromises);
+				const batchTime = Date.now() - batchStart;
+				totalGenerationTime += batchTime;
+
+				// 记录批次性能
+				const successCount = batchResults.filter(r => r.status === 'fulfilled' && r.value).length;
+				const batchLength = batch?.length || 0;
+				console.log(`Batch ${batchIndex + 1}/${batches.length}: ${successCount}/${batchLength} panels generated in ${batchTime}ms`);
+
+				// 动态调整批次间延迟
+				if (batchIndex < batches.length - 1 && batchLength > 0) {
+					const avgTimePerPanel = batchTime / batchLength;
+					const delay = avgTimePerPanel > 10000 ? 2000 : 1000; // 如果生成慢，延迟更长
+					await new Promise(resolve => setTimeout(resolve, delay));
+				}
+			}
+
+			// 性能报告
+			const avgTimePerPanel = totalGenerationTime / remainingPanels.length;
+			console.log(`Generation completed: ${remainingPanels.length} panels in ${totalGenerationTime}ms (avg: ${avgTimePerPanel.toFixed(0)}ms/panel)`);
+
+
+			setGenerationState(prev => ({
+				...prev,
+				isGenerating: false,
+				currentPanel: 0,
+			}));
+
+			alert("继续生成完成！");
+		} catch (error) {
+			console.error("Continue generation error:", error);
+			setGenerationState(prev => ({
+				...prev,
+				isGenerating: false,
+				currentPanel: 0,
+			}));
+			alert("继续生成失败，请重试");
+		}
+	};
+
+	// 暂停生成
+	const pauseGeneration = () => {
+		setGenerationState(prev => ({
+			...prev,
+			isPaused: true,
+		}));
+	};
+
+	// 恢复生成
+	const resumeGeneration = () => {
+		setGenerationState(prev => ({
+			...prev,
+			isPaused: false,
+		}));
+		continueGeneration();
+	};
+
+	// Helper functions for image editing
+	const openImageEditModal = (
+		type: 'panel' | 'character',
+		id: string | number,
+		image: string,
+		originalPrompt: string
+	) => {
+		setEditingImage({ type, id, image, originalPrompt });
+		setShowImageEditModal(true);
+	};
+
+	const closeImageEditModal = () => {
+		if (!isImageProcessing) {
+			setShowImageEditModal(false);
+			setEditingImage(null);
+		}
+	};
+
+	const handleImageRedraw = async (newPrompt?: string, referenceImages?: Array<{id: string; name: string; image: string; source: 'upload' | 'character'}>) => {
+		if (!editingImage) return;
+
+		setIsImageProcessing(true);
+		try {
+			// 转换参考图片格式：从对象数组转换为字符串数组
+			const referenceImageUrls = referenceImages ? referenceImages.map(ref => ref.image) : [];
+
+			const response = await fetch("/api/redraw-image", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					imageType: editingImage.type,
+					imageId: editingImage.id,
+					originalPrompt: editingImage.originalPrompt,
+					newPrompt: newPrompt,
+					language: i18n?.language || "en",
+					aiModel: aiModel,
+					imageSize: imageSize,
+					style: style, // 添加项目风格参数
+					referenceImages: referenceImageUrls,
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to redraw image: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			if (!result.success || !result.imageData) {
+				throw new Error(result.error || "Failed to redraw image");
+			}
+
+			// Update the image in the appropriate state
+			if (editingImage.type === 'panel') {
+				// Convert editingImage.id to number for panel comparison
+				const panelId = typeof editingImage.id === 'string' ? parseInt(editingImage.id) : editingImage.id;
+				setGeneratedPanels(prev => prev.map(panel =>
+					panel.panelNumber === panelId
+						? { ...panel, image: result.imageData }
+						: panel
+				));
+			} else if (editingImage.type === 'character') {
+				setCharacterReferences(prev => prev.map(char =>
+					char.name === editingImage.id
+						? { ...char, image: result.imageData }
+						: char
+				));
+			}
+
+			// Save to project storage if we have a current project
+			if (currentProjectId) {
+				await saveProjectData(
+					currentProjectId,
+					story,
+					style,
+					storyAnalysis,
+					storyBreakdown,
+					characterReferences,
+					generatedPanels,
+					uploadedCharacterReferences,
+					uploadedSettingReferences,
+					imageSize,
+					generationState
+				);
+			}
+
+			closeImageEditModal();
+		} catch (error) {
+			console.error("Error redrawing image:", error);
+			setErrorModalMessage(`Failed to redraw image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			setShowErrorModal(true);
+		} finally {
+			setIsImageProcessing(false);
+		}
+	};
+
+	const handleImageModify = async (modificationPrompt: string) => {
+		if (!editingImage) return;
+
+		setIsImageProcessing(true);
+		try {
+			const response = await fetch("/api/modify-image", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					imageType: editingImage.type,
+					imageId: editingImage.id,
+					originalImage: editingImage.image,
+					modificationPrompt: modificationPrompt,
+					originalPrompt: editingImage.originalPrompt,
+					language: i18n?.language || "en",
+					aiModel: aiModel,
+					imageSize: imageSize,
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to modify image: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			if (!result.success || !result.imageData) {
+				throw new Error(result.error || "Failed to modify image");
+			}
+
+			// Update the image in the appropriate state
+			if (editingImage.type === 'panel') {
+				setGeneratedPanels(prev => prev.map(panel =>
+					panel.panelNumber === editingImage.id
+						? { ...panel, image: result.imageData }
+						: panel
+				));
+			} else if (editingImage.type === 'character') {
+				setCharacterReferences(prev => prev.map(char =>
+					char.name === editingImage.id
+						? { ...char, image: result.imageData }
+						: char
+				));
+			}
+
+			// Save to project storage if we have a current project
+			if (currentProjectId) {
+				await saveProjectData(
+					currentProjectId,
+					story,
+					style,
+					storyAnalysis,
+					storyBreakdown,
+					characterReferences,
+					generatedPanels,
+					uploadedCharacterReferences,
+					uploadedSettingReferences,
+					imageSize,
+					generationState
+				);
+			}
+
+			closeImageEditModal();
+		} catch (error) {
+			console.error("Error modifying image:", error);
+			setErrorModalMessage(`Failed to modify image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			setShowErrorModal(true);
+		} finally {
+			setIsImageProcessing(false);
+		}
+	};
+
 	// Helper functions for panel status logic
 	const getPanelStatus = () => {
 		const expectedCount = storyBreakdown?.panels.length || 0;
@@ -877,6 +1548,19 @@ export default function Home() {
 		if (wordCount > 500) {
 			showError("Story must be 500 words or less");
 			return;
+		}
+
+		// 如果没有当前项目，创建新项目
+		let projectId = currentProjectId;
+		if (!projectId) {
+			const projectName = story.slice(0, 50) + (story.length > 50 ? "..." : "");
+			const metadata = createProject({
+				name: projectName,
+				description: `Created from story: ${story.slice(0, 100)}${story.length > 100 ? "..." : ""}`,
+				style: style,
+			});
+			projectId = metadata.id;
+			setCurrentProjectId(projectId);
 		}
 
 		// Track generation start
@@ -921,6 +1605,7 @@ export default function Home() {
 					setting: analysis.setting,
 					style,
 					uploadedCharacterReferences,
+					aiModel,
 				}),
 			});
 
@@ -981,6 +1666,8 @@ export default function Home() {
 						setting: analysis.setting,
 						style,
 						uploadedSettingReferences,
+						language: i18n?.language || "en",
+						aiModel, // 添加AI模型选择
 					}),
 				});
 
@@ -995,7 +1682,10 @@ export default function Home() {
 					);
 					// Store which panel failed
 					setFailedPanel({ step: "panel", panelNumber: i + 1 });
-					throw new Error(errorMessage);
+					setFailedPanels(prev => new Set([...prev, i + 1]));
+					// 继续生成其他面板，而不是抛出错误
+					console.warn(`Panel ${i + 1} failed, continuing with next panels`);
+					continue;
 				}
 
 				const { generatedPanel } = await panelResponse.json();
@@ -1234,11 +1924,226 @@ export default function Home() {
 		setCharacterReferences([]);
 		setStoryBreakdown(null);
 		setGeneratedPanels([]);
+		setFailedPanels(new Set());
 		setError(null);
 		setFailedStep(null);
 		setFailedPanel(null);
 		setUploadedCharacterReferences([]);
 		setUploadedSettingReferences([]);
+		// Clear edit states
+		setEditingStoryAnalysis(false);
+		setEditingStoryBreakdown(false);
+		setEditingPanelIndex(null);
+		setTempStoryAnalysis(null);
+		setTempStoryBreakdown(null);
+		// Clear generation state
+		setGenerationState({
+			isGenerating: false,
+			isPaused: false,
+			currentPanel: 0,
+			totalPanels: 0,
+			completedPanels: 0,
+			failedPanels: [],
+		});
+	};
+
+	// 项目管理函数
+	const handleProjectSelect = async (projectId: string) => {
+		try {
+			setIsLoadingState(true);
+
+			// 加载项目数据
+			const projectData = await loadProjectData(projectId);
+			if (projectData) {
+				// 清除当前数据
+				clearResults();
+
+				// 设置新的项目数据
+				setStory(projectData.story);
+				setStyle(projectData.style);
+				setImageSize(projectData.imageSize || DEFAULT_IMAGE_SIZE);
+				setStoryAnalysis(projectData.storyAnalysis);
+				setCharacterReferences(projectData.characterReferences);
+				setStoryBreakdown(projectData.storyBreakdown);
+				setGeneratedPanels(projectData.generatedPanels);
+				setUploadedCharacterReferences(projectData.uploadedCharacterReferences);
+				setUploadedSettingReferences(projectData.uploadedSettingReferences);
+
+				// 设置当前项目
+				setCurrentProject(projectId);
+				setCurrentProjectId(projectId);
+
+				// Auto-expand sections with content
+				const sectionsToExpand: string[] = [];
+				if (projectData.storyAnalysis) sectionsToExpand.push("analysis");
+				if (projectData.characterReferences.length > 0) sectionsToExpand.push("characters");
+				if (projectData.storyBreakdown) sectionsToExpand.push("layout");
+				if (projectData.generatedPanels.length > 0) sectionsToExpand.push("panels");
+				if (projectData.generatedPanels.length > 0 && projectData.characterReferences.length > 0) {
+					sectionsToExpand.push("compositor");
+				}
+				setOpenAccordions(new Set(sectionsToExpand));
+			}
+		} catch (error) {
+			console.error("Failed to load project:", error);
+		} finally {
+			setIsLoadingState(false);
+		}
+	};
+
+	const handleNewProject = () => {
+		// 清除所有数据，开始新项目
+		clearResults();
+		setStory("");
+		setStyle("manga");
+		setCurrentProjectId(null);
+		setOpenAccordions(new Set());
+
+		// 清除当前项目设置
+		localStorage.removeItem("manga-current-project");
+	};
+
+	// Edit functions
+	const startEditingStoryAnalysis = () => {
+		setTempStoryAnalysis(storyAnalysis);
+		setEditingStoryAnalysis(true);
+	};
+
+	const saveStoryAnalysisEdit = () => {
+		if (tempStoryAnalysis) {
+			setStoryAnalysis(tempStoryAnalysis);
+			setEditingStoryAnalysis(false);
+			setTempStoryAnalysis(null);
+			// Clear subsequent data that depends on story analysis
+			setCharacterReferences([]);
+			setStoryBreakdown(null);
+			setGeneratedPanels([]);
+			setFailedPanels(new Set());
+		}
+	};
+
+	const cancelStoryAnalysisEdit = () => {
+		setEditingStoryAnalysis(false);
+		setTempStoryAnalysis(null);
+	};
+
+	const startEditingStoryBreakdown = () => {
+		setTempStoryBreakdown(storyBreakdown);
+		setEditingStoryBreakdown(true);
+	};
+
+	const saveStoryBreakdownEdit = () => {
+		if (tempStoryBreakdown) {
+			setStoryBreakdown(tempStoryBreakdown);
+			setEditingStoryBreakdown(false);
+			setTempStoryBreakdown(null);
+			// Clear panels that depend on story breakdown
+			setGeneratedPanels([]);
+			setFailedPanels(new Set());
+		}
+	};
+
+	const cancelStoryBreakdownEdit = () => {
+		setEditingStoryBreakdown(false);
+		setTempStoryBreakdown(null);
+	};
+
+	// Regenerate functions from edited content
+	const regenerateFromStoryAnalysis = async () => {
+		if (!storyAnalysis) return;
+
+		setIsGenerating(true);
+		setCurrentStepText(t("generatingCharacters"));
+
+		try {
+			// Clear dependent data
+			setCharacterReferences([]);
+			setStoryBreakdown(null);
+			setGeneratedPanels([]);
+			setFailedPanels(new Set());
+
+			// Generate characters from edited story analysis
+			const charRefResponse = await fetch("/api/generate-character-refs", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					characters: storyAnalysis.characters,
+					setting: storyAnalysis.setting,
+					style,
+					uploadedCharacterReferences,
+					language: i18n?.language || 'en',
+					aiModel,
+				}),
+			});
+
+			if (!charRefResponse.ok) {
+				const errorMessage = await handleApiError(charRefResponse, "Failed to generate character references");
+				throw new Error(errorMessage);
+			}
+
+			const { characterReferences } = await charRefResponse.json();
+			setCharacterReferences(characterReferences);
+			setCurrentStepText(t("charactersGenerated"));
+		} catch (error) {
+			console.error("Error regenerating from story analysis:", error);
+			setError(error instanceof Error ? error.message : "Failed to regenerate from story analysis");
+		} finally {
+			setIsGenerating(false);
+		}
+	};
+
+	const regenerateFromStoryBreakdown = async () => {
+		if (!storyBreakdown) return;
+
+		setIsGenerating(true);
+		setCurrentStepText(t("generatingPanels"));
+
+		try {
+			// Clear dependent data
+			setGeneratedPanels([]);
+			setFailedPanels(new Set());
+
+			// Generate panels from edited story breakdown
+			const panels: GeneratedPanel[] = [];
+
+			for (let i = 0; i < storyBreakdown.panels.length; i++) {
+				const panel = storyBreakdown.panels[i];
+				setCurrentStepText(`${t("generatingPanel", { number: i + 1 })}/${storyBreakdown.panels.length}...`);
+
+				const panelResponse = await fetch("/api/generate-panel", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						panel,
+						characterReferences,
+						uploadedCharacterReferences,
+						uploadedSettingReferences,
+						style,
+						language: i18n?.language || 'en',
+						aiModel,
+						imageSize,
+					}),
+				});
+
+				if (!panelResponse.ok) {
+					const errorMessage = await handleApiError(panelResponse, `Failed to generate panel ${i + 1}`);
+					setFailedPanels(prev => new Set([...prev, i + 1]));
+					console.warn(`Panel ${i + 1} failed, continuing with next panels`);
+					continue;
+				}
+
+				const { generatedPanel } = await panelResponse.json();
+				panels.push(generatedPanel);
+				setGeneratedPanels([...panels]);
+			}
+
+			setCurrentStepText(t("panelsGenerated"));
+		} catch (error) {
+			console.error("Error regenerating from story breakdown:", error);
+			setError(error instanceof Error ? error.message : "Failed to regenerate from story breakdown");
+		} finally {
+			setIsGenerating(false);
+		}
 	};
 
 	// Retry functions for individual steps
@@ -1380,6 +2285,8 @@ export default function Home() {
 					setting: storyAnalysis.setting,
 					style,
 					uploadedSettingReferences,
+					language: i18n?.language || "en",
+					aiModel, // 添加AI模型选择
 				}),
 			});
 
@@ -1464,6 +2371,7 @@ export default function Home() {
 					setting: storyAnalysis.setting,
 					style,
 					uploadedCharacterReferences,
+					aiModel,
 				}),
 			});
 
@@ -1541,7 +2449,20 @@ export default function Home() {
 	};
 
 	const rerunPanels = async () => {
+		console.log('🔄 Starting rerunPanels function');
+		console.log('📊 Current state:', {
+			storyAnalysis: !!storyAnalysis,
+			storyBreakdown: !!storyBreakdown,
+			characterReferencesCount: characterReferences.length,
+			currentLanguage: i18n?.language
+		});
+		
 		if (!storyAnalysis || !storyBreakdown || characterReferences.length === 0) {
+			console.error('❌ Missing required data for rerunPanels:', {
+				storyAnalysis: !!storyAnalysis,
+				storyBreakdown: !!storyBreakdown,
+				characterReferencesCount: characterReferences.length
+			});
 			return;
 		}
 
@@ -1554,53 +2475,150 @@ export default function Home() {
 		setIsRerunningPanels(true);
 		setError(null);
 		setGeneratedPanels([]); // Clear existing panels
+		setFailedPanels(new Set()); // Clear failed panels
 
 		try {
 			const panels: GeneratedPanel[] = [];
+			console.log(`🎯 Processing ${storyBreakdown.panels.length} panels`);
 
 			for (let i = 0; i < storyBreakdown.panels.length; i++) {
 				const panel = storyBreakdown.panels[i];
+				console.log(`🎨 Processing panel ${i + 1}:`, panel);
+				
 				setCurrentStepText(
 					`Re-generating panel ${i + 1}/${storyBreakdown.panels.length}...`,
 				);
 
+				const requestBody = {
+					panel,
+					characterReferences,
+					setting: storyAnalysis.setting,
+					style,
+					uploadedSettingReferences,
+					language: i18n?.language || "en",
+					aiModel, // 添加AI模型选择
+					imageSize, // 添加图片尺寸配置
+				};
+				
+				console.log(`📤 API Request for panel ${i + 1}:`, {
+					url: '/api/generate-panel',
+					method: 'POST',
+					bodyKeys: Object.keys(requestBody),
+					language: requestBody.language,
+					style: requestBody.style,
+					panelDescription: panel?.sceneDescription?.substring(0, 100) + '...'
+				});
+
 				const response = await fetch("/api/generate-panel", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						panel,
-						characterReferences,
-						setting: storyAnalysis.setting,
-						style,
-						uploadedSettingReferences,
-					}),
+					body: JSON.stringify(requestBody),
+				});
+
+				console.log(`📥 API Response for panel ${i + 1}:`, {
+					status: response.status,
+					statusText: response.statusText,
+					ok: response.ok,
+					headers: Object.fromEntries(response.headers.entries())
 				});
 
 				if (!response.ok) {
-					const errorMessage = await handleApiError(
-						response,
-						`Failed to regenerate panel ${i + 1}`,
-					);
-					throw new Error(errorMessage);
+					console.error(`❌ API Error for panel ${i + 1}:`, {
+						status: response.status,
+						statusText: response.statusText
+					});
+					
+					// Get the raw response text first
+					const responseText = await response.text();
+					console.error(`❌ Raw error response for panel ${i + 1}:`, responseText);
+					
+					// Try to parse as JSON, but handle cases where it's not JSON
+					let errorData;
+					let errorMessage = `Failed to regenerate panel ${i + 1}`;
+					
+					try {
+						errorData = JSON.parse(responseText);
+						console.error(`❌ Parsed error data for panel ${i + 1}:`, errorData);
+						
+						// Handle specific error types
+						if (response.status === 429) {
+							const retryAfter = errorData.retryAfter || 60;
+							errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds and try again.`;
+						} else if (response.status === 400 && errorData.errorType === "PROHIBITED_CONTENT") {
+							errorMessage = `⚠️ Content Safety Issue: ${errorData.error}\n\nTip: Try modifying your story to remove potentially inappropriate content, violence, or mature themes.`;
+						} else if (errorData.error) {
+							errorMessage = errorData.error;
+						}
+					} catch (parseError) {
+						console.error(`❌ Failed to parse error response as JSON:`, parseError);
+						errorMessage = responseText || `HTTP error! status: ${response.status}`;
+					}
+					
+					console.error(`❌ Final error message for panel ${i + 1}:`, errorMessage);
+					// 添加到失败列表并继续生成其他面板
+					setFailedPanels(prev => new Set([...prev, i + 1]));
+					console.warn(`Panel ${i + 1} failed, continuing with next panels`);
+					continue;
 				}
 
-				const { generatedPanel } = await response.json();
+				// Get the raw response text first
+				const responseText = await response.text();
+				console.log(`📋 Raw success response for panel ${i + 1}:`, responseText.substring(0, 200) + '...');
+
+				let result;
+				try {
+					result = JSON.parse(responseText);
+					console.log(`✅ Parsed success result for panel ${i + 1}:`, {
+						success: result.success,
+						hasGeneratedPanel: !!result.generatedPanel,
+						generatedPanelKeys: result.generatedPanel ? Object.keys(result.generatedPanel) : [],
+						imageUrl: result.generatedPanel?.image?.substring(0, 100) + '...'
+					});
+				} catch (parseError) {
+					console.error(`❌ Failed to parse success response as JSON for panel ${i + 1}:`, parseError);
+					throw new Error('Invalid JSON response from server');
+				}
+
+				// Check if the API response indicates success
+				if (!result.success) {
+					console.error(`❌ API returned failure for panel ${i + 1}:`, result);
+					const errorMessage = result.error || `Failed to generate panel ${i + 1}`;
+					setFailedPanels(prev => new Set([...prev, i + 1]));
+					console.warn(`Panel ${i + 1} failed: ${errorMessage}, continuing with next panels`);
+					continue;
+				}
+
+				const { generatedPanel } = result;
+				if (!generatedPanel) {
+					console.error(`❌ No generatedPanel in response for panel ${i + 1}:`, result);
+					setFailedPanels(prev => new Set([...prev, i + 1]));
+					console.warn(`Panel ${i + 1} failed: No generated panel data, continuing with next panels`);
+					continue;
+				}
+				
 				panels.push(generatedPanel);
 				setGeneratedPanels([...panels]);
+				console.log(`🎉 Successfully added panel ${i + 1}, total panels: ${panels.length}`);
 
 				if (i === 0) {
 					setOpenAccordions(new Set(["panels"]));
 				}
 			}
 
+			console.log('🏁 All panels generated successfully:', panels.length);
 			setCurrentStepText("Panels updated! 🎉");
 		} catch (error) {
-			console.error("Re-run panels error:", error);
+			console.error("💥 Re-run panels error:", {
+				error: error,
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined
+			});
 			showError(
 				error instanceof Error ? error.message : "Panel regeneration failed",
 			);
 		} finally {
 			setIsRerunningPanels(false);
+			console.log('🔚 rerunPanels function completed');
 		}
 	};
 
@@ -1635,6 +2653,9 @@ export default function Home() {
 					setting: storyAnalysis.setting,
 					style,
 					uploadedSettingReferences,
+					language: i18n?.language || "en",
+					aiModel, // 添加AI模型选择
+					imageSize, // 添加图片尺寸配置
 				}),
 			});
 
@@ -1664,6 +2685,13 @@ export default function Home() {
 			}
 			setGeneratedPanels(updatedPanels);
 
+			// 从失败列表中移除成功生成的面板
+			setFailedPanels(prev => {
+				const newSet = new Set(prev);
+				newSet.delete(panelNumber);
+				return newSet;
+			});
+
 			// Continue generating remaining panels if any
 			const expectedCount = storyBreakdown.panels.length;
 			if (updatedPanels.length < expectedCount) {
@@ -1680,6 +2708,9 @@ export default function Home() {
 							setting: storyAnalysis.setting,
 							style,
 							uploadedSettingReferences,
+							language: i18n?.language || "en",
+							aiModel, // 添加AI模型选择
+							imageSize, // 添加图片尺寸配置
 						}),
 					});
 
@@ -1708,12 +2739,156 @@ export default function Home() {
 		}
 	};
 
+	// Helper function to convert VolcEngine URLs to proxy URLs
+	const getProxyImageUrl = (originalUrl: string): string => {
+		if (!originalUrl || originalUrl.includes('placeholder') || originalUrl.startsWith('data:')) {
+			return originalUrl;
+		}
+		
+		// Check if it's a VolcEngine URL that needs proxying
+		const volcEngineDomains = [
+			'ark-content-generation-v2-cn-beijing.tos-cn-beijing.volces.com',
+			'tos-cn-beijing.volces.com'
+		];
+		
+		try {
+			const urlObj = new URL(originalUrl);
+			const needsProxy = volcEngineDomains.some(domain => 
+				urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+			);
+			
+			if (needsProxy) {
+				// Convert to proxy URL
+				return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+			}
+		} catch (error) {
+			console.warn('Invalid URL:', originalUrl);
+		}
+		
+		return originalUrl;
+	};
+
 	// Comic compositor functionality
+	const preloadImages = async (imageUrls: string[]): Promise<void> => {
+		return new Promise((resolve, reject) => {
+			let loadedCount = 0;
+			const totalImages = imageUrls.length;
+			
+			if (totalImages === 0) {
+				resolve();
+				return;
+			}
+
+			const handleImageLoad = () => {
+				loadedCount++;
+				if (loadedCount === totalImages) {
+					resolve();
+				}
+			};
+
+			const handleImageError = (url: string) => {
+				console.warn(`Failed to preload image: ${url}`);
+				handleImageLoad(); // Continue even if some images fail
+			};
+
+			imageUrls.forEach((url) => {
+				if (!url || url.includes('placeholder') || url.startsWith('data:image/svg')) {
+					// Skip placeholder images
+					handleImageLoad();
+					return;
+				}
+
+				// Use proxy URL for VolcEngine images
+				const proxyUrl = getProxyImageUrl(url);
+				console.log(`Preloading image: ${url} -> ${proxyUrl}`);
+
+				const img = new Image();
+				img.crossOrigin = 'anonymous';
+				img.onload = handleImageLoad;
+				img.onerror = () => handleImageError(proxyUrl);
+				img.src = proxyUrl;
+			});
+
+			// Set a timeout to prevent hanging
+			setTimeout(() => {
+				if (loadedCount < totalImages) {
+					console.warn(`Timeout: Only ${loadedCount}/${totalImages} images loaded`);
+					resolve();
+				}
+			}, 10000); // 10 second timeout
+		});
+	};
+
 	const generateComposite = async () => {
 		if (!compositorRef.current || generatedPanels.length === 0) return;
 
 		setIsGeneratingComposite(true);
 		try {
+			// Show initial loading message
+			console.log('Starting composite generation...');
+			
+			// Debug: Log all panel data to understand what we're working with
+			console.log('=== DEBUGGING COMPOSITE GENERATION ===');
+			console.log('Total generatedPanels:', generatedPanels.length);
+			generatedPanels.forEach((panel, index) => {
+				console.log(`Panel ${index + 1}:`, {
+					panelNumber: panel.panelNumber,
+					image: panel.image,
+					imageType: typeof panel.image,
+					imageLength: panel.image?.length,
+					isPlaceholder: panel.image?.includes('placeholder'),
+					isDataUrl: panel.image?.startsWith('data:'),
+					isHttpUrl: panel.image?.startsWith('http')
+				});
+			});
+			
+			// Extract all image URLs from generated panels
+			const imageUrls = generatedPanels
+				.map(panel => panel.image)
+				.filter(url => url && typeof url === 'string' && !url.includes('placeholder'));
+
+			console.log(`Found ${imageUrls.length} images to preload:`, imageUrls);
+			console.log('Image URLs:', imageUrls);
+			
+			// Validate that we have actual images to work with
+			if (imageUrls.length === 0) {
+				throw new Error('No valid images found in generated panels. Please ensure panels are properly generated before creating composite.');
+			}
+
+			// Check if all panels have valid images
+			const panelsWithoutImages = generatedPanels.filter(panel => 
+				!panel.image || panel.image.includes('placeholder') || panel.image.startsWith('data:image/svg')
+			);
+			
+			if (panelsWithoutImages.length > 0) {
+				console.warn(`Found ${panelsWithoutImages.length} panels with placeholder images`);
+				showError(`Warning: ${panelsWithoutImages.length} panels still have placeholder images. The composite may not include all panels.`);
+			}
+			
+			// Preload all images before capturing
+			try {
+				await preloadImages(imageUrls);
+				console.log('All images preloaded successfully');
+			} catch (error) {
+				console.error('Error preloading images:', error);
+				throw new Error('Failed to preload images. Please check your internet connection and try again.');
+			}
+			
+			// Wait a bit more to ensure DOM is updated
+			await new Promise(resolve => setTimeout(resolve, 500));
+
+			// Final validation: check if images are actually loaded in the DOM
+			const domImages = compositorRef.current.querySelectorAll('img');
+			const unloadedImages = Array.from(domImages).filter(img => 
+				!img.complete || img.naturalWidth === 0
+			);
+			
+			if (unloadedImages.length > 0) {
+				console.warn(`Found ${unloadedImages.length} unloaded images in DOM`);
+				// Try to wait a bit more for these images
+				await new Promise(resolve => setTimeout(resolve, 1000));
+			}
+
 			// Debug: check the compositor element
 			console.log("compositorRef.current:", compositorRef.current);
 			console.log("Element dimensions:", {
@@ -1728,9 +2903,34 @@ export default function Home() {
 				scale: 2, // Higher quality
 				useCORS: true,
 				allowTaint: false,
-				logging: true, // Enable logging to see what's happening
+				logging: false, // Disable logging for production
 				width: compositorRef.current.scrollWidth,
-				height: compositorRef.current.scrollHeight, // Use actual content height
+				height: compositorRef.current.scrollHeight,
+				scrollX: 0,
+				scrollY: 0,
+				windowWidth: compositorRef.current.scrollWidth,
+				windowHeight: compositorRef.current.scrollHeight, // Disable proxy to avoid CORS issues
+				ignoreElements: (element) => {
+					// Skip elements that might cause issues
+					const classList = element.classList;
+					return classList?.contains('loading-indicator') || 
+						   classList?.contains('error-message') ||
+						   element.tagName === 'SCRIPT' ||
+						   element.tagName === 'NOSCRIPT' || false;
+				},
+				onclone: (clonedDoc) => {
+					// Ensure all images in the cloned document are properly loaded
+					const images = clonedDoc.querySelectorAll('img');
+					images.forEach((img) => {
+						if (img.src && !img.complete) {
+							// Force image to load synchronously if possible
+							img.loading = 'eager';
+						}
+						// Remove any error handlers that might interfere
+						img.onerror = null;
+					});
+					return clonedDoc;
+				},
 			});
 
 			// Convert to blob and download
@@ -1751,9 +2951,150 @@ export default function Home() {
 			});
 		} catch (error) {
 			console.error("Failed to generate composite:", error);
-			showError("Failed to generate composite image");
+			
+			// Provide specific error messages based on the error type
+			let errorMessage = "Failed to generate composite image";
+			if (error instanceof Error) {
+				if (error.message.includes('No valid images')) {
+					errorMessage = "No valid images found. Please ensure all panels are properly generated before creating the composite.";
+				} else if (error.message.includes('Failed to preload')) {
+					errorMessage = "Failed to load panel images. Please check your internet connection and try again.";
+				} else if (error.message.includes('html2canvas')) {
+					errorMessage = "Failed to capture the comic layout. This might be due to image loading issues or browser limitations.";
+				} else {
+					errorMessage = `Composite generation failed: ${error.message}`;
+				}
+			}
+			
+			showError(errorMessage);
 			trackError(
 				"composite_generation_failed",
+				error instanceof Error ? error.message : "Unknown error",
+			);
+		} finally {
+			setIsGeneratingComposite(false);
+			console.log('Composite generation process completed');
+		}
+	};
+
+	// 自动下载所有页面的合成图片
+	const generateAllPagesComposite = async () => {
+		if (!compositorRef.current || generatedPanels.length === 0) return;
+
+		setIsGeneratingComposite(true);
+		try {
+			console.log(`开始生成所有页面的合成图片，共 ${totalPages} 页`);
+
+			// 保存当前页面
+			const originalPage = currentPage;
+
+			for (let page = 1; page <= totalPages; page++) {
+				console.log(`正在生成第 ${page} 页 / 共 ${totalPages} 页`);
+
+				// 切换到当前页面
+				setCurrentPage(page);
+
+				// 等待页面切换完成和DOM更新
+				await new Promise(resolve => setTimeout(resolve, 1000));
+
+				// 计算当前页面的面板范围
+				const pageStartIndex = (page - 1) * PANELS_PER_PAGE;
+				const pageEndIndex = Math.min(pageStartIndex + PANELS_PER_PAGE, generatedPanels.length);
+				const pagePanels = generatedPanels.slice(pageStartIndex, pageEndIndex);
+
+				// 提取当前页面的图片URL
+				const imageUrls = pagePanels
+					.map(panel => panel.image)
+					.filter(url => url && typeof url === 'string' && !url.includes('placeholder'));
+
+				if (imageUrls.length === 0) {
+					console.warn(`第 ${page} 页没有有效的图片，跳过`);
+					continue;
+				}
+
+				// 预加载当前页面的图片
+				try {
+					await preloadImages(imageUrls);
+					console.log(`第 ${page} 页图片预加载完成`);
+				} catch (error) {
+					console.error(`第 ${page} 页图片预加载失败:`, error);
+					continue;
+				}
+
+				// 等待DOM更新
+				await new Promise(resolve => setTimeout(resolve, 500));
+
+				// 生成当前页面的合成图片
+				const canvas = await html2canvas(compositorRef.current, {
+					backgroundColor: "#ffffff",
+					scale: 2,
+					useCORS: true,
+					allowTaint: false,
+					logging: false,
+					width: compositorRef.current.scrollWidth,
+					height: compositorRef.current.scrollHeight,
+					scrollX: 0,
+					scrollY: 0,
+					windowWidth: compositorRef.current.scrollWidth,
+					windowHeight: compositorRef.current.scrollHeight,
+					ignoreElements: (element) => {
+						const classList = element.classList;
+						return classList?.contains('loading-indicator') ||
+							   classList?.contains('error-message') ||
+							   element.tagName === 'SCRIPT' ||
+							   element.tagName === 'NOSCRIPT' || false;
+					},
+					onclone: (clonedDoc) => {
+						const images = clonedDoc.querySelectorAll('img');
+						images.forEach((img) => {
+							if (img.src && !img.complete) {
+								img.loading = 'eager';
+							}
+							img.onerror = null;
+						});
+						return clonedDoc;
+					},
+				});
+
+				// 下载当前页面的图片
+				await new Promise<void>((resolve) => {
+					canvas.toBlob((blob) => {
+						if (blob) {
+							const url = URL.createObjectURL(blob);
+							const link = document.createElement("a");
+							link.href = url;
+							link.download = `comic-page-${page}-of-${totalPages}-${style}-${Date.now()}.png`;
+							link.click();
+							URL.revokeObjectURL(url);
+							console.log(`第 ${page} 页下载完成`);
+						}
+						resolve();
+					}, "image/png");
+				});
+
+				// 页面间稍作延迟，避免浏览器阻止多个下载
+				await new Promise(resolve => setTimeout(resolve, 1000));
+			}
+
+			// 恢复到原始页面
+			setCurrentPage(originalPage);
+
+			console.log(`所有 ${totalPages} 页合成图片生成完成`);
+			trackEvent({
+				action: "generate_all_pages_composite",
+				category: "user_interaction",
+				label: `${totalPages}_pages_${style}`,
+			});
+
+		} catch (error) {
+			console.error("生成所有页面合成图片失败:", error);
+			let errorMessage = "生成所有页面合成图片失败";
+			if (error instanceof Error) {
+				errorMessage = `生成失败: ${error.message}`;
+			}
+			showError(errorMessage);
+			trackError(
+				"all_pages_composite_generation_failed",
 				error instanceof Error ? error.message : "Unknown error",
 			);
 		} finally {
@@ -1826,35 +3167,83 @@ export default function Home() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				const savedState = await loadState();
-				if (savedState) {
-					setStory(savedState.story);
-					setStyle(savedState.style);
-					setStoryAnalysis(savedState.storyAnalysis);
-					setCharacterReferences(savedState.characterReferences);
-					setStoryBreakdown(savedState.storyBreakdown);
-					setGeneratedPanels(savedState.generatedPanels);
-					setUploadedCharacterReferences(
-						savedState.uploadedCharacterReferences,
-					);
-					setUploadedSettingReferences(savedState.uploadedSettingReferences);
+				// 首先检查是否有当前项目
+				const projectId = getCurrentProjectId();
+				setCurrentProjectId(projectId);
 
-					// Auto-expand sections with content
-					const sectionsToExpand: string[] = [];
-					if (savedState.storyAnalysis) sectionsToExpand.push("analysis");
-					if (savedState.characterReferences.length > 0)
-						sectionsToExpand.push("characters");
-					if (savedState.storyBreakdown) sectionsToExpand.push("layout");
-					if (savedState.generatedPanels.length > 0)
-						sectionsToExpand.push("panels");
-					if (
-						savedState.generatedPanels.length > 0 &&
-						savedState.characterReferences.length > 0
-					) {
-						sectionsToExpand.push("compositor");
+				if (projectId) {
+					// 加载项目数据
+					const projectData = await loadProjectData(projectId);
+					if (projectData) {
+						setStory(projectData.story);
+						setStyle(projectData.style);
+						setImageSize(projectData.imageSize || DEFAULT_IMAGE_SIZE);
+						setStoryAnalysis(projectData.storyAnalysis);
+						setCharacterReferences(projectData.characterReferences);
+						setStoryBreakdown(projectData.storyBreakdown);
+						setGeneratedPanels(projectData.generatedPanels);
+						setUploadedCharacterReferences(projectData.uploadedCharacterReferences);
+						setUploadedSettingReferences(projectData.uploadedSettingReferences);
+
+						// 加载生成状态
+						if (projectData.generationState) {
+							setGenerationState(projectData.generationState);
+						}
+					} else {
+						// 项目数据加载失败，尝试加载旧的存储格式
+						const savedState = await loadState();
+						if (savedState) {
+							setStory(savedState.story);
+							setStyle(savedState.style);
+							setStoryAnalysis(savedState.storyAnalysis);
+							setCharacterReferences(savedState.characterReferences);
+							setStoryBreakdown(savedState.storyBreakdown);
+							setGeneratedPanels(savedState.generatedPanels);
+							setUploadedCharacterReferences(savedState.uploadedCharacterReferences);
+							setUploadedSettingReferences(savedState.uploadedSettingReferences);
+						}
 					}
-					setOpenAccordions(new Set(sectionsToExpand));
+				} else {
+					// 没有当前项目，尝试加载旧的存储格式
+					const savedState = await loadState();
+					if (savedState) {
+						setStory(savedState.story);
+						setStyle(savedState.style);
+						setStoryAnalysis(savedState.storyAnalysis);
+						setCharacterReferences(savedState.characterReferences);
+						setStoryBreakdown(savedState.storyBreakdown);
+						setGeneratedPanels(savedState.generatedPanels);
+						setUploadedCharacterReferences(savedState.uploadedCharacterReferences);
+						setUploadedSettingReferences(savedState.uploadedSettingReferences);
+
+						// Auto-expand sections with content
+						const sectionsToExpand: string[] = [];
+						if (savedState.storyAnalysis) sectionsToExpand.push("analysis");
+						if (savedState.characterReferences.length > 0)
+							sectionsToExpand.push("characters");
+						if (savedState.storyBreakdown) sectionsToExpand.push("layout");
+						if (savedState.generatedPanels.length > 0)
+							sectionsToExpand.push("panels");
+						if (
+							savedState.generatedPanels.length > 0 &&
+							savedState.characterReferences.length > 0
+						) {
+							sectionsToExpand.push("compositor");
+						}
+						setOpenAccordions(new Set(sectionsToExpand));
+					}
 				}
+
+				// Auto-expand sections with content (for both project and legacy data)
+				const sectionsToExpand: string[] = [];
+				if (storyAnalysis) sectionsToExpand.push("analysis");
+				if (characterReferences.length > 0) sectionsToExpand.push("characters");
+				if (storyBreakdown) sectionsToExpand.push("layout");
+				if (generatedPanels.length > 0) sectionsToExpand.push("panels");
+				if (generatedPanels.length > 0 && characterReferences.length > 0) {
+					sectionsToExpand.push("compositor");
+				}
+				setOpenAccordions(new Set(sectionsToExpand));
 			} catch (error) {
 				console.error("Failed to load saved state:", error);
 			} finally {
@@ -1872,16 +3261,35 @@ export default function Home() {
 		const saveCurrentState = async () => {
 			try {
 				setIsSavingState(true);
-				await saveState(
-					story,
-					style,
-					storyAnalysis,
-					storyBreakdown,
-					characterReferences,
-					generatedPanels,
-					uploadedCharacterReferences,
-					uploadedSettingReferences,
-				);
+
+				// 如果有当前项目，保存到项目存储
+				if (currentProjectId) {
+					await saveProjectData(
+						currentProjectId,
+						story,
+						style,
+						storyAnalysis,
+						storyBreakdown,
+						characterReferences,
+						generatedPanels,
+						uploadedCharacterReferences,
+						uploadedSettingReferences,
+						imageSize,
+						generationState,
+					);
+				} else {
+					// 否则使用旧的存储方式（向后兼容）
+					await saveState(
+						story,
+						style,
+						storyAnalysis,
+						storyBreakdown,
+						characterReferences,
+						generatedPanels,
+						uploadedCharacterReferences,
+						uploadedSettingReferences,
+					);
+				}
 			} catch (error) {
 				console.error("Failed to save state:", error);
 			} finally {
@@ -1929,6 +3337,7 @@ export default function Home() {
 			setCharacterReferences([]);
 			setStoryBreakdown(null);
 			setGeneratedPanels([]);
+			setFailedPanels(new Set());
 			setError(null);
 			setFailedStep(null);
 			setFailedPanel(null);
@@ -1967,7 +3376,7 @@ export default function Home() {
 	}
 
 	return (
-		<div className={`min-h-screen py-4 px-4 style-${style}`}>
+		<div className="min-h-screen py-4 px-4 style-comic">
 			{/* Top navigation with logo */}
 			<div className="mb-4 flex items-center gap-3">
 				<a
@@ -1981,103 +3390,229 @@ export default function Home() {
 						className="w-8 h-8 rounded"
 					/>
 				</a>
-				<a
-					href="https://github.com/victorhuangwq/story-to-manga"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="inline-flex items-center hover:opacity-80 transition-opacity"
-					title="View on GitHub"
+				<button
+					onClick={() => setShowProjectManager(true)}
+					className="btn-manga-outline text-sm px-3 py-1"
+					title={t("projectManager")}
 				>
-					<svg
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="currentColor"
-						className="text-manga-black"
-					>
-						<title>GitHub Repository</title>
-						<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-					</svg>
-				</a>
+					📁 我的项目
+				</button>
+				<button
+					onClick={clearCache}
+					className="btn-manga-outline text-sm px-3 py-1"
+					title="清除缓存（调试用）"
+				>
+					🗑️ 清除缓存
+				</button>
 			</div>
 			<div className="flex flex-col lg:flex-row gap-4 h-full">
 				{/* Left Panel - Input */}
 				<div className="w-full lg:w-1/3 mb-4 lg:mb-0">
 					<div className="comic-panel h-full">
-						<h1 className="text-2xl text-center mb-2">
-							Story to {style === "manga" ? "Manga" : "Comic"} Generator
-						</h1>
+						<div className="flex justify-between items-center mb-2">
+							<div></div>
+							<h1 className="text-2xl text-center flex-1 text-gradient floating-effect">
+								{t("title", {
+									style: style === "manga" ? t("manga") : t("comic"),
+								})}
+							</h1>
+							<LanguageSwitcher />
+						</div>
 						<div className="text-center mb-4">
 							<img
 								src="/description-panel.jpeg"
 								alt="Manga artist working at computer creating comic panels"
-								className="w-full max-w-md mx-auto rounded-lg shadow-comic border-2 border-manga-black mb-3"
+								className="w-full max-w-md mx-auto rounded-lg shadow-comic border-2 border-manga-black mb-3 floating-effect"
 							/>
 						</div>
 						<p className="text-center text-manga-medium-gray mb-4">
-							Transform your stories into stunning visual comics with{" "}
-							<a
-								href="https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-image-preview"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-manga-info hover:underline"
-							>
-								Nano Banana (Gemini 2.5 Flash Image)
-							</a>
-							. Simply write your story, choose a style, and watch as your
-							narrative comes to life panel by panel.
+							{t("description")}
 						</p>
 
 						{/* Style Selection */}
 						<div className="mb-4">
 							<div className="text-manga-black font-medium mb-2">
-								Comic Style
+								{t("comicStyle")}
 							</div>
-							<fieldset className="flex w-full">
-								<input
-									type="radio"
-									className="sr-only"
-									name="style"
-									id={mangaRadioId}
-									checked={style === "manga"}
-									onChange={() => {
-										setStyle("manga");
-										trackEvent({
-											action: "change_style",
-											category: "user_interaction",
-											label: "manga",
-										});
-									}}
-								/>
-								<label
-									className="btn-manga-outline flex-1 text-center cursor-pointer rounded-l-lg"
-									htmlFor={mangaRadioId}
-								>
-									Japanese Manga
-								</label>
+							<div className="grid grid-cols-2 gap-2">
+								{/* Japanese Manga */}
+								<div>
+									<input
+										type="radio"
+										className="sr-only"
+										name="style"
+										id={mangaRadioId}
+										checked={style === "manga"}
+										onChange={() => {
+											setStyle("manga");
+											trackEvent({
+												action: "change_style",
+												category: "user_interaction",
+												label: "manga",
+											});
+										}}
+									/>
+									<label
+										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+										htmlFor={mangaRadioId}
+									>
+										{t("japaneseManga")}
+									</label>
+								</div>
 
-								<input
-									type="radio"
-									className="sr-only"
-									name="style"
-									id={comicRadioId}
-									checked={style === "comic"}
-									onChange={() => {
-										setStyle("comic");
-										trackEvent({
-											action: "change_style",
-											category: "user_interaction",
-											label: "comic",
-										});
-									}}
-								/>
-								<label
-									className="btn-manga-outline flex-1 text-center cursor-pointer rounded-r-lg"
-									htmlFor={comicRadioId}
-								>
-									American Comic
-								</label>
-							</fieldset>
+								{/* American Comic */}
+								<div>
+									<input
+										type="radio"
+										className="sr-only"
+										name="style"
+										id={comicRadioId}
+										checked={style === "comic"}
+										onChange={() => {
+											setStyle("comic");
+											trackEvent({
+												action: "change_style",
+												category: "user_interaction",
+												label: "comic",
+											});
+										}}
+									/>
+									<label
+										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+										htmlFor={comicRadioId}
+									>
+										{t("americanComic")}
+									</label>
+								</div>
+
+								{/* Wuxia Cultivation */}
+								<div>
+									<input
+										type="radio"
+										className="sr-only"
+										name="style"
+										id="wuxia-radio"
+										checked={style === "wuxia"}
+										onChange={() => {
+											setStyle("wuxia");
+											trackEvent({
+												action: "change_style",
+												category: "user_interaction",
+												label: "wuxia",
+											});
+										}}
+									/>
+									<label
+										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+										htmlFor="wuxia-radio"
+									>
+										{t("wuxiaCultivation")}
+									</label>
+								</div>
+
+								{/* Healing Anime */}
+								<div>
+									<input
+										type="radio"
+										className="sr-only"
+										name="style"
+										id="healing-radio"
+										checked={style === "healing"}
+										onChange={() => {
+											setStyle("healing");
+											trackEvent({
+												action: "change_style",
+												category: "user_interaction",
+												label: "healing",
+											});
+										}}
+									/>
+									<label
+										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+										htmlFor="healing-radio"
+									>
+										{t("healingAnime")}
+									</label>
+								</div>
+
+								{/* Korean Manhwa */}
+								<div>
+									<input
+										type="radio"
+										className="sr-only"
+										name="style"
+										id="manhwa-radio"
+										checked={style === "manhwa"}
+										onChange={() => {
+											setStyle("manhwa");
+											trackEvent({
+												action: "change_style",
+												category: "user_interaction",
+												label: "manhwa",
+											});
+										}}
+									/>
+									<label
+										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+										htmlFor="manhwa-radio"
+									>
+										{t("koreanManhwa")}
+									</label>
+								</div>
+
+								{/* Cinematic Style */}
+								<div>
+									<input
+										type="radio"
+										className="sr-only"
+										name="style"
+										id="cinematic-radio"
+										checked={style === "cinematic"}
+										onChange={() => {
+											setStyle("cinematic");
+											trackEvent({
+												action: "change_style",
+												category: "user_interaction",
+												label: "cinematic",
+											});
+										}}
+									/>
+									<label
+										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+										htmlFor="cinematic-radio"
+									>
+										{t("cinematicStyle")}
+									</label>
+								</div>
+							</div>
+						</div>
+
+						{/* AI Model Selection */}
+						<div className="mb-4">
+							<div className="text-manga-black font-medium mb-2">
+								{t("settings.aiModel")}
+							</div>
+							<select
+								className="form-control-manga w-full"
+								value={aiModel}
+								onChange={(e) => {
+									setAiModel(e.target.value);
+									trackEvent({
+										action: "change_ai_model",
+										category: "user_interaction",
+										label: e.target.value,
+									});
+								}}
+							>
+								<option value="auto">{t("aiModels.auto")}</option>
+								<option value="nanobanana">{t("aiModels.nanobanana")}</option>
+								<option value="volcengine">{t("aiModels.volcengine")}</option>
+							</select>
+							<p className="text-xs text-manga-medium-gray mt-1">
+								{aiModel === "auto" && t("aiModels.description.auto")}
+								{aiModel === "nanobanana" && t("aiModels.description.nanobanana")}
+								{aiModel === "volcengine" && t("aiModels.description.volcengine")}
+							</p>
 						</div>
 
 						{/* Story Input */}
@@ -2086,9 +3621,9 @@ export default function Home() {
 								className="block text-manga-black font-medium mb-2"
 								htmlFor={storyTextareaId}
 							>
-								Your Story{" "}
+								{t("yourStory")}{" "}
 								<span className="inline-block bg-manga-medium-gray text-white px-2 py-1 rounded text-xs ml-2">
-									{wordCount}/500 words
+									{wordCount}/500 {t("words")}
 								</span>
 							</label>
 							<textarea
@@ -2106,7 +3641,7 @@ export default function Home() {
 										});
 									}
 								}}
-								placeholder="Enter your story here... (max 500 words)"
+								placeholder={t("storyPlaceholder")}
 								disabled={isGenerating}
 							/>
 							{/* Try Sample Button - only show when story is empty or has very few words */}
@@ -2118,13 +3653,13 @@ export default function Home() {
 										onClick={loadSampleText}
 										disabled={isGenerating}
 									>
-										📖 Try Sample Story
+										📖 {t("trySampleStory")}
 									</button>
 								</div>
 							)}
 							{wordCount > 500 && (
 								<div className="text-manga-danger text-sm mt-1">
-									Story is too long. Please reduce to 500 words or less.
+									{t("storyTooLong")}
 								</div>
 							)}
 						</div>
@@ -2133,14 +3668,16 @@ export default function Home() {
 						<div className="mb-4 space-y-4">
 							{/* Character Reference Images */}
 							<CollapsibleSection
-								title="📸 Character Reference Images (Optional)"
+								title={`📸 ${t("characterReferenceImages")}`}
 								isExpanded={isCharacterRefsExpanded}
 								onToggle={() =>
 									setIsCharacterRefsExpanded(!isCharacterRefsExpanded)
 								}
 								badge={
 									uploadedCharacterReferences.length > 0
-										? `${uploadedCharacterReferences.length} image${uploadedCharacterReferences.length !== 1 ? "s" : ""}`
+										? `${uploadedCharacterReferences.length} ${t("image")}${
+												uploadedCharacterReferences.length !== 1 ? "s" : ""
+											}`
 										: undefined
 								}
 							>
@@ -2158,14 +3695,16 @@ export default function Home() {
 
 							{/* Setting Reference Images */}
 							<CollapsibleSection
-								title="🏞️ Setting Reference Images (Optional)"
+								title={`🏞️ ${t("settingReferenceImages")}`}
 								isExpanded={isSettingRefsExpanded}
 								onToggle={() =>
 									setIsSettingRefsExpanded(!isSettingRefsExpanded)
 								}
 								badge={
 									uploadedSettingReferences.length > 0
-										? `${uploadedSettingReferences.length} image${uploadedSettingReferences.length !== 1 ? "s" : ""}`
+										? `${uploadedSettingReferences.length} ${t("image")}${
+												uploadedSettingReferences.length !== 1 ? "s" : ""
+											}`
 										: undefined
 								}
 							>
@@ -2200,7 +3739,7 @@ export default function Home() {
 												}
 												disabled={isGenerating}
 											>
-												Retry Panel {failedPanel.panelNumber}
+												{t("retryPanel", { number: failedPanel.panelNumber })}
 											</button>
 										) : failedStep ? (
 											<button
@@ -2209,10 +3748,11 @@ export default function Home() {
 												onClick={() => retryFromStep(failedStep)}
 												disabled={isGenerating}
 											>
-												Retry from{" "}
-												{failedStep.charAt(0).toUpperCase() +
-													failedStep.slice(1)}{" "}
-												Step
+												{t("retryFromStep", {
+													step:
+														failedStep.charAt(0).toUpperCase() +
+														failedStep.slice(1),
+												})}
 											</button>
 										) : null}
 									</div>
@@ -2236,7 +3776,7 @@ export default function Home() {
 									{currentStepText}
 								</>
 							) : (
-								"Generate"
+								t("generate")
 							)}
 						</button>
 
@@ -2251,7 +3791,7 @@ export default function Home() {
 								onClick={clearResults}
 								disabled={isGenerating}
 							>
-								Clear Previous Results
+								{t("clearPreviousResults")}
 							</button>
 						)}
 
@@ -2264,7 +3804,7 @@ export default function Home() {
 								disabled={isGenerating}
 								style={{ fontSize: "12px", padding: "8px 12px" }}
 							>
-								🗑️ Clear All Saved Data
+								🗑️ {t("clearAllSavedData")}
 							</button>
 						)}
 
@@ -2285,7 +3825,7 @@ export default function Home() {
 				<div className="w-full lg:w-2/3">
 					<div className="comic-panel h-full">
 						<div className="flex justify-between items-center mb-4">
-							<h2 className="text-xl">Behind the Scenes</h2>
+							<h2 className="text-xl">{t("behindTheScenes")}</h2>
 							<button
 								type="button"
 								className="btn-manga-outline text-sm"
@@ -2299,11 +3839,11 @@ export default function Home() {
 								}}
 								title={
 									openAccordions.size > 0
-										? "Collapse all sections"
-										: "Expand all sections"
+										? t("collapseAllSections")
+										: t("expandAllSections")
 								}
 							>
-								{openAccordions.size > 0 ? "Collapse All" : "Expand All"}
+								{openAccordions.size > 0 ? t("collapseAll") : t("expandAll")}
 							</button>
 						</div>
 
@@ -2311,7 +3851,7 @@ export default function Home() {
 							{/* Step 1: Story Analysis */}
 							<AccordionSection
 								id={analysisHeadingId}
-								title="Story Analysis"
+								title={t("storyAnalysis")}
 								stepNumber={1}
 								isCompleted={!!storyAnalysis}
 								isInProgress={
@@ -2326,51 +3866,139 @@ export default function Home() {
 								{storyAnalysis ? (
 									<div>
 										<div className="flex justify-between items-center mb-3">
-											<h5 className="font-semibold">Story Analysis</h5>
-											<DownloadButton
-												onClick={downloadStoryAnalysis}
-												isLoading={false}
-												label="Download"
-												loadingText=""
-												variant="outline"
-											/>
-										</div>
-										<h5 className="font-semibold mb-2">Title:</h5>
-										<p className="mb-3">{storyAnalysis.title}</p>
-										<h5 className="font-semibold mb-2">Characters:</h5>
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-											{storyAnalysis.characters.map((char) => (
-												<CharacterCard
-													key={char.name}
-													character={char}
-													showImage={false}
+											<h5 className="font-semibold">{t("storyAnalysis")}</h5>
+											<div className="flex gap-2">
+												{!editingStoryAnalysis && (
+													<button
+														onClick={startEditingStoryAnalysis}
+														className="btn-manga-outline btn-sm"
+														disabled={isGenerating}
+													>
+														{t("edit")}
+													</button>
+												)}
+												<DownloadButton
+													onClick={downloadStoryAnalysis}
+													isLoading={false}
+													label={t("download")}
+													loadingText=""
+													variant="outline"
 												/>
-											))}
+											</div>
 										</div>
-										<h5 className="font-semibold mt-3 mb-2">Setting:</h5>
-										<p>
-											<strong>Location:</strong>{" "}
-											{storyAnalysis.setting.location}
-										</p>
-										<p>
-											<strong>Time Period:</strong>{" "}
-											{storyAnalysis.setting.timePeriod}
-										</p>
-										<p>
-											<strong>Mood:</strong> {storyAnalysis.setting.mood}
-										</p>
-										<div className="mt-3">
-											<RerunButton
-												onClick={rerunAnalysis}
-												isLoading={isRerunningAnalysis}
-												disabled={isGenerating}
-											/>
-										</div>
+
+										{editingStoryAnalysis ? (
+											<div className="space-y-4">
+												<div>
+													<label className="form-label-enhanced">{t("title")}:</label>
+													<input
+														type="text"
+														value={tempStoryAnalysis?.title || ''}
+														onChange={(e) => setTempStoryAnalysis(prev => prev ? {...prev, title: e.target.value} : null)}
+														className="form-control-manga w-full"
+													/>
+												</div>
+
+												<div>
+													<label className="form-label-enhanced">{t("setting")}:</label>
+													<div className="space-y-2">
+														<input
+															type="text"
+															placeholder={t("location")}
+															value={tempStoryAnalysis?.setting.location || ''}
+															onChange={(e) => setTempStoryAnalysis(prev => prev ? {
+																...prev,
+																setting: {...prev.setting, location: e.target.value}
+															} : null)}
+															className="form-control-manga w-full"
+														/>
+														<input
+															type="text"
+															placeholder={t("timePeriod")}
+															value={tempStoryAnalysis?.setting.timePeriod || ''}
+															onChange={(e) => setTempStoryAnalysis(prev => prev ? {
+																...prev,
+																setting: {...prev.setting, timePeriod: e.target.value}
+															} : null)}
+															className="form-control-manga w-full"
+														/>
+														<input
+															type="text"
+															placeholder={t("mood")}
+															value={tempStoryAnalysis?.setting.mood || ''}
+															onChange={(e) => setTempStoryAnalysis(prev => prev ? {
+																...prev,
+																setting: {...prev.setting, mood: e.target.value}
+															} : null)}
+															className="form-control-manga w-full"
+														/>
+													</div>
+												</div>
+
+												<div className="flex gap-2">
+													<button
+														onClick={saveStoryAnalysisEdit}
+														className="btn-manga-primary"
+														disabled={isGenerating}
+													>
+														{t("save")}
+													</button>
+													<button
+														onClick={cancelStoryAnalysisEdit}
+														className="btn-manga-outline"
+														disabled={isGenerating}
+													>
+														{t("cancel")}
+													</button>
+													<button
+														onClick={regenerateFromStoryAnalysis}
+														className="btn-manga-primary"
+														disabled={isGenerating}
+													>
+														{t("regenerateFromHere")}
+													</button>
+												</div>
+											</div>
+										) : (
+											<div>
+												<h5 className="font-semibold mb-2">{t("title")}:</h5>
+												<p className="mb-3">{storyAnalysis.title}</p>
+												<h5 className="font-semibold mb-2">{t("characters")}:</h5>
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+													{storyAnalysis.characters.map((char) => (
+														<CharacterCard
+															key={char.name}
+															character={char}
+															showImage={false}
+														/>
+													))}
+												</div>
+												<h5 className="font-semibold mt-3 mb-2">{t("setting")}:</h5>
+												<p>
+													<strong>{t("location")}:</strong>{" "}
+													{storyAnalysis.setting.location}
+												</p>
+												<p>
+													<strong>{t("timePeriod")}:</strong>{" "}
+													{storyAnalysis.setting.timePeriod}
+												</p>
+												<p>
+													<strong>{t("mood")}:</strong> {storyAnalysis.setting.mood}
+												</p>
+												<div className="mt-3">
+													<RerunButton
+														onClick={rerunAnalysis}
+														isLoading={isRerunningAnalysis}
+														disabled={isGenerating}
+													/>
+												</div>
+											</div>
+										)}
 									</div>
 								) : (
 									<div>
 										<p className="text-manga-medium-gray">
-											Story analysis will appear here once generation begins.
+											{t("storyAnalysisPlaceholder")}
 										</p>
 										{failedStep === "analysis" && (
 											<button
@@ -2379,7 +4007,7 @@ export default function Home() {
 												onClick={() => retryFromStep("analysis")}
 												disabled={isGenerating}
 											>
-												Retry Story Analysis
+												{t("retryStoryAnalysis")}
 											</button>
 										)}
 									</div>
@@ -2389,7 +4017,7 @@ export default function Home() {
 							{/* Step 2: Character Designs */}
 							<AccordionSection
 								id={charactersHeadingId}
-								title="Character Designs"
+								title={t("characterDesigns")}
 								stepNumber={2}
 								isCompleted={characterReferences.length > 0}
 								isInProgress={
@@ -2405,11 +4033,11 @@ export default function Home() {
 								{characterReferences.length > 0 ? (
 									<div className="character-grid">
 										<div className="flex justify-between items-center mb-3">
-											<h5 className="font-semibold">Character Designs</h5>
+											<h5 className="font-semibold">{t("characterDesigns")}</h5>
 											<DownloadButton
 												onClick={downloadAllCharacters}
 												isLoading={isDownloadingCharacters}
-												label="Download All Characters"
+												label={t("downloadAllCharacters")}
 												loadingText="Creating zip..."
 												variant="outline"
 											/>
@@ -2422,6 +4050,17 @@ export default function Home() {
 													showImage={true}
 													onImageClick={openImageModal}
 													onDownload={() => downloadCharacter(char)}
+													onEdit={() => {
+														// Create a prompt for the character
+														const characterPrompt = `Character: ${char.name}\nDescription: ${char.description || 'No description'}`;
+
+														openImageEditModal(
+															'character',
+															char.name,
+															char.image || '',
+															characterPrompt
+														);
+													}}
 												/>
 											))}
 										</div>
@@ -2436,8 +4075,7 @@ export default function Home() {
 								) : (
 									<div>
 										<p className="text-manga-medium-gray">
-											Character design images will appear here after story
-											analysis.
+											{t("characterDesignPlaceholder")}
 										</p>
 										{failedStep === "characters" && storyAnalysis && (
 											<button
@@ -2446,7 +4084,7 @@ export default function Home() {
 												onClick={() => retryFromStep("characters")}
 												disabled={isGenerating}
 											>
-												Retry Character Generation
+												{t("retryCharacterGeneration")}
 											</button>
 										)}
 									</div>
@@ -2456,7 +4094,7 @@ export default function Home() {
 							{/* Step 3: Comic Layout Plan */}
 							<AccordionSection
 								id={layoutHeadingId}
-								title="Comic Layout Plan"
+								title={t("comicLayoutPlan")}
 								stepNumber={3}
 								isCompleted={!!storyBreakdown}
 								isInProgress={
@@ -2473,38 +4111,147 @@ export default function Home() {
 									<div>
 										<div className="flex justify-between items-center mb-3">
 											<h5 className="font-semibold">
-												Panel Sequence ({storyBreakdown.panels.length} panels)
+												{t("panelSequence", {
+													count: storyBreakdown.panels.length,
+												})}
 											</h5>
-											<DownloadButton
-												onClick={downloadComicLayout}
-												isLoading={false}
-												label="Download"
-												loadingText=""
-												variant="outline"
-											/>
-										</div>
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-											{storyBreakdown.panels.map((panel) => (
-												<PanelCard
-													key={`panel-${panel.panelNumber}`}
-													panel={panel}
-													showImage={false}
+											<div className="flex gap-2">
+												{!editingStoryBreakdown && (
+													<button
+														onClick={startEditingStoryBreakdown}
+														className="btn-manga-outline btn-sm"
+														disabled={isGenerating}
+													>
+														{t("edit")}
+													</button>
+												)}
+												<DownloadButton
+													onClick={downloadComicLayout}
+													isLoading={false}
+													label="Download"
+													loadingText=""
+													variant="outline"
 												/>
-											))}
+											</div>
 										</div>
-										<div className="mt-3">
-											<RerunButton
-												onClick={rerunLayoutPlan}
-												isLoading={isRerunningLayout}
-												disabled={isGenerating || !storyAnalysis}
-											/>
-										</div>
+
+										{editingStoryBreakdown ? (
+											<div className="space-y-4">
+												{tempStoryBreakdown?.panels.map((panel, index) => (
+													<div key={panel.panelNumber} className="border border-gray-200 rounded-lg p-4">
+														<h6 className="font-semibold mb-3">Panel {panel.panelNumber}</h6>
+														<div className="space-y-3">
+															<div>
+																<label className="form-label-enhanced">Scene Description:</label>
+																<textarea
+																	value={panel.sceneDescription}
+																	onChange={(e) => setTempStoryBreakdown(prev => prev ? {
+																		...prev,
+																		panels: prev.panels.map((p, i) =>
+																			i === index ? {...p, sceneDescription: e.target.value} : p
+																		)
+																	} : null)}
+																	className="form-control-manga w-full"
+																	rows={3}
+																/>
+															</div>
+															<div>
+																<label className="form-label-enhanced">Dialogue (optional):</label>
+																<textarea
+																	value={panel.dialogue || ''}
+																	onChange={(e) => setTempStoryBreakdown(prev => prev ? {
+																		...prev,
+																		panels: prev.panels.map((p, i) =>
+																			i === index ? {...p, dialogue: e.target.value} : p
+																		)
+																	} : null)}
+																	className="form-control-manga w-full"
+																	rows={2}
+																/>
+															</div>
+															<div className="grid grid-cols-2 gap-3">
+																<div>
+																	<label className="form-label-enhanced">Camera Angle:</label>
+																	<input
+																		type="text"
+																		value={panel.cameraAngle}
+																		onChange={(e) => setTempStoryBreakdown(prev => prev ? {
+																			...prev,
+																			panels: prev.panels.map((p, i) =>
+																				i === index ? {...p, cameraAngle: e.target.value} : p
+																			)
+																		} : null)}
+																		className="form-control-manga w-full"
+																	/>
+																</div>
+																<div>
+																	<label className="form-label-enhanced">Visual Mood:</label>
+																	<input
+																		type="text"
+																		value={panel.visualMood}
+																		onChange={(e) => setTempStoryBreakdown(prev => prev ? {
+																			...prev,
+																			panels: prev.panels.map((p, i) =>
+																				i === index ? {...p, visualMood: e.target.value} : p
+																			)
+																		} : null)}
+																		className="form-control-manga w-full"
+																	/>
+																</div>
+															</div>
+														</div>
+													</div>
+												))}
+
+												<div className="flex gap-2">
+													<button
+														onClick={saveStoryBreakdownEdit}
+														className="btn-manga-primary"
+														disabled={isGenerating}
+													>
+														{t("save")}
+													</button>
+													<button
+														onClick={cancelStoryBreakdownEdit}
+														className="btn-manga-outline"
+														disabled={isGenerating}
+													>
+														{t("cancel")}
+													</button>
+													<button
+														onClick={regenerateFromStoryBreakdown}
+														className="btn-manga-primary"
+														disabled={isGenerating}
+													>
+														{t("regenerateFromHere")}
+													</button>
+												</div>
+											</div>
+										) : (
+											<div>
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+													{storyBreakdown.panels.map((panel) => (
+														<PanelCard
+															key={`panel-${panel.panelNumber}`}
+															panel={panel}
+															showImage={false}
+														/>
+													))}
+												</div>
+												<div className="mt-3">
+													<RerunButton
+														onClick={rerunLayoutPlan}
+														isLoading={isRerunningLayout}
+														disabled={isGenerating || !storyAnalysis}
+													/>
+												</div>
+											</div>
+										)}
 									</div>
 								) : (
 									<div>
 										<p className="text-manga-medium-gray">
-											Comic layout plan will appear here after character designs
-											are complete.
+											{t("comicLayoutPlaceholder")}
 										</p>
 										{failedStep === "layout" &&
 											storyAnalysis &&
@@ -2515,7 +4262,7 @@ export default function Home() {
 													onClick={() => retryFromStep("layout")}
 													disabled={isGenerating}
 												>
-													Retry Comic Layout
+													{t("retryComicLayout")}
 												</button>
 											)}
 									</div>
@@ -2525,7 +4272,7 @@ export default function Home() {
 							{/* Step 4: Generated Panels */}
 							<AccordionSection
 								id={panelsHeadingId}
-								title="Generated Panels"
+								title={t("generatedPanels")}
 								stepNumber={4}
 								isCompleted={getPanelStatus().isCompleted}
 								isInProgress={
@@ -2539,28 +4286,115 @@ export default function Home() {
 								showStatus={isGenerating || generatedPanels.length > 0}
 							>
 								{storyBreakdown ? (
-									<div>
+									<div data-section="panels">
 										<div className="flex justify-between items-center mb-3">
-											<h5 className="font-semibold">Your Comic Panels</h5>
-											{generatedPanels.length > 0 && (
-												<DownloadButton
-													onClick={downloadAllPanels}
-													isLoading={isDownloadingPanels}
-													label="Download All Panels"
-													loadingText="Creating zip..."
-													variant="outline"
-												/>
-											)}
+											<h5 className="font-semibold">{t("yourComicPanels")}</h5>
+											<div className="flex gap-2">
+												{/* 继续生成按钮 */}
+												{storyBreakdown && generatedPanels.length < storyBreakdown.panels.length && (
+													<button
+														onClick={continueGeneration}
+														disabled={generationState.isGenerating || isGenerating}
+														className="btn-primary-manga text-sm px-3 py-1"
+													>
+														{generationState.isGenerating ? t("generating") : t("continueGeneration")}
+													</button>
+												)}
+												{/* 暂停/恢复按钮 */}
+												{generationState.isGenerating && (
+													<button
+														onClick={generationState.isPaused ? resumeGeneration : pauseGeneration}
+														className="btn-secondary-manga text-sm px-3 py-1"
+													>
+														{generationState.isPaused ? t("resume") : t("pause")}
+													</button>
+												)}
+												{generatedPanels.length > 0 && (
+													<DownloadButton
+														onClick={downloadAllPanels}
+														isLoading={isDownloadingPanels}
+														label={t("downloadAllPanels")}
+														loadingText={t("creatingZip")}
+														variant="outline"
+													/>
+												)}
+											</div>
 										</div>
+
+										{/* 生成进度显示 */}
+										{generationState.isGenerating && (
+											<div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+												<div className="flex justify-between items-center mb-2">
+													<span className="text-sm font-medium text-blue-800">
+														{t("generationProgress")}
+													</span>
+													<span className="text-sm text-blue-600">
+														{generationState.completedPanels}/{generationState.totalPanels}
+													</span>
+												</div>
+												<div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+													<div
+														className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+														style={{
+															width: `${(generationState.completedPanels / generationState.totalPanels) * 100}%`
+														}}
+													></div>
+												</div>
+												{generationState.batchInfo && (
+													<div className="text-xs text-blue-600">
+														{t("batch")} {generationState.batchInfo.currentBatch}/{generationState.batchInfo.totalBatches}
+														{generationState.currentPanel > 0 && (
+															<span className="ml-2">
+																{t("currentPanel")}: {generationState.currentPanel}
+															</span>
+														)}
+													</div>
+												)}
+												{generationState.failedPanels.length > 0 && (
+													<div className="text-xs text-red-600 mt-1">
+														{t("failedPanels")}: {generationState.failedPanels.join(", ")}
+													</div>
+												)}
+											</div>
+										)}
+										{/* 分页控制 */}
+										{isLazyLoadingEnabled && totalPages > 1 && (
+											<div className="mb-4 flex justify-center items-center gap-4">
+												<button
+													onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+													disabled={currentPage === 1}
+													className="btn-manga-outline text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+												>
+													上一页
+												</button>
+												<span className="text-sm text-gray-600">
+													第 {currentPage} 页 / 共 {totalPages} 页
+												</span>
+												<button
+													onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+													disabled={currentPage === totalPages}
+													className="btn-manga-outline text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+												>
+													下一页
+												</button>
+											</div>
+										)}
+
 										<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-											{storyBreakdown.panels.map((panel, index) => {
+											{(isLazyLoadingEnabled
+												? storyBreakdown.panels.slice(startIndex, endIndex)
+												: storyBreakdown.panels
+											).map((panel, index) => {
+												// 调整索引以匹配实际的面板位置
+												const actualIndex = isLazyLoadingEnabled ? startIndex + index : index;
 												const generatedPanel = generatedPanels.find(
 													(p) => p.panelNumber === panel.panelNumber,
 												);
 												const isCurrentlyGenerating =
 													isGenerating &&
 													currentStepText.includes("panel") &&
-													generatedPanels.length === index;
+													generatedPanels.length === actualIndex;
+												const hasFailed = failedPanels.has(panel.panelNumber);
 
 												if (generatedPanel) {
 													// Show completed panel
@@ -2571,7 +4405,57 @@ export default function Home() {
 															showImage={true}
 															onImageClick={openImageModal}
 															onDownload={() => downloadPanel(generatedPanel)}
+															onEdit={() => {
+																// Create a prompt for the panel based on its properties
+																const panelPrompt = `Scene: ${panel.sceneDescription || 'No description'}${
+																	panel.dialogue ? `\nDialogue: "${panel.dialogue}"` : ''
+																}${
+																	panel.cameraAngle ? `\nCamera: ${panel.cameraAngle}` : ''
+																}${
+																	panel.visualMood ? `\nMood: ${panel.visualMood}` : ''
+																}`;
+
+																openImageEditModal(
+																	'panel',
+																	panel.panelNumber,
+																	generatedPanel.image || '',
+																	panelPrompt
+																);
+															}}
 														/>
+													);
+												} else if (hasFailed) {
+													// Show failed panel with retry button
+													return (
+														<div
+															key={`failed-panel-${panel.panelNumber}`}
+															className="card-manga border-dashed border-2 border-red-300 bg-red-50"
+														>
+															<div className="card-body text-center py-8">
+																<div className="text-red-500 mb-3">
+																	<svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+																	</svg>
+																</div>
+																<h6 className="card-title text-red-700 font-semibold mb-2">
+																	{t("panel")} {panel.panelNumber} {t("generationFailed")}
+																</h6>
+																<p className="card-text text-sm text-red-600/80 mb-4">
+																	{panel.sceneDescription}
+																</p>
+																<button
+																	type="button"
+																	className="btn-manga-outline text-sm px-4 py-2 text-red-600 border-red-300 hover:bg-red-100"
+																	onClick={() => retryFailedPanel(panel.panelNumber)}
+																	disabled={isGenerating}
+																>
+																	<svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+																	</svg>
+																	{t("retryGeneration")}
+																</button>
+															</div>
+														</div>
 													);
 												} else {
 													// Show placeholder for pending/generating panel
@@ -2585,7 +4469,9 @@ export default function Home() {
 																	<>
 																		<div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-manga-black mb-2"></div>
 																		<h6 className="card-title text-manga-medium-gray">
-																			Generating Panel {panel.panelNumber}...
+																			{t("generatingPanel", {
+																				number: panel.panelNumber,
+																			})}
 																		</h6>
 																		<p className="card-text text-sm text-manga-medium-gray/80">
 																			{panel.sceneDescription}
@@ -2594,10 +4480,10 @@ export default function Home() {
 																) : (
 																	<>
 																		<h6 className="card-title text-manga-medium-gray">
-																			Panel {panel.panelNumber}
+																			{t("panel")} {panel.panelNumber}
 																		</h6>
 																		<p className="card-text text-sm text-manga-medium-gray/80">
-																			Waiting to generate...
+																			{t("waitingToGenerate")}
 																		</p>
 																		<p className="card-text text-xs text-manga-medium-gray/60 mt-2">
 																			{panel.sceneDescription}
@@ -2610,6 +4496,35 @@ export default function Home() {
 												}
 											})}
 										</div>
+
+										{/* 底部分页控制 */}
+										{isLazyLoadingEnabled && totalPages > 1 && (
+											<div className="mt-4 mb-4 flex justify-center items-center gap-4">
+												<button
+													onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+													disabled={currentPage === 1}
+													className="btn-manga-outline text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+												>
+													上一页
+												</button>
+												<div className="flex items-center gap-2">
+													<span className="text-sm text-gray-600">
+														第 {currentPage} 页 / 共 {totalPages} 页
+													</span>
+													<span className="text-xs text-gray-500">
+														(显示 {startIndex + 1}-{Math.min(endIndex, generatedPanels.length)} / {generatedPanels.length} 个面板)
+													</span>
+												</div>
+												<button
+													onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+													disabled={currentPage === totalPages}
+													className="btn-manga-outline text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+												>
+													下一页
+												</button>
+											</div>
+										)}
+
 										<div className="mt-3">
 											<RerunButton
 												onClick={rerunPanels}
@@ -2626,8 +4541,7 @@ export default function Home() {
 								) : (
 									<div>
 										<p className="text-manga-medium-gray">
-											Your finished comic panels will appear here after the
-											layout is planned!
+											{t("comicPanelsPlaceholder")}
 										</p>
 										{failedStep === "panels" &&
 											storyAnalysis &&
@@ -2639,7 +4553,7 @@ export default function Home() {
 													onClick={() => retryFromStep("panels")}
 													disabled={isGenerating}
 												>
-													Retry Panel Generation
+													{t("retryPanelGeneration")}
 												</button>
 											)}
 									</div>
@@ -2649,7 +4563,7 @@ export default function Home() {
 							{/* Step 5: Create Shareable Image */}
 							<AccordionSection
 								id={compositorHeadingId}
-								title="Create Shareable Image"
+								title={t("createShareableImage")}
 								stepNumber={5}
 								isCompleted={false}
 								isOpen={openAccordions.has("compositor")}
@@ -2660,51 +4574,68 @@ export default function Home() {
 									<div>
 										<div className="flex justify-between items-center mb-3">
 											<h5 className="font-semibold">
-												Create Shareable Comic Page
+												{t("createShareableComicPage")}
 											</h5>
-											<DownloadButton
-												onClick={generateComposite}
-												isLoading={isGeneratingComposite}
-												label="Generate & Download"
-												loadingText="Creating composite..."
-												variant="outline"
-											/>
+											<div className="flex gap-2">
+												{/* 下载当前页面 */}
+												<DownloadButton
+													onClick={generateComposite}
+													isLoading={isGeneratingComposite}
+													label={isLazyLoadingEnabled ? `下载第${currentPage}页` : t("generateAndDownload")}
+													loadingText={t("creatingComposite")}
+													variant="outline"
+												/>
+												{/* 下载所有页面 */}
+												{isLazyLoadingEnabled && totalPages > 1 && (
+													<DownloadButton
+														onClick={generateAllPagesComposite}
+														isLoading={isGeneratingComposite}
+														label={`下载全部${totalPages}页`}
+														loadingText={`正在生成第${currentPage}页...`}
+														variant="primary"
+													/>
+												)}
+											</div>
 										</div>
 
 										{/* Hidden compositor layout for html2canvas */}
 										<ShareableComicLayout
 											storyAnalysis={storyAnalysis}
-											generatedPanels={generatedPanels}
+											generatedPanels={currentPagePanels}
 											characterReferences={characterReferences}
 											style={style}
 											isPreview={false}
 											compositorRef={compositorRef}
+											getProxyImageUrl={getProxyImageUrl}
+											isLazyLoadingEnabled={false}
+											visiblePanelRange={{ start: 0, end: currentPagePanels.length }}
 										/>
 
 										{/* Preview (visible version) */}
 										<div className="bg-gray-50 p-4 rounded-lg border-2 border-dashed border-gray-300">
 											<div className="text-center text-gray-600 mb-4">
 												<p className="text-xs text-gray-500">
-													Click "Generate & Download" to create your shareable
-													comic page
+													{t("generateDownloadHint")}
 												</p>
 											</div>
 
 											{/* Mini preview using the same component */}
 											<ShareableComicLayout
 												storyAnalysis={storyAnalysis}
-												generatedPanels={generatedPanels}
+												generatedPanels={currentPagePanels}
 												characterReferences={characterReferences}
 												style={style}
 												isPreview={true}
+												getProxyImageUrl={getProxyImageUrl}
+												isLazyLoadingEnabled={false}
+												visiblePanelRange={{ start: 0, end: currentPagePanels.length }}
 											/>
 										</div>
 									</div>
 								) : (
 									<div>
 										<p className="text-manga-medium-gray">
-											Complete all previous steps to create a shareable social
-											media composite of your comic and characters.
+											{t("shareableImagePlaceholder")}
 										</p>
 									</div>
 								)}
@@ -2720,13 +4651,13 @@ export default function Home() {
 				target="_blank"
 				rel="noopener noreferrer"
 				className="floating-report-btn"
-				title="Report an issue"
+				title={t("reportAnIssue")}
 			>
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
 					<title>Report Issue Icon</title>
 					<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-6h-2v6zm0-8h2V7h-2v2z" />
 				</svg>
-				Report Issue
+				{t("reportIssue")}
 			</a>
 
 			{/* Image Modal */}
@@ -2741,7 +4672,7 @@ export default function Home() {
 					}}
 					role="dialog"
 					aria-modal="true"
-					aria-label="Image viewer"
+					aria-label={t("imageViewer")}
 					tabIndex={-1}
 				>
 					<div
@@ -2754,7 +4685,7 @@ export default function Home() {
 							type="button"
 							className="image-modal-close"
 							onClick={closeImageModal}
-							aria-label="Close modal"
+							aria-label={t("closeModal")}
 						>
 							<svg
 								width="24"
@@ -2786,7 +4717,7 @@ export default function Home() {
 					}}
 					role="dialog"
 					aria-modal="true"
-					aria-label="Error message"
+					aria-label={t("errorMessage")}
 					tabIndex={-1}
 				>
 					<div
@@ -2811,7 +4742,7 @@ export default function Home() {
 								</svg>
 							</div>
 							<h3 className="confirmation-modal-title text-manga-danger">
-								Error
+								{t("error")}
 							</h3>
 							<p className="confirmation-modal-message whitespace-pre-line">
 								{errorModalMessage}
@@ -2823,7 +4754,7 @@ export default function Home() {
 								className="btn-manga-primary confirmation-modal-confirm"
 								onClick={closeErrorModal}
 							>
-								OK
+								{t("ok")}
 							</button>
 						</div>
 					</div>
@@ -2842,7 +4773,7 @@ export default function Home() {
 					}}
 					role="dialog"
 					aria-modal="true"
-					aria-label="Confirm clear data"
+					aria-label={t("confirmClearData")}
 					tabIndex={-1}
 				>
 					<div
@@ -2867,12 +4798,10 @@ export default function Home() {
 								</svg>
 							</div>
 							<h3 className="confirmation-modal-title">
-								Clear All Saved Data?
+								{t("clearAllSavedDataConfirm")}
 							</h3>
 							<p className="confirmation-modal-message">
-								Are you sure you want to clear all saved data? This will delete
-								your story, characters, and panels permanently. This action
-								cannot be undone.
+								{t("clearDataWarning")}
 							</p>
 						</div>
 						<div className="confirmation-modal-actions">
@@ -2881,17 +4810,58 @@ export default function Home() {
 								className="btn-manga-outline confirmation-modal-cancel"
 								onClick={cancelClearData}
 							>
-								Cancel
+								{t("cancel")}
 							</button>
 							<button
 								type="button"
 								className="btn-manga-primary confirmation-modal-confirm"
 								onClick={confirmClearAllData}
 							>
-								🗑️ Clear All Data
+								🗑️ {t("clearAllData")}
 							</button>
 						</div>
 					</div>
+				</div>
+			)}
+
+			{/* Project Manager Modal */}
+			<ProjectManager
+				isOpen={showProjectManager}
+				onClose={() => setShowProjectManager(false)}
+				onProjectSelect={handleProjectSelect}
+				onNewProject={handleNewProject}
+				currentProjectId={currentProjectId}
+			/>
+
+			{/* Image Edit Modal */}
+			{editingImage && (
+				<ImageEditModal
+					isOpen={showImageEditModal}
+					onClose={closeImageEditModal}
+					imageType={editingImage.type}
+					imageId={editingImage.id}
+					originalImage={editingImage.image}
+					originalPrompt={editingImage.originalPrompt}
+					onRedraw={handleImageRedraw}
+					onModify={handleImageModify}
+					isProcessing={isImageProcessing}
+					characterReferences={characterReferences}
+				/>
+			)}
+
+			{/* 性能统计显示 */}
+			{(optimizationStats.optimizedCount > 0 || cacheManager.getStats().totalItems > 0) && (
+				<div className="fixed bottom-4 right-4 bg-black/80 text-white text-xs p-2 rounded-lg max-w-xs">
+					{optimizationStats.optimizedCount > 0 && (
+						<div className="mb-1">
+							🗜️ 图像优化: {optimizationStats.optimizedCount}张, 节省 {(optimizationStats.totalSavings / 1024 / 1024).toFixed(1)}MB
+						</div>
+					)}
+					{cacheManager.getStats().totalItems > 0 && (
+						<div>
+							💾 缓存: {cacheManager.getStats().totalItems}项, 命中率 {(cacheManager.getStats().hitRate * 100).toFixed(1)}%
+						</div>
+					)}
 				</div>
 			)}
 		</div>

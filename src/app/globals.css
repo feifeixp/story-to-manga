@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Bangers:wght@400&family=Comfortaa:wght@300;400;700&family=Permanent+Marker&family=M+PLUS+1:wght@300;400;700&family=Sawarabi+Gothic&family=Zen+Old+Mincho:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Bangers:wght@400&family=Comfortaa:wght@300;400;700&family=Permanent+Marker&family=M+PLUS+1:wght@300;400;700&family=Sawarabi+Gothic&family=Zen+Old+Mincho:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700&display=swap');
 @import "tailwindcss";
 
 /* Override Tailwind's modern color functions with hex fallbacks */
@@ -54,4 +54,57 @@
 body {
   background: var(--color-manga-off-white);
   color: var(--color-manga-charcoal);
+}
+
+/* 中文字体优化 */
+:lang(zh) {
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+}
+
+:lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) h4, :lang(zh) h5, :lang(zh) h6 {
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  font-weight: 500;
+}
+
+/* 中文输入框优化 */
+:lang(zh) input, :lang(zh) textarea {
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  line-height: 1.6;
+}
+
+/* 中文按钮文字优化 */
+:lang(zh) button {
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  font-weight: 400;
+}
+
+/* 改善中文文本的行高和字间距 */
+:lang(zh) p, :lang(zh) div, :lang(zh) span {
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+}
+
+/* 中文标点符号优化 */
+:lang(zh) {
+  text-spacing: ideograph-alpha ideograph-numeric;
+  hanging-punctuation: first last;
+}
+
+/* 响应式中文字体大小 */
+@media (max-width: 768px) {
+  :lang(zh) {
+    font-size: 16px;
+  }
+  
+  :lang(zh) h1 {
+    font-size: 1.75rem;
+  }
+  
+  :lang(zh) h2 {
+    font-size: 1.5rem;
+  }
+  
+  :lang(zh) h3 {
+    font-size: 1.25rem;
+  }
 }

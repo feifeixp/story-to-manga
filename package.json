@@ -1,7 +1,18 @@
 {
-	"name": "story-to-manga",
-	"version": "0.1.0",
-	"private": true,
+	"name": "story-to-manga-enhanced",
+	"version": "2.0.0",
+	"private": false,
+	"description": "Enhanced Story to Manga Machine - Transform stories into visual manga/comic pages with AI. Features multi-model support, project management, advanced editing tools, and multiple comic styles.",
+	"keywords": ["manga", "comic", "ai", "story", "visual", "generator", "gemini", "volcengine", "next.js"],
+	"author": "Your Name <your.email@example.com>",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/yourusername/story-to-manga-enhanced.git"
+	},
+	"homepage": "https://github.com/yourusername/story-to-manga-enhanced#readme",
+	"bugs": {
+		"url": "https://github.com/yourusername/story-to-manga-enhanced/issues"
+	},
 	"scripts": {
 		"dev": "next dev -p 8000",
 		"build": "next build",
@@ -15,13 +26,21 @@
 	"dependencies": {
 		"@google/genai": "1.19.0",
 		"@next/third-parties": "15.5.3",
+		"@types/crypto-js": "^4.2.2",
+		"@volcengine/openapi": "^1.32.0",
+		"crypto-js": "^4.2.0",
 		"html2canvas": "1.4.1",
+		"i18next": "^25.5.2",
+		"i18next-browser-languagedetector": "^8.2.0",
 		"jszip": "3.10.1",
+		"lightningcss": "^1.30.1",
 		"next": "15.5.3",
+		"next-i18next": "^15.4.2",
 		"pino": "9.9.5",
 		"pino-pretty": "13.1.1",
 		"react": "19.1.1",
-		"react-dom": "19.1.1"
+		"react-dom": "19.1.1",
+		"react-i18next": "^15.7.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.4",

@@ -1,6 +1,6 @@
 // === Core Types ===
 
-export type ComicStyle = "manga" | "comic";
+export type ComicStyle = "manga" | "comic" | "wuxia" | "healing" | "manhwa" | "cinematic";
 
 // === Domain Types ===
 

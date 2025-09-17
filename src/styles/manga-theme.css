@@ -51,9 +51,27 @@
 
 /* Base Styles */
 body {
-  background: var(--manga-off-white);
+  background: linear-gradient(135deg, var(--manga-off-white) 0%, #f8f9fa 100%);
   color: var(--manga-charcoal);
   line-height: 1.6;
+  font-family: var(--font-body-manga);
+}
+
+/* Enhanced container styles */
+.main-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Improved header section */
+.header-section {
+  background: linear-gradient(135deg, var(--manga-white) 0%, var(--manga-light-gray) 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--manga-gray);
 }
 
 /* Text Color Fixes */
@@ -214,14 +232,21 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, h6, .h6 {
   z-index: -1;
 }
 
-/* Panel Styles - Manga Style (Minimalist, Traditional) */
+/* Enhanced Panel Styles - Manga Style */
 .style-manga .comic-panel {
   background: var(--manga-white);
   border: var(--manga-border-traditional);
-  border-radius: var(--manga-radius-minimal);
-  box-shadow: var(--manga-shadow-subtle);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
   position: relative;
   overflow: hidden;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.style-manga .comic-panel:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 /* Traditional Japanese paper texture effect */
@@ -361,12 +386,30 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, h6, .h6 {
   color: var(--manga-white) !important;
 }
 
-/* Card Styles */
+/* Enhanced Card Styles */
 .card-manga {
   background: var(--manga-white) !important;
   border: var(--comic-border) !important;
-  border-radius: var(--comic-radius);
-  box-shadow: var(--comic-shadow);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.card-manga::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--manga-accent-red), var(--manga-accent-gold));
+}
+
+.card-manga:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
 .card-manga .card-body {
@@ -863,17 +906,531 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, h6, .h6 {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
+/* Enhanced Layout Components */
+.story-input-section {
+  background: var(--manga-white);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--manga-gray);
+  margin-bottom: 2rem;
+}
+
+.generation-progress-section {
+  background: linear-gradient(135deg, var(--manga-white) 0%, var(--manga-light-gray) 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--manga-gray);
+  margin-bottom: 2rem;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.panel-card {
+  background: var(--manga-white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--manga-gray);
+  transition: all 0.3s ease;
+}
+
+.panel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.panel-card-header {
+  background: linear-gradient(135deg, var(--manga-black) 0%, var(--manga-charcoal) 100%);
+  color: var(--manga-white);
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+.panel-card-body {
+  padding: 1.5rem;
+}
+
+.panel-card-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.panel-card-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.character-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.character-reference-card {
+  background: var(--manga-white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--manga-gray);
+  transition: all 0.3s ease;
+}
+
+.character-reference-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.character-reference-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.character-reference-image:hover {
+  transform: scale(1.05);
+}
+
+.character-reference-name {
+  padding: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  background: var(--manga-light-gray);
+  font-size: 0.85rem;
+}
+
+/* Enhanced Form Styles */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label-enhanced {
+  display: block;
+  font-weight: 600;
+  color: var(--manga-black);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  position: relative;
+  padding-left: 12px;
+}
+
+.form-label-enhanced::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(135deg, var(--manga-accent-red), var(--manga-accent-gold));
+  border-radius: 2px;
+}
+
+.textarea-enhanced {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid var(--manga-gray);
+  border-radius: 12px;
+  font-family: var(--font-body-manga);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  resize: vertical;
+  transition: all 0.3s ease;
+  background: var(--manga-white);
+}
+
+.textarea-enhanced:focus {
+  outline: none;
+  border-color: var(--manga-accent-red);
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+}
+
+.select-enhanced {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--manga-gray);
+  border-radius: 12px;
+  font-family: var(--font-body-manga);
+  font-size: 0.95rem;
+  background: var(--manga-white);
+  transition: all 0.3s ease;
+}
+
+.select-enhanced:focus {
+  outline: none;
+  border-color: var(--manga-accent-red);
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+}
+
+/* Enhanced Button Styles */
+.btn-primary-enhanced {
+  background: linear-gradient(135deg, var(--manga-black) 0%, var(--manga-charcoal) 100%);
+  color: var(--manga-white);
+  border: none;
+  border-radius: 12px;
+  padding: 1rem 2rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-primary-enhanced:hover::before {
+  left: 100%;
+}
+
+.btn-primary-enhanced:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary-enhanced:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary-enhanced {
+  background: var(--manga-white);
+  color: var(--manga-black);
+  border: 2px solid var(--manga-gray);
+  border-radius: 12px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary-enhanced:hover {
+  background: var(--manga-black);
+  color: var(--manga-white);
+  border-color: var(--manga-black);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
+  .main-container {
+    padding: 1rem 0.5rem;
+  }
+
+  .header-section,
+  .story-input-section,
+  .generation-progress-section {
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+
+  .panel-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .character-reference-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+
   .floating-report-btn {
     bottom: 16px;
     right: 16px;
     padding: 10px 14px;
     font-size: 0.8rem;
   }
-  
+
   .floating-report-btn svg {
     width: 16px;
     height: 16px;
+  }
+}
+
+/* Enhanced Visual Effects - 保持原有布局，添加高级视觉效果 */
+
+/* 页面背景渐变 */
+body {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* 添加微妙的动态背景 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(25, 118, 210, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(211, 47, 47, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(56, 142, 60, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+  animation: background-shift 20s ease infinite;
+}
+
+@keyframes background-shift {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 卡片增强效果 */
+.card-manga {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-manga::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #d32f2f, #1976d2, #388e3c);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-manga::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  transform: rotate(45deg);
+  transition: all 0.5s;
+  opacity: 0;
+}
+
+.card-manga:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.card-manga:hover::before {
+  opacity: 1;
+}
+
+.card-manga:hover::after {
+  opacity: 1;
+  transform: rotate(45deg) translate(50%, 50%);
+}
+
+/* 按钮增强效果 */
+.btn-manga-primary {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white !important;
+  border: none;
+  box-shadow:
+    0 4px 15px rgba(25, 118, 210, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-manga-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.btn-manga-primary:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #1e88e5 0%, #1976d2 100%);
+  box-shadow:
+    0 6px 20px rgba(25, 118, 210, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.btn-manga-primary:hover::before {
+  left: 100%;
+}
+
+.btn-manga-primary:active {
+  transform: translateY(0px);
+  box-shadow:
+    0 2px 8px rgba(25, 118, 210, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn-manga-outline {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  color: #333 !important;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-manga-outline::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, #d32f2f, #1976d2, #388e3c);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-manga-outline:hover::before {
+  opacity: 1;
+}
+
+.btn-manga-outline:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 表单控件增强 */
+.form-control-manga {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  color: #333 !important;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.form-control-manga:focus {
+  border-color: #1976d2;
+  box-shadow:
+    0 0 0 3px rgba(25, 118, 210, 0.1),
+    0 4px 15px rgba(25, 118, 210, 0.15);
+  transform: translateY(-1px);
+}
+
+/* 手风琴增强效果 */
+.accordion-manga .accordion-item {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-manga .accordion-item:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 图片增强效果 */
+.comic-panel img,
+.character-reference img {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.comic-panel img:hover,
+.character-reference img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* 加载动画增强 */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.animate-pulse {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* 渐变文字效果 - 只应用于特定类 */
+.text-gradient {
+  background: linear-gradient(135deg, #1976d2, #d32f2f, #388e3c);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 悬浮效果 */
+.floating-effect {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
   }
 }

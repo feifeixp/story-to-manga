@@ -1,5 +1,6 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
+import { I18nProvider } from "@/components/I18nProvider";
 import "../styles/manga-components.css";
 import "../styles/manga-theme.css";
 import "./globals.css";
@@ -15,11 +16,19 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	// 验证GA ID是否有效（不是占位符且存在）
+	const gaId = process.env["NEXT_PUBLIC_GA_MEASUREMENT_ID"];
+	const isValidGaId = gaId && gaId !== "G-XXXXXXXXXX" && gaId.startsWith("G-");
+
 	return (
 		<html lang="en">
 			<body suppressHydrationWarning={true}>
-				{children}
-				<GoogleAnalytics gaId={process.env["NEXT_PUBLIC_GA_MEASUREMENT_ID"]!} />
+				<I18nProvider>
+					{children}
+				</I18nProvider>
+				{isValidGaId && (
+					<GoogleAnalytics gaId={gaId} />
+				)}
 			</body>
 		</html>
 	);
