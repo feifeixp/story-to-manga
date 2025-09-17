@@ -8,6 +8,9 @@ import {
 	panelLogger,
 } from "@/lib/logger";
 
+// 使用panelLogger作为redrawLogger
+const redrawLogger = panelLogger;
+
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/redraw-image";
