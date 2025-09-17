@@ -443,7 +443,10 @@ export class AIModelRouter {
 				if (!this.volcEngineHandler) {
 					throw new Error("VolcEngine handler not available");
 				}
-				const result = await this.volcEngineHandler.generateMangaPanel(prompt, referenceImages, undefined, language, imageSize, style);
+				// 将referenceImages分为角色和设定参考图片
+				const characterRefs = referenceImages.filter(img => img.includes('character') || referenceImages.indexOf(img) < referenceImages.length / 2);
+				const settingRefs = referenceImages.filter(img => !characterRefs.includes(img));
+				const result = await this.volcEngineHandler.generateMangaPanel(prompt, characterRefs, settingRefs, language, imageSize, style);
 				return {
 					success: result.success,
 					modelUsed: "volcengine",
@@ -454,7 +457,10 @@ export class AIModelRouter {
 				if (!this.nanoBananaHandler) {
 					throw new Error("NanoBanana handler not available");
 				}
-				const result = await this.nanoBananaHandler.generateMangaPanel(prompt, referenceImages, undefined, language, imageSize, style);
+				// 将referenceImages分为角色和设定参考图片
+				const characterRefs = referenceImages.filter(img => img.includes('character') || referenceImages.indexOf(img) < referenceImages.length / 2);
+				const settingRefs = referenceImages.filter(img => !characterRefs.includes(img));
+				const result = await this.nanoBananaHandler.generateMangaPanel(prompt, characterRefs, settingRefs, language, imageSize, style);
 				return {
 					success: result.success,
 					modelUsed: "nanobanana",
@@ -465,7 +471,10 @@ export class AIModelRouter {
 				// Auto fallback to available model
 				console.log("Auto-selecting available model");
 				if (this.nanoBananaHandler) {
-					const result = await this.nanoBananaHandler.generateMangaPanel(prompt, referenceImages, undefined, language, imageSize, style);
+					// 将referenceImages分为角色和设定参考图片
+					const characterRefs = referenceImages.filter(img => img.includes('character') || referenceImages.indexOf(img) < referenceImages.length / 2);
+					const settingRefs = referenceImages.filter(img => !characterRefs.includes(img));
+					const result = await this.nanoBananaHandler.generateMangaPanel(prompt, characterRefs, settingRefs, language, imageSize, style);
 					return {
 						success: result.success,
 						modelUsed: "nanobanana",
@@ -473,7 +482,10 @@ export class AIModelRouter {
 						error: result.error,
 					};
 				} else if (this.volcEngineHandler) {
-					const result = await this.volcEngineHandler.generateMangaPanel(prompt, referenceImages, undefined, language, imageSize, style);
+					// 将referenceImages分为角色和设定参考图片
+					const characterRefs = referenceImages.filter(img => img.includes('character') || referenceImages.indexOf(img) < referenceImages.length / 2);
+					const settingRefs = referenceImages.filter(img => !characterRefs.includes(img));
+					const result = await this.volcEngineHandler.generateMangaPanel(prompt, characterRefs, settingRefs, language, imageSize, style);
 					return {
 						success: result.success,
 						modelUsed: "volcengine",
@@ -496,7 +508,10 @@ export class AIModelRouter {
 
 			try {
 				if (fallbackModel === "volcengine" && this.volcEngineHandler) {
-					const result = await this.volcEngineHandler.generateMangaPanel(prompt, referenceImages, undefined, language, imageSize, style);
+					// 将referenceImages分为角色和设定参考图片
+					const characterRefs = referenceImages.filter(img => img.includes('character') || referenceImages.indexOf(img) < referenceImages.length / 2);
+					const settingRefs = referenceImages.filter(img => !characterRefs.includes(img));
+					const result = await this.volcEngineHandler.generateMangaPanel(prompt, characterRefs, settingRefs, language, imageSize, style);
 					return {
 						success: result.success,
 						modelUsed: "volcengine",
@@ -504,7 +519,10 @@ export class AIModelRouter {
 						error: result.error || undefined,
 					};
 				} else if (fallbackModel === "nanobanana" && this.nanoBananaHandler) {
-					const result = await this.nanoBananaHandler.generateMangaPanel(prompt, referenceImages, undefined, language, imageSize, style);
+					// 将referenceImages分为角色和设定参考图片
+					const characterRefs = referenceImages.filter(img => img.includes('character') || referenceImages.indexOf(img) < referenceImages.length / 2);
+					const settingRefs = referenceImages.filter(img => !characterRefs.includes(img));
+					const result = await this.nanoBananaHandler.generateMangaPanel(prompt, characterRefs, settingRefs, language, imageSize, style);
 					return {
 						success: result.success,
 						modelUsed: "nanobanana",
