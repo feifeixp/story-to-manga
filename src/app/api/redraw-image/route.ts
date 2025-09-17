@@ -93,8 +93,22 @@ export async function POST(request: NextRequest) {
 
 		// 为panel类型构建完整的提示词（与generate-panel API保持一致）
 		if (imageType === 'panel') {
-			finalPrompt = `
-Create a single comic panel in ${stylePrefix}.
+			const panelInstructions = language === 'zh'
+				? `创建一个漫画面板，风格：${stylePrefix}。
+
+${finalPrompt}
+
+重要：使用提供的角色参考图片保持视觉一致性。每个角色都应该与参考图片中的外观完全匹配。
+
+面板应包含：
+- 清晰的面板边框
+- 对话气泡和对话文字（如有）- 重要：如果对话包含角色归属如"角色：'文字'"，只在对话气泡中放入说话内容，不要放角色名字
+- 思考气泡（如需要）
+- 适当的音效
+- 与参考图片匹配的一致角色设计
+
+生成一个具有适当构图和框架的单个漫画面板图像。`
+				: `Create a single comic panel in ${stylePrefix}.
 
 ${finalPrompt}
 
@@ -107,7 +121,9 @@ The panel should include:
 - Sound effects where appropriate
 - Consistent character designs matching the references
 
-Generate a single comic panel image with proper framing and composition.
+Generate a single comic panel image with proper framing and composition.`;
+
+			finalPrompt = panelInstructions;
 `;
 		}
 

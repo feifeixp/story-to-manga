@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const { characters, setting, style, uploadedCharacterRefs = [], aiModel = "auto" } = body;
+		const { characters, setting, style, uploadedCharacterRefs = [], aiModel = "auto", language = "en" } = body;
 
 		characterGenLogger.debug({
 			characters_count: characters?.length || 0,
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
 			setting: !!setting,
 			uploaded_refs_count: uploadedCharacterRefs?.length || 0,
 			ai_model: aiModel,
+			language,
 		}, "Received character reference generation request");
 
 		if (!characters || !Array.isArray(characters) || characters.length === 0) {
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
 			description: string;
 		}> = [];
 
-		const stylePrefix = getStylePrompt(style as ComicStyle, 'character', 'en');
+		const stylePrefix = getStylePrompt(style as ComicStyle, 'character', language as "en" | "zh");
 
 		for (const character of characters) {
 			const characterStartTime = Date.now();

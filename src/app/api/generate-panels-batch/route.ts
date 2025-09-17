@@ -171,15 +171,32 @@ export async function POST(request: NextRequest) {
 					// 查找面板对应的具体场景信息
 					const panelScene = panel.sceneId ? scenes.find((scene: any) => scene.id === panel.sceneId) : null;
 
-					// 构建提示词
-					let prompt = `
-Create a single comic panel in ${stylePrefix}.
+					// 根据语言选择提示词开头
+					const promptStart = language === 'zh'
+						? `创建一个漫画面板，风格：${stylePrefix}。
+
+全局设定：${setting.location}，${setting.timePeriod}，氛围：${setting.mood}`
+						: `Create a single comic panel in ${stylePrefix}.
 
 Global Setting: ${setting.location}, ${setting.timePeriod}, mood: ${setting.mood}`;
 
+					// 构建提示词
+					let prompt = promptStart;
+
 					// 添加具体场景信息
 					if (panelScene) {
-						prompt += `
+						const sceneInfo = language === 'zh'
+							? `
+
+具体场景：${panelScene.name}
+场景位置：${panelScene.location}
+场景描述：${panelScene.description}
+时间：${panelScene.timeOfDay || '未指定'}
+场景氛围：${panelScene.mood}
+关键视觉元素：${panelScene.visualElements.join('，')}
+
+重要：保持与此特定场景的视觉一致性。使用场景的视觉元素、氛围和位置细节来创建连贯的环境。`
+							: `
 
 Specific Scene: ${panelScene.name}
 Scene Location: ${panelScene.location}
@@ -189,15 +206,27 @@ Scene Mood: ${panelScene.mood}
 Key Visual Elements: ${panelScene.visualElements.join(', ')}
 
 IMPORTANT: Maintain visual consistency with this specific scene. Use the scene's visual elements, mood, and location details to create a cohesive environment.`;
+
+						prompt += sceneInfo;
 					}
 
-					prompt += `
+					const panelDetails = language === 'zh'
+						? `
+
+面板详情：
+第${panel.panelNumber}格：${charactersInPanel}的${panel.cameraAngle}镜头。场景：${panel.sceneDescription}。${panel.dialogue ? `对话："${cleanDialogue(panel.dialogue)}"` : "无对话。"}。氛围：${panel.visualMood}。
+
+重要：使用提供的角色参考图片保持视觉一致性。每个角色都应该与参考图片中的外观完全匹配。
+`
+						: `
 
 Panel Details:
 Panel ${panel.panelNumber}: ${panel.cameraAngle} shot of ${charactersInPanel}. Scene: ${panel.sceneDescription}. ${panel.dialogue ? `Dialogue: "${cleanDialogue(panel.dialogue)}"` : "No dialogue."}. Mood: ${panel.visualMood}.
 
 IMPORTANT: Use the character reference images provided to maintain visual consistency. Each character should match their appearance from the reference images exactly.
 `;
+
+					prompt += panelDetails;
 
 					// 添加场景参考图片说明
 					if (uploadedSettingReferences.length > 0) {

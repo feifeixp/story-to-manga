@@ -1699,6 +1699,7 @@ export default function Home() {
 					setting: analysis.setting,
 					style,
 					uploadedCharacterReferences,
+					language: i18n?.language || 'en',
 					aiModel,
 				}),
 			});
@@ -2423,6 +2424,8 @@ export default function Home() {
 				setting: storyAnalysis.setting,
 				style,
 				uploadedCharacterReferences,
+				language: i18n?.language || 'en',
+				aiModel,
 			}),
 		});
 
@@ -2592,6 +2595,7 @@ export default function Home() {
 					setting: storyAnalysis.setting,
 					style,
 					uploadedCharacterReferences,
+					language: i18n?.language || 'en',
 					aiModel,
 				}),
 			});
