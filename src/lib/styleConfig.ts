@@ -62,8 +62,8 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 			en: "Character reference sheet: Chinese wuxia cultivation style, ancient costume, flowing long hair, immortal bearing, spiritual aura, traditional Chinese painting style, English annotations"
 		},
 		panelPrompt: {
-			zh: "漫画面板：中国武侠修仙风格，古风意境，山水背景，灵气特效，飞行场面，传统构图美学，诗意氛围",
-			en: "Comic panel: Chinese wuxia cultivation style, ancient atmosphere, landscape backgrounds, spiritual effects, flying scenes, traditional compositional aesthetics, poetic atmosphere"
+			zh: "漫画面板：【重要：必须是中国武侠修仙风格】古代中国水墨画风，飘逸仙气，古装长袍，传统建筑，山峦云海，灵气光效，剑气纵横，修仙法术，古风诗意构图，中国传统美学，绝对不要现代元素",
+			en: "Comic panel: 【IMPORTANT: Must be Chinese wuxia cultivation style】Ancient Chinese ink painting style, ethereal immortal aura, traditional robes, classical architecture, mountains and clouds, spiritual light effects, sword energy, cultivation magic, poetic ancient composition, traditional Chinese aesthetics, absolutely no modern elements"
 		}
 	},
 	healing: {
