@@ -1692,56 +1692,144 @@ export default function Home() {
 			setStoryBreakdown(breakdown);
 			setOpenAccordions(new Set(["layout"])); // Auto-expand layout section
 
-			// Step 4: Generate comic panels
+			// Step 4: Generate comic panels using batch API for better efficiency
 			const panels: GeneratedPanel[] = [];
 
-			for (let i = 0; i < breakdown.panels.length; i++) {
-				const panel = breakdown.panels[i];
+			// 确定批次大小：根据面板数量和AI模型调整
+			const getBatchSize = () => {
+				const totalPanels = breakdown.panels.length;
+				const isVolcEngine = aiModel === 'volcengine';
+
+				if (totalPanels <= 3) return totalPanels;
+				if (isVolcEngine) return Math.min(3, totalPanels); // VolcEngine限制更严格
+				return Math.min(5, totalPanels); // Gemini可以更多并行
+			};
+
+			const batchSize = getBatchSize();
+			const totalBatches = Math.ceil(breakdown.panels.length / batchSize);
+
+			for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+				const startIndex = batchIndex * batchSize;
+				const endIndex = Math.min(startIndex + batchSize, breakdown.panels.length);
+				const batchPanels = breakdown.panels.slice(startIndex, endIndex);
+
 				setCurrentStepText(
-					`Generating panel ${i + 1}/${breakdown.panels.length}...`,
+					`Generating panels ${startIndex + 1}-${endIndex}/${breakdown.panels.length}... (Batch ${batchIndex + 1}/${totalBatches})`,
 				);
 
-				const panelResponse = await fetch("/api/generate-panel", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						panel,
-						characterReferences,
-						setting: analysis.setting,
-						style,
-						uploadedSettingReferences,
-						language: i18n?.language || "en",
-						aiModel, // 添加AI模型选择
-					}),
-				});
+				try {
+					const batchResponse = await fetch("/api/generate-panels-batch", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							panels: batchPanels,
+							characterReferences,
+							setting: analysis.setting,
+							style,
+							uploadedSettingReferences,
+							language: i18n?.language || "en",
+							aiModel,
+							imageSize,
+							batchSize: batchPanels.length,
+						}),
+					});
 
-				if (!panelResponse.ok) {
-					const errorMessage = await handleApiError(
-						panelResponse,
-						`Failed to generate panel ${i + 1}`,
-					);
+					if (!batchResponse.ok) {
+						const errorMessage = await handleApiError(
+							batchResponse,
+							`Failed to generate panels batch ${batchIndex + 1}`,
+						);
+						trackError(
+							"batch_panel_generation_failed",
+							`Batch ${batchIndex + 1}: ${errorMessage}`,
+						);
+
+						// 回退到单个面板生成
+						console.warn(`Batch ${batchIndex + 1} failed, falling back to individual panel generation`);
+						for (const panel of batchPanels) {
+							try {
+								const panelResponse = await fetch("/api/generate-panel", {
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({
+										panel,
+										characterReferences,
+										setting: analysis.setting,
+										style,
+										uploadedSettingReferences,
+										language: i18n?.language || "en",
+										aiModel,
+										imageSize,
+									}),
+								});
+
+								if (panelResponse.ok) {
+									const { generatedPanel } = await panelResponse.json();
+									panels.push(generatedPanel);
+									setGeneratedPanels([...panels]);
+								} else {
+									setFailedPanels(prev => new Set([...prev, panel.panelNumber]));
+								}
+							} catch (error) {
+								console.error(`Failed to generate panel ${panel.panelNumber}:`, error);
+								setFailedPanels(prev => new Set([...prev, panel.panelNumber]));
+							}
+						}
+						continue;
+					}
+
+					const batchResult = await batchResponse.json();
+
+					// 处理批次结果
+					if (batchResult.success && batchResult.results) {
+						// 按面板编号排序确保顺序正确
+						const sortedResults = batchResult.results.sort((a: any, b: any) => a.panelNumber - b.panelNumber);
+
+						sortedResults.forEach((result: any) => {
+							const generatedPanel = {
+								panelNumber: result.panelNumber,
+								image: result.image,
+								modelUsed: result.modelUsed,
+							};
+							panels.push(generatedPanel);
+						});
+
+						// 更新UI显示
+						setGeneratedPanels([...panels]);
+
+						// Auto-expand panels section after first panel is generated
+						if (panels.length === 1) {
+							setOpenAccordions(new Set(["panels"]));
+							// Track time to first panel
+							const timeToFirstPanel = Date.now() - generationStartTime;
+							trackPerformance("time_to_first_panel", timeToFirstPanel);
+						}
+					}
+
+					// 处理批次中的错误
+					if (batchResult.errors && batchResult.errors.length > 0) {
+						console.warn(`Batch ${batchIndex + 1} had ${batchResult.errors.length} errors:`, batchResult.errors);
+						batchResult.errors.forEach((error: any) => {
+							setFailedPanels(prev => new Set([...prev, error.panelNumber]));
+						});
+					}
+
+				} catch (error) {
+					console.error(`Batch ${batchIndex + 1} failed:`, error);
 					trackError(
-						"panel_generation_failed",
-						`Panel ${i + 1}: ${errorMessage}`,
+						"batch_panel_generation_error",
+						`Batch ${batchIndex + 1}: ${error instanceof Error ? error.message : String(error)}`,
 					);
-					// Store which panel failed
-					setFailedPanel({ step: "panel", panelNumber: i + 1 });
-					setFailedPanels(prev => new Set([...prev, i + 1]));
-					// 继续生成其他面板，而不是抛出错误
-					console.warn(`Panel ${i + 1} failed, continuing with next panels`);
-					continue;
+
+					// 标记整个批次的面板为失败
+					batchPanels.forEach(panel => {
+						setFailedPanels(prev => new Set([...prev, panel.panelNumber]));
+					});
 				}
 
-				const { generatedPanel } = await panelResponse.json();
-				panels.push(generatedPanel);
-				setGeneratedPanels([...panels]);
-
-				// Auto-expand panels section after first panel is generated
-				if (i === 0) {
-					setOpenAccordions(new Set(["panels"]));
-					// Track time to first panel
-					const timeToFirstPanel = Date.now() - generationStartTime;
-					trackPerformance("time_to_first_panel", timeToFirstPanel);
+				// 批次间延迟
+				if (batchIndex < totalBatches - 1) {
+					await new Promise(resolve => setTimeout(resolve, 1000));
 				}
 			}
 
@@ -2537,131 +2625,162 @@ export default function Home() {
 
 		try {
 			const panels: GeneratedPanel[] = [];
-			console.log(`🎯 Processing ${storyBreakdown.panels.length} panels`);
+			console.log(`🎯 Processing ${storyBreakdown.panels.length} panels using batch generation`);
 
-			for (let i = 0; i < storyBreakdown.panels.length; i++) {
-				const panel = storyBreakdown.panels[i];
-				console.log(`🎨 Processing panel ${i + 1}:`, panel);
-				
+			// 确定批次大小：根据面板数量和AI模型调整
+			const getBatchSize = () => {
+				const totalPanels = storyBreakdown.panels.length;
+				const isVolcEngine = aiModel === 'volcengine';
+
+				if (totalPanels <= 3) return totalPanels;
+				if (isVolcEngine) return Math.min(3, totalPanels); // VolcEngine限制更严格
+				return Math.min(5, totalPanels); // Gemini可以更多并行
+			};
+
+			const batchSize = getBatchSize();
+			const totalBatches = Math.ceil(storyBreakdown.panels.length / batchSize);
+			console.log(`📦 Using batch size: ${batchSize}, total batches: ${totalBatches}`);
+
+			for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+				const startIndex = batchIndex * batchSize;
+				const endIndex = Math.min(startIndex + batchSize, storyBreakdown.panels.length);
+				const batchPanels = storyBreakdown.panels.slice(startIndex, endIndex);
+
+				console.log(`🎨 Processing batch ${batchIndex + 1}/${totalBatches}:`, batchPanels.map(p => p.panelNumber));
+
 				setCurrentStepText(
-					`Re-generating panel ${i + 1}/${storyBreakdown.panels.length}...`,
+					`Re-generating panels ${startIndex + 1}-${endIndex}/${storyBreakdown.panels.length}... (Batch ${batchIndex + 1}/${totalBatches})`,
 				);
 
 				const requestBody = {
-					panel,
+					panels: batchPanels,
 					characterReferences,
 					setting: storyAnalysis.setting,
 					style,
 					uploadedSettingReferences,
 					language: i18n?.language || "en",
-					aiModel, // 添加AI模型选择
-					imageSize, // 添加图片尺寸配置
+					aiModel,
+					imageSize,
+					batchSize: batchPanels.length,
 				};
-				
-				console.log(`📤 API Request for panel ${i + 1}:`, {
-					url: '/api/generate-panel',
+
+				console.log(`📤 Batch API Request ${batchIndex + 1}:`, {
+					url: '/api/generate-panels-batch',
 					method: 'POST',
-					bodyKeys: Object.keys(requestBody),
+					panelsCount: batchPanels.length,
 					language: requestBody.language,
 					style: requestBody.style,
-					panelDescription: panel?.sceneDescription?.substring(0, 100) + '...'
 				});
 
-				const response = await fetch("/api/generate-panel", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(requestBody),
-				});
-
-				console.log(`📥 API Response for panel ${i + 1}:`, {
-					status: response.status,
-					statusText: response.statusText,
-					ok: response.ok,
-					headers: Object.fromEntries(response.headers.entries())
-				});
-
-				if (!response.ok) {
-					console.error(`❌ API Error for panel ${i + 1}:`, {
-						status: response.status,
-						statusText: response.statusText
-					});
-					
-					// Get the raw response text first
-					const responseText = await response.text();
-					console.error(`❌ Raw error response for panel ${i + 1}:`, responseText);
-					
-					// Try to parse as JSON, but handle cases where it's not JSON
-					let errorData;
-					let errorMessage = `Failed to regenerate panel ${i + 1}`;
-					
-					try {
-						errorData = JSON.parse(responseText);
-						console.error(`❌ Parsed error data for panel ${i + 1}:`, errorData);
-						
-						// Handle specific error types
-						if (response.status === 429) {
-							const retryAfter = errorData.retryAfter || 60;
-							errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds and try again.`;
-						} else if (response.status === 400 && errorData.errorType === "PROHIBITED_CONTENT") {
-							errorMessage = `⚠️ Content Safety Issue: ${errorData.error}\n\nTip: Try modifying your story to remove potentially inappropriate content, violence, or mature themes.`;
-						} else if (errorData.error) {
-							errorMessage = errorData.error;
-						}
-					} catch (parseError) {
-						console.error(`❌ Failed to parse error response as JSON:`, parseError);
-						errorMessage = responseText || `HTTP error! status: ${response.status}`;
-					}
-					
-					console.error(`❌ Final error message for panel ${i + 1}:`, errorMessage);
-					// 添加到失败列表并继续生成其他面板
-					setFailedPanels(prev => new Set([...prev, i + 1]));
-					console.warn(`Panel ${i + 1} failed, continuing with next panels`);
-					continue;
-				}
-
-				// Get the raw response text first
-				const responseText = await response.text();
-				console.log(`📋 Raw success response for panel ${i + 1}:`, responseText.substring(0, 200) + '...');
-
-				let result;
 				try {
-					result = JSON.parse(responseText);
-					console.log(`✅ Parsed success result for panel ${i + 1}:`, {
-						success: result.success,
-						hasGeneratedPanel: !!result.generatedPanel,
-						generatedPanelKeys: result.generatedPanel ? Object.keys(result.generatedPanel) : [],
-						imageUrl: result.generatedPanel?.image?.substring(0, 100) + '...'
+					const response = await fetch("/api/generate-panels-batch", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify(requestBody),
 					});
-				} catch (parseError) {
-					console.error(`❌ Failed to parse success response as JSON for panel ${i + 1}:`, parseError);
-					throw new Error('Invalid JSON response from server');
+
+					console.log(`📥 Batch API Response ${batchIndex + 1}:`, {
+						status: response.status,
+						statusText: response.statusText,
+						ok: response.ok,
+					});
+
+					if (!response.ok) {
+						console.error(`❌ Batch API Error ${batchIndex + 1}:`, {
+							status: response.status,
+							statusText: response.statusText
+						});
+
+						// 回退到单个面板生成
+						console.warn(`Batch ${batchIndex + 1} failed, falling back to individual panel generation`);
+						for (const panel of batchPanels) {
+							try {
+								const panelResponse = await fetch("/api/generate-panel", {
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({
+										panel,
+										characterReferences,
+										setting: storyAnalysis.setting,
+										style,
+										uploadedSettingReferences,
+										language: i18n?.language || "en",
+										aiModel,
+										imageSize,
+									}),
+								});
+
+								if (panelResponse.ok) {
+									const { generatedPanel } = await panelResponse.json();
+									panels.push(generatedPanel);
+									setGeneratedPanels([...panels]);
+									console.log(`🎉 Successfully generated panel ${panel.panelNumber} via fallback`);
+								} else {
+									setFailedPanels(prev => new Set([...prev, panel.panelNumber]));
+									console.warn(`Panel ${panel.panelNumber} failed in fallback`);
+								}
+							} catch (error) {
+								console.error(`Failed to generate panel ${panel.panelNumber} in fallback:`, error);
+								setFailedPanels(prev => new Set([...prev, panel.panelNumber]));
+							}
+						}
+						continue;
+					}
+
+					const batchResult = await response.json();
+					console.log(`✅ Batch result ${batchIndex + 1}:`, {
+						success: batchResult.success,
+						resultsCount: batchResult.results?.length || 0,
+						errorsCount: batchResult.errors?.length || 0,
+					});
+
+					// 处理批次结果
+					if (batchResult.success && batchResult.results) {
+						// 按面板编号排序确保顺序正确
+						const sortedResults = batchResult.results.sort((a: any, b: any) => a.panelNumber - b.panelNumber);
+
+						sortedResults.forEach((result: any) => {
+							const generatedPanel = {
+								panelNumber: result.panelNumber,
+								image: result.image,
+								modelUsed: result.modelUsed,
+							};
+							panels.push(generatedPanel);
+							console.log(`🎉 Successfully added panel ${result.panelNumber} from batch`);
+						});
+
+						// 更新UI显示
+						setGeneratedPanels([...panels]);
+
+						if (panels.length === 1) {
+							setOpenAccordions(new Set(["panels"]));
+						}
+					}
+
+					// 处理批次中的错误
+					if (batchResult.errors && batchResult.errors.length > 0) {
+						console.warn(`Batch ${batchIndex + 1} had ${batchResult.errors.length} errors:`, batchResult.errors);
+						batchResult.errors.forEach((error: any) => {
+							setFailedPanels(prev => new Set([...prev, error.panelNumber]));
+						});
+					}
+
+				} catch (error) {
+					console.error(`Batch ${batchIndex + 1} failed:`, error);
+
+					// 标记整个批次的面板为失败
+					batchPanels.forEach(panel => {
+						setFailedPanels(prev => new Set([...prev, panel.panelNumber]));
+					});
 				}
 
-				// Check if the API response indicates success
-				if (!result.success) {
-					console.error(`❌ API returned failure for panel ${i + 1}:`, result);
-					const errorMessage = result.error || `Failed to generate panel ${i + 1}`;
-					setFailedPanels(prev => new Set([...prev, i + 1]));
-					console.warn(`Panel ${i + 1} failed: ${errorMessage}, continuing with next panels`);
-					continue;
-				}
-
-				const { generatedPanel } = result;
-				if (!generatedPanel) {
-					console.error(`❌ No generatedPanel in response for panel ${i + 1}:`, result);
-					setFailedPanels(prev => new Set([...prev, i + 1]));
-					console.warn(`Panel ${i + 1} failed: No generated panel data, continuing with next panels`);
-					continue;
-				}
-				
-				panels.push(generatedPanel);
-				setGeneratedPanels([...panels]);
-				console.log(`🎉 Successfully added panel ${i + 1}, total panels: ${panels.length}`);
-
-				if (i === 0) {
-					setOpenAccordions(new Set(["panels"]));
+				// 批次间延迟
+				if (batchIndex < totalBatches - 1) {
+					await new Promise(resolve => setTimeout(resolve, 1000));
 				}
 			}
+
+
 
 			console.log('🏁 All panels generated successfully:', panels.length);
 			setCurrentStepText("Panels updated! 🎉");
