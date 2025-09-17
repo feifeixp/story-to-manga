@@ -237,20 +237,30 @@ class VolcEngineHandler {
 				imageRefs.push(...settingRefs.slice(0, remainingSlots));
 			}
 
-			console.log(`VolcEngine using ${imageRefs.length} reference images`)
+			// Convert relative image-proxy URLs to absolute URLs for VolcEngine
+			const absoluteImageRefs = imageRefs.map(img => {
+				if (img.startsWith('/api/image-proxy')) {
+					// Convert relative path to absolute URL
+					return `http://localhost:8000${img}`;
+				}
+				return img;
+			});
+
+			console.log(`VolcEngine using ${absoluteImageRefs.length} reference images`)
 
 			// 调试：检查图片格式
-			imageRefs.forEach((img, index) => {
+			absoluteImageRefs.forEach((img, index) => {
 				console.log(`Image ${index + 1} format:`, {
 					isBase64: img.startsWith('data:image/'),
 					isUrl: img.startsWith('http'),
-					preview: img.substring(0, 50) + '...'
+					isImageProxy: img.includes('/api/image-proxy'),
+					preview: img.substring(0, 80) + '...'
 				});
 			});
 
 			const request: GenerateImageRequest = {
 				prompt: enhancedPrompt,
-				...(imageRefs.length > 0 && { image: imageRefs }),
+				...(absoluteImageRefs.length > 0 && { image: absoluteImageRefs }),
 				sequential_image_generation: "auto",
 				sequential_image_generation_options: {
 					max_images: 1,
