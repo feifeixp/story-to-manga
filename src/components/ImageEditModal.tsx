@@ -19,6 +19,7 @@ interface ImageEditModalProps {
   onModify: (modificationPrompt: string) => Promise<void>;
   isProcessing: boolean;
   characterReferences?: Array<{ name: string; image: string; description?: string }>;
+  autoSelectedReferences?: ReferenceImage[]; // 自动选择的参考图片
 }
 
 export const ImageEditModal: React.FC<ImageEditModalProps> = ({
@@ -32,6 +33,7 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
   onModify,
   isProcessing,
   characterReferences = [],
+  autoSelectedReferences = [],
 }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'redraw' | 'modify'>('redraw');
@@ -39,6 +41,15 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
   const [modificationPrompt, setModificationPrompt] = useState('');
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const [showReferenceSelector, setShowReferenceSelector] = useState(false);
+
+  // 🎯 当模态框打开时，自动加载预选的参考图片
+  React.useEffect(() => {
+    if (isOpen && autoSelectedReferences.length > 0) {
+      setReferenceImages(autoSelectedReferences);
+      console.log(`🎯 Auto-loaded ${autoSelectedReferences.length} reference images for ${imageType} ${imageId}:`,
+        autoSelectedReferences.map(ref => ref.name));
+    }
+  }, [isOpen, autoSelectedReferences, imageType, imageId]);
 
   if (!isOpen) return null;
 

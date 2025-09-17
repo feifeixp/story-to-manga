@@ -983,6 +983,7 @@ export default function Home() {
 		id: string | number;
 		image: string;
 		originalPrompt: string;
+		autoSelectedReferences?: Array<{id: string; name: string; image: string; source: 'upload' | 'character'}>;
 	} | null>(null);
 	const [isImageProcessing, setIsImageProcessing] = useState(false);
 
@@ -1426,6 +1427,43 @@ export default function Home() {
 		originalPrompt: string
 	) => {
 		setEditingImage({ type, id, image, originalPrompt });
+
+		// 🎯 自动为面板重绘预选正确的角色参考图片
+		if (type === 'panel' && storyBreakdown) {
+			const panelNumber = typeof id === 'number' ? id : parseInt(id.toString());
+			const panel = storyBreakdown.panels.find(p => p.panelNumber === panelNumber);
+
+			if (panel && panel.characters && panel.characters.length > 0) {
+				// 根据面板涉及的角色自动选择对应的参考图片
+				const autoSelectedRefs: Array<{id: string; name: string; image: string; source: 'upload' | 'character'}> = [];
+
+				panel.characters.forEach((charName: string) => {
+					const matchingCharRef = characterReferences.find(ref => ref.name === charName);
+					if (matchingCharRef && autoSelectedRefs.length < 4) {
+						autoSelectedRefs.push({
+							id: `auto-${charName}-${Date.now()}`,
+							name: charName,
+							image: matchingCharRef.image,
+							source: 'character'
+						});
+					}
+				});
+
+				console.log(`🎯 Auto-selected ${autoSelectedRefs.length} character references for panel ${panelNumber}:`,
+					autoSelectedRefs.map(ref => ref.name));
+
+				// 将自动选择的参考图片传递给模态框
+				// 注意：这里我们需要修改ImageEditModal来接收初始参考图片
+				setEditingImage({
+					type,
+					id,
+					image,
+					originalPrompt,
+					autoSelectedReferences: autoSelectedRefs
+				});
+			}
+		}
+
 		setShowImageEditModal(true);
 	};
 
@@ -5335,6 +5373,7 @@ export default function Home() {
 					onModify={handleImageModify}
 					isProcessing={isImageProcessing}
 					characterReferences={characterReferences}
+					autoSelectedReferences={editingImage.autoSelectedReferences || []}
 				/>
 			)}
 

@@ -225,33 +225,44 @@ Generate a single comic panel image with proper framing and composition.
 
 		prompt += finalInstructions;
 
-		// 准备参考图片
+		// 🎯 准备参考图片 - 根据面板中的角色动态选择
 		const referenceImages: string[] = [];
 
-		// 添加角色参考图片
-		characterReferences.forEach((charRef: { name: string; image?: string }) => {
-			if (charRef.image) {
-				referenceImages.push(charRef.image);
+		// 获取当前面板涉及的角色
+		const panelCharacters = panel.characters || [];
+
+		// 根据面板中的角色名字匹配对应的参考图片
+		panelCharacters.forEach((charName: string) => {
+			const matchingCharRef = characterReferences.find(
+				(ref: { name: string; image?: string }) => ref.name === charName
+			);
+			if (matchingCharRef && matchingCharRef.image) {
+				referenceImages.push(matchingCharRef.image);
 			}
 		});
 
-		// 添加场景参考图片
-		uploadedSettingReferences.forEach((settingRef: { image?: string }) => {
-			if (settingRef.image) {
-				referenceImages.push(settingRef.image);
-			}
-		});
+		// 添加场景参考图片（填充剩余槽位，最多4张总计）
+		const remainingSlots = Math.max(0, 4 - referenceImages.length);
+		const settingImages = uploadedSettingReferences
+			.slice(0, remainingSlots)
+			.map((ref: { image?: string }) => ref.image)
+			.filter((img: string | undefined): img is string => !!img);
+		referenceImages.push(...settingImages);
 
 		panelLogger.info(
 			{
 				panel_number: panel.panelNumber,
 				prompt_length: prompt.length,
-				character_refs_attached: characterReferences.length,
+				panel_characters: panelCharacters,
+				matched_character_refs: panelCharacters.length,
+				total_character_refs_available: characterReferences.length,
 				uploaded_setting_refs_attached: uploadedSettingReferences.length,
 				reference_images_count: referenceImages.length,
+				character_images_used: referenceImages.length - settingImages.length,
+				setting_images_used: settingImages.length,
 				language: language,
 			},
-			"Calling AI Model Router for panel generation",
+			"Calling AI Model Router for panel generation with matched character references",
 		);
 
 		// 使用AI模型路由器生成漫画面板

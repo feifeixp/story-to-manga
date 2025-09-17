@@ -95,22 +95,14 @@ export async function POST(request: NextRequest) {
 		// 使用标准的风格配置，确保一致性
 		const stylePrefix = getStylePrompt(style as any, 'prefix', language);
 
-		// 准备参考图片
-		const referenceImages: string[] = [];
-		
-		// 添加角色参考图片（最多2张）
-		const characterImages = characterReferences
-			.slice(0, 2)
-			.map((ref: { image?: string }) => ref.image)
-			.filter((img: string | undefined): img is string => !!img);
-		referenceImages.push(...characterImages);
+		// 注意：角色参考图片将在每个面板处理时动态选择，而不是在这里固定选择
+		// 这样可以确保每个面板使用正确的角色参考图片
 
-		// 添加场景参考图片（填充剩余槽位，最多4张总计）
-		const settingImages = uploadedSettingReferences
-			.slice(0, 4 - referenceImages.length)
+		// 准备全局场景参考图片（所有面板共享）
+		const globalSettingImages = uploadedSettingReferences
+			.slice(0, 4) // 最多4张场景参考图片
 			.map((ref: { image?: string }) => ref.image)
 			.filter((img: string | undefined): img is string => !!img);
-		referenceImages.push(...settingImages);
 
 		// 获取AI模型路由器
 		const aiRouter = getAIModelRouter();
@@ -155,6 +147,40 @@ export async function POST(request: NextRequest) {
 							cached: true,
 						};
 					}
+
+					// 🎯 为当前面板动态选择正确的角色参考图片
+					const panelCharacters = panel.characters || [];
+					const panelCharacterImages: string[] = [];
+
+					// 根据面板中的角色名字匹配对应的参考图片
+					panelCharacters.forEach((charName: string) => {
+						const matchingCharRef = characterReferences.find(
+							(ref: { name: string; image?: string }) => ref.name === charName
+						);
+						if (matchingCharRef && matchingCharRef.image) {
+							panelCharacterImages.push(matchingCharRef.image);
+						}
+					});
+
+					// 准备当前面板的参考图片
+					const panelReferenceImages: string[] = [];
+
+					// 添加匹配的角色参考图片（最多2张）
+					panelReferenceImages.push(...panelCharacterImages.slice(0, 2));
+
+					// 添加场景参考图片（填充剩余槽位，最多4张总计）
+					const remainingSlots = 4 - panelReferenceImages.length;
+					if (remainingSlots > 0) {
+						panelReferenceImages.push(...globalSettingImages.slice(0, remainingSlots));
+					}
+
+					panelLogger.info({
+						panel_number: panel.panelNumber,
+						panel_characters: panelCharacters,
+						matched_character_refs: panelCharacterImages.length,
+						total_reference_images: panelReferenceImages.length,
+						setting_images_added: Math.max(0, panelReferenceImages.length - panelCharacterImages.length)
+					}, "Selected reference images for panel");
 
 					// 构建角色描述
 					const charactersInPanel = (panel.characters || [])
@@ -251,10 +277,10 @@ Generate a single comic panel image with proper framing and composition.
 						await new Promise(resolve => setTimeout(resolve, index * 200));
 					}
 
-					// 生成面板
+					// 生成面板 - 使用为当前面板动态选择的参考图片
 					const result = await aiRouter.generateComicPanel(
 						prompt,
-						referenceImages,
+						panelReferenceImages, // 使用动态选择的参考图片，而不是固定的referenceImages
 						language as "en" | "zh",
 						aiModel as any,
 						imageSize,
