@@ -61,8 +61,7 @@ export async function POST(request: NextRequest) {
 			description: string;
 		}> = [];
 
-		const styleConfig = getStylePrompt(style as ComicStyle);
-		const stylePrefix = styleConfig.characterPrompt;
+		const stylePrefix = getStylePrompt(style as ComicStyle, 'character', 'en');
 
 		for (const character of characters) {
 			const characterStartTime = Date.now();
@@ -94,14 +93,12 @@ export async function POST(request: NextRequest) {
 					.filter((ref: any) => ref.image)
 					.map((ref: any) => ref.image);
 
-				const result = await aiRouter.generateCharacterReference(
+				const result = await aiRouter.generateComicPanel(
 					prompt,
 					referenceImages,
-					undefined, // settingRefs
 					'en', // language
-					undefined, // imageSize
-					style as ComicStyle,
-					selectedModel
+					selectedModel,
+					undefined // imageSize
 				);
 
 				if (result.success && result.imageData) {
