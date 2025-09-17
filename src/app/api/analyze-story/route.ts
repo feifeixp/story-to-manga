@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { type NextRequest, NextResponse } from "next/server";
 import { parseGeminiJSON } from "@/lib/json-parser";
 import {
@@ -146,6 +146,7 @@ Focus on identifying distinct locations where story events occur to ensure visua
 
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
+				const attemptStartTime = Date.now();
 				storyAnalysisLogger.info(
 					{
 						attempt,
@@ -153,125 +154,36 @@ Focus on identifying distinct locations where story events occur to ensure visua
 						story_length: story.length,
 						word_count: wordCount,
 						model: model,
-						timeout_seconds: 60
+						timeout_seconds: 30,
+						api_key_length: apiKey?.length || 0
 					},
 					`🔄 Attempting Gemini API call (attempt ${attempt}/${maxRetries})`
 				);
 
-				// 设置超时控制 (故事分析需要更长时间，因为需要理解和分析整个故事内容)
+				// 设置超时控制 (由于Gemini服务器当前负载高，增加到45秒)
 				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000);
+					setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000);
 				});
 
+				// 尝试不使用JSON schema，让Gemini自由生成JSON，然后手动解析
+				// 这样可以避免复杂schema导致的性能问题
 				const apiCallPromise = genAI.models.generateContent({
 					model: model,
-					contents: prompt,
-					config: {
-						responseMimeType: "application/json",
-						responseSchema: {
-							type: Type.OBJECT,
-							properties: {
-								title: {
-									type: Type.STRING,
-								},
-								characters: {
-									type: Type.ARRAY,
-									items: {
-										type: Type.OBJECT,
-										properties: {
-											name: {
-												type: Type.STRING,
-											},
-											physicalDescription: {
-												type: Type.STRING,
-											},
-											personality: {
-												type: Type.STRING,
-											},
-											role: {
-												type: Type.STRING,
-											},
-										},
-										propertyOrdering: [
-											"name",
-											"physicalDescription",
-											"personality",
-											"role",
-										],
-									},
-								},
-								setting: {
-									type: Type.OBJECT,
-									properties: {
-										timePeriod: {
-											type: Type.STRING,
-										},
-										location: {
-											type: Type.STRING,
-										},
-										mood: {
-											type: Type.STRING,
-										},
-									},
-									propertyOrdering: ["timePeriod", "location", "mood"],
-								},
-								scenes: {
-									type: Type.ARRAY,
-									items: {
-										type: Type.OBJECT,
-										properties: {
-											id: {
-												type: Type.STRING,
-											},
-											name: {
-												type: Type.STRING,
-											},
-											description: {
-												type: Type.STRING,
-											},
-											location: {
-												type: Type.STRING,
-											},
-											timeOfDay: {
-												type: Type.STRING,
-											},
-											mood: {
-												type: Type.STRING,
-											},
-											visualElements: {
-												type: Type.ARRAY,
-												items: {
-													type: Type.STRING,
-												},
-											},
-										},
-										propertyOrdering: [
-											"id",
-											"name",
-											"description",
-											"location",
-											"timeOfDay",
-											"mood",
-											"visualElements",
-										],
-									},
-								},
-							},
-							propertyOrdering: ["title", "characters", "setting", "scenes"],
-						},
-					},
+					contents: prompt + "\n\nPlease respond with valid JSON only, no additional text.",
 				});
 
 				result = await Promise.race([apiCallPromise, timeoutPromise]);
 
+				const attemptDuration = Date.now() - attemptStartTime;
 				storyAnalysisLogger.info(
 					{
 						attempt,
 						success: true,
 						response_length: result?.text?.length || 0,
-						duration_ms: Date.now() - startTime
+						attempt_duration_ms: attemptDuration,
+						total_duration_ms: Date.now() - startTime
 					},
-					`✅ Gemini API call succeeded on attempt ${attempt}`
+					`✅ Gemini API call succeeded on attempt ${attempt} (${attemptDuration}ms)`
 				);
 				break; // 成功则跳出重试循环
 
@@ -293,11 +205,22 @@ Focus on identifying distinct locations where story events occur to ensure visua
 				);
 
 				if (attempt < maxRetries) {
-					// 等待一段时间后重试，使用指数退避
-					const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+					// 检查是否是503服务器过载错误
+					const isOverloadError = lastError.message.includes('overloaded') ||
+											lastError.message.includes('503') ||
+											lastError.message.includes('UNAVAILABLE');
+
+					// 对于服务器过载错误，等待更长时间
+					const baseDelay = isOverloadError ? 3000 : 1000;
+					const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 15000);
+
 					storyAnalysisLogger.info(
-						{ delay },
-						`Waiting ${delay}ms before retry`
+						{
+							delay,
+							is_overload_error: isOverloadError,
+							retry_reason: isOverloadError ? 'server_overload' : 'general_error'
+						},
+						`Waiting ${delay}ms before retry (${isOverloadError ? 'server overload' : 'general error'})`
 					);
 					await new Promise(resolve => setTimeout(resolve, delay));
 				}
