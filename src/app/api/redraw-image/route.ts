@@ -104,10 +104,10 @@ export async function POST(request: NextRequest) {
 			"🎨 Generated style prefix for redraw",
 		);
 
-		// 为panel类型构建完整的提示词（与generate-panel API保持一致）
+		// 为panel类型构建完整的提示词，避免"漫画面板"导致的黑白色问题
 		if (imageType === 'panel') {
 			const panelInstructions = language === 'zh'
-				? `创建一个漫画面板，风格：${stylePrefix}。
+				? `创建一个图像，风格：${stylePrefix}。
 
 ${finalPrompt}
 
@@ -120,8 +120,8 @@ ${finalPrompt}
 - 适当的音效
 - 与参考图片匹配的一致角色设计
 
-生成一个具有适当构图和框架的单个漫画面板图像。`
-				: `Create a single comic panel in ${stylePrefix}.
+生成一个具有适当构图和框架的单个面板图像。`
+				: `Create an image in ${stylePrefix}.
 
 ${finalPrompt}
 
@@ -134,7 +134,7 @@ The panel should include:
 - Sound effects where appropriate
 - Consistent character designs matching the references
 
-Generate a single comic panel image with proper framing and composition.`;
+Generate a single panel image with proper framing and composition.`;
 
 			finalPrompt = panelInstructions;
 		}
