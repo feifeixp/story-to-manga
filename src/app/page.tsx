@@ -1062,6 +1062,20 @@ export default function Home() {
 		console.log('🗑️ 缓存已清除');
 	};
 
+	// 🎯 Debug: Monitor character references state changes
+	useEffect(() => {
+		if (characterReferences.length > 0) {
+			console.log('🎉 Character references updated in state:', {
+				count: characterReferences.length,
+				characters: characterReferences.map(ref => ({
+					name: ref.name,
+					hasImage: !!ref.image,
+					imagePreview: ref.image?.substring(0, 80) + '...'
+				}))
+			});
+		}
+	}, [characterReferences]);
+
 	// Accordion state
 	const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
 
@@ -1956,7 +1970,7 @@ export default function Home() {
 					);
 
 					// 标记整个批次的面板为失败
-					batchPanels.forEach(panel => {
+					batchPanels.forEach((panel: any) => {
 						setFailedPanels(prev => new Set([...prev, panel.panelNumber]));
 					});
 				}
@@ -3124,19 +3138,19 @@ export default function Home() {
 		if (!originalUrl || originalUrl.includes('placeholder') || originalUrl.startsWith('data:')) {
 			return originalUrl;
 		}
-		
+
 		// Check if it's a VolcEngine URL that needs proxying
 		const volcEngineDomains = [
 			'ark-content-generation-v2-cn-beijing.tos-cn-beijing.volces.com',
 			'tos-cn-beijing.volces.com'
 		];
-		
+
 		try {
 			const urlObj = new URL(originalUrl);
-			const needsProxy = volcEngineDomains.some(domain => 
+			const needsProxy = volcEngineDomains.some(domain =>
 				urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
 			);
-			
+
 			if (needsProxy) {
 				// Convert to proxy URL
 				return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
@@ -3144,9 +3158,11 @@ export default function Home() {
 		} catch (error) {
 			console.warn('Invalid URL:', originalUrl);
 		}
-		
+
 		return originalUrl;
 	};
+
+
 
 	// Comic compositor functionality
 	const preloadImages = async (imageUrls: string[]): Promise<void> => {

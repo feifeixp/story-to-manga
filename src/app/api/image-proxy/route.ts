@@ -45,6 +45,17 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       console.error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+
+      // If it's a 403 (Forbidden), the URL might be expired
+      if (response.status === 403) {
+        console.warn('Image URL appears to be expired (403 Forbidden)');
+        // Return a placeholder or error image instead of failing completely
+        return NextResponse.json(
+          { error: 'Image URL expired', expired: true },
+          { status: 410 } // Gone - indicates the resource is no longer available
+        );
+      }
+
       return NextResponse.json(
         { error: `Failed to fetch image: ${response.status}` },
         { status: response.status }
