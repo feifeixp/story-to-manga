@@ -11,6 +11,23 @@ import {
 // 使用panelLogger作为redrawLogger
 const redrawLogger = panelLogger;
 
+// 清理提示词中的对话，移除角色名字以避免在图片中显示文字
+function cleanDialogueInPrompt(prompt: string): string {
+	// 匹配各种对话格式并清理角色名字
+	return prompt
+		// 匹配 "角色名: '对话内容'" 或 "角色名: "对话内容""
+		.replace(/([^:\n]+):\s*['"]([^'"]+)['"]/g, '"$2"')
+		// 匹配 "Dialogue: "角色名: '对话内容'""
+		.replace(/Dialogue:\s*"([^:]+):\s*['"]([^'"]+)['"]"/g, 'Dialogue: "$2"')
+		// 匹配 "Dialogue: 角色名: '对话内容'"
+		.replace(/Dialogue:\s*([^:]+):\s*['"]([^'"]+)['"]/g, 'Dialogue: "$2"')
+		// 匹配中文冒号格式 "角色名：'对话内容'"
+		.replace(/([^：\n]+)：\s*['"]([^'"]+)['"]/g, '"$2"')
+		// 清理多余的空格
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/redraw-image";
@@ -64,6 +81,9 @@ export async function POST(request: NextRequest) {
 			// 否则使用原始提示词
 			finalPrompt = originalPrompt;
 		}
+
+		// 清理提示词中的角色名字，避免在图片中显示文字
+		finalPrompt = cleanDialogueInPrompt(finalPrompt);
 
 		// 使用标准的风格配置，确保与生成panel API完全一致
 		const stylePrefix = getStylePrompt(style as any, 'panel', language);

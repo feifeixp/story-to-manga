@@ -9,6 +9,21 @@ import {
 	panelLogger,
 } from "@/lib/logger";
 
+// 清理对话内容，移除角色名字以避免在图片中显示文字
+function cleanDialogue(dialogue: string): string {
+	if (!dialogue) return dialogue;
+
+	// 匹配各种对话格式并清理角色名字
+	return dialogue
+		// 匹配 "角色名: '对话内容'" 或 "角色名: "对话内容""
+		.replace(/^([^:：]+)[:：]\s*['"]?([^'"]+)['"]?$/, '$2')
+		// 匹配 "角色名说：'对话内容'"
+		.replace(/^([^说]+)说[:：]\s*['"]?([^'"]+)['"]?$/, '$2')
+		// 清理引号
+		.replace(/^['"]|['"]$/g, '')
+		.trim();
+}
+
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/generate-panels-batch";
@@ -159,7 +174,7 @@ Create a single comic panel in ${stylePrefix}.
 Setting: ${setting.location}, ${setting.timePeriod}, mood: ${setting.mood}
 
 Panel Details:
-Panel ${panel.panelNumber}: ${panel.cameraAngle} shot of ${charactersInPanel}. Scene: ${panel.sceneDescription}. ${panel.dialogue ? `Dialogue: "${panel.dialogue}"` : "No dialogue."}. Mood: ${panel.visualMood}.
+Panel ${panel.panelNumber}: ${panel.cameraAngle} shot of ${charactersInPanel}. Scene: ${panel.sceneDescription}. ${panel.dialogue ? `Dialogue: "${cleanDialogue(panel.dialogue)}"` : "No dialogue."}. Mood: ${panel.visualMood}.
 
 IMPORTANT: Use the character reference images provided to maintain visual consistency. Each character should match their appearance from the reference images exactly.
 `;

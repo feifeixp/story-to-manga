@@ -4716,8 +4716,19 @@ export default function Home() {
 															onDownload={() => downloadPanel(generatedPanel)}
 															onEdit={() => {
 																// Create a prompt for the panel based on its properties
+																// Clean dialogue to remove character names that might appear in images
+																const cleanDialogue = (dialogue: string) => {
+																	if (!dialogue) return dialogue;
+																	// Remove character names from dialogue format like "Character: 'text'" or "角色：'文本'"
+																	return dialogue
+																		.replace(/^([^:：]+)[:：]\s*['"]?([^'"]+)['"]?$/, '$2')
+																		.replace(/^([^说]+)说[:：]\s*['"]?([^'"]+)['"]?$/, '$2')
+																		.replace(/^['"]|['"]$/g, '')
+																		.trim();
+																};
+
 																const panelPrompt = `Scene: ${panel.sceneDescription || 'No description'}${
-																	panel.dialogue ? `\nDialogue: "${panel.dialogue}"` : ''
+																	panel.dialogue ? `\nDialogue: "${cleanDialogue(panel.dialogue)}"` : ''
 																}${
 																	panel.cameraAngle ? `\nCamera: ${panel.cameraAngle}` : ''
 																}${
