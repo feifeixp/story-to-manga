@@ -635,8 +635,8 @@ function ShareableComicLayout({
 							分页显示已启用
 						</div>
 						<div style={{ fontSize: "14px", color: "#b45309" }}>
-							检测到 {generatedPanels.length} 个面板，分为 {Math.ceil(generatedPanels.length / 12)} 页显示。
-							当前显示：第 {Math.floor(visiblePanelRange.start / 12) + 1} 页 ({visiblePanelRange.start + 1}-{Math.min(visiblePanelRange.end, generatedPanels.length)} / {generatedPanels.length})
+							检测到 {generatedPanels.length} 个面板，分为 {Math.ceil(generatedPanels.length / 20)} 页显示。
+							当前显示：第 {Math.floor(visiblePanelRange.start / 20) + 1} 页 ({visiblePanelRange.start + 1}-{Math.min(visiblePanelRange.end, generatedPanels.length)} / {generatedPanels.length})
 						</div>
 					</div>
 				</div>
@@ -982,8 +982,8 @@ export default function Home() {
 		optimizedCount: 0,
 	});
 
-	// 分页显示状态 - 处理大量面板
-	const PANELS_PER_PAGE = 12;
+	// 分页显示状态 - 处理大量面板，统一为20个面板一页
+	const PANELS_PER_PAGE = 20;
 	const totalPages = Math.ceil(generatedPanels.length / PANELS_PER_PAGE);
 	const [currentPage, setCurrentPage] = useState(1);
 
