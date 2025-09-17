@@ -114,14 +114,26 @@ Transform your written stories into stunning visual manga or comic book pages us
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 一键部署（推荐）
+
+在新机器上快速部署，只需要一条命令：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/feifeixp/story-to-manga-enhanced/main/quick-deploy.sh | bash
+```
+
+这个脚本会自动安装所有依赖、配置环境并启动服务器。
+
+### 手动部署
+
+#### Prerequisites
 - Node.js 18+
 - pnpm (recommended) or npm
 
-### 1. Clone Repository
+#### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/story-to-manga-enhanced.git
+git clone https://github.com/feifeixp/story-to-manga-enhanced.git
 cd story-to-manga-enhanced
 ```
 

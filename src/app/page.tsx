@@ -3377,46 +3377,49 @@ export default function Home() {
 
 	return (
 		<div className="min-h-screen py-4 px-4 style-comic">
-			{/* Top navigation with logo */}
-			<div className="mb-4 flex items-center gap-3">
-				<a
-					href="/"
-					className="inline-flex items-center hover:opacity-80 transition-opacity"
-					title="Story to Manga Machine - Home"
-				>
-					<img
-						src="/logo.png"
-						alt="Story to Manga Machine Logo"
-						className="w-8 h-8 rounded"
-					/>
-				</a>
-				<button
-					onClick={() => setShowProjectManager(true)}
-					className="btn-manga-outline text-sm px-3 py-1"
-					title={t("projectManager")}
-				>
-					📁 我的项目
-				</button>
-				<button
-					onClick={clearCache}
-					className="btn-manga-outline text-sm px-3 py-1"
-					title="清除缓存（调试用）"
-				>
-					🗑️ 清除缓存
-				</button>
+			{/* Top navigation with logo and language switcher */}
+			<div className="mb-4 flex items-center justify-between">
+				<div className="flex items-center gap-3">
+					<a
+						href="/"
+						className="inline-flex items-center hover:opacity-80 transition-opacity"
+						title="Story to Manga Machine - Home"
+					>
+						<img
+							src="/logo.png"
+							alt="Story to Manga Machine Logo"
+							className="w-8 h-8 rounded"
+						/>
+					</a>
+					<button
+						onClick={() => setShowProjectManager(true)}
+						className="btn-manga-outline text-sm px-3 py-1"
+						title={t("projectManager")}
+					>
+						📁 {t("myProjects", "我的项目")}
+					</button>
+					<button
+						onClick={clearCache}
+						className="btn-manga-outline text-sm px-3 py-1"
+						title={t("clearCache", "清除缓存（调试用）")}
+					>
+						🗑️ {t("clearCache", "清除缓存")}
+					</button>
+				</div>
+
+				{/* Language switcher in top right */}
+				<LanguageSwitcher />
 			</div>
 			<div className="flex flex-col lg:flex-row gap-4 h-full">
 				{/* Left Panel - Input */}
 				<div className="w-full lg:w-1/3 mb-4 lg:mb-0">
 					<div className="comic-panel h-full">
-						<div className="flex justify-between items-center mb-2">
-							<div></div>
-							<h1 className="text-2xl text-center flex-1 text-gradient floating-effect">
+						<div className="mb-2">
+							<h1 className="text-2xl text-center text-gradient floating-effect">
 								{t("title", {
 									style: style === "manga" ? t("manga") : t("comic"),
 								})}
 							</h1>
-							<LanguageSwitcher />
 						</div>
 						<div className="text-center mb-4">
 							<img

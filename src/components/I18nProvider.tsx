@@ -35,12 +35,34 @@ export function I18nProvider({ children }: I18nProviderProps) {
       try {
         const i18n = await initI18n();
         setI18nInstance(i18n);
-        
-        // 从 localStorage 读取保存的语言设置
-        const savedLocale = localStorage.getItem('locale') || 'en';
-        await i18n.changeLanguage(savedLocale);
-        setLocaleState(savedLocale);
-        
+
+        // 自动检测用户系统语言
+        const detectSystemLanguage = () => {
+          // 获取浏览器语言设置
+          const browserLang = navigator.language || navigator.languages?.[0] || 'en';
+
+          // 检查是否为中文（包括简体和繁体）
+          if (browserLang.startsWith('zh')) {
+            return 'zh';
+          }
+
+          // 默认返回英文
+          return 'en';
+        };
+
+        // 优先级：localStorage > 系统语言 > 默认英文
+        const savedLocale = localStorage.getItem('locale');
+        const systemLocale = detectSystemLanguage();
+        const finalLocale = savedLocale || systemLocale;
+
+        await i18n.changeLanguage(finalLocale);
+        setLocaleState(finalLocale);
+
+        // 如果没有保存的语言设置，保存检测到的语言
+        if (!savedLocale) {
+          localStorage.setItem('locale', finalLocale);
+        }
+
         setIsInitialized(true);
       } catch (error) {
         console.error('Failed to initialize i18n:', error);
@@ -63,9 +85,10 @@ export function I18nProvider({ children }: I18nProviderProps) {
   };
 
   // 使用 i18n 实例的 t 函数，而不是 useTranslation hook
-  const t = (key: string, options?: any) => {
+  const t = (key: string, options?: any): string => {
     if (!i18nInstance) return key;
-    return i18nInstance.t(key, options);
+    const result = i18nInstance.t(key, options);
+    return typeof result === 'string' ? result : key;
   };
 
   const contextValue: I18nContextType = {
