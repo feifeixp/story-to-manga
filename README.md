@@ -10,7 +10,7 @@ Transform your written stories into stunning visual manga or comic book pages us
 
 - 🤖 **Multi-AI Model Support**: Choose between Google Gemini and VolcEngine Doubao
 - 📁 **Project Management**: Create, save, and manage multiple story projects
-- 🎨 **6 Comic Styles**: Japanese Manga, American Comic, Chinese Wuxia, Healing, Korean Manhwa, Cinematic
+- 🎨 **10 Comic Styles**: Japanese Manga, American Comic, Chinese Wuxia, Healing, Korean Manhwa, Cinematic, Shojo, Seinen, Chibi, Fantasy
 - 🖼️ **Advanced Image Editing**: Redraw and modify panels with reference images
 - 📏 **Custom Image Sizes**: Configure image dimensions per project
 - 🌍 **Internationalization**: Full Chinese and English language support
@@ -18,6 +18,28 @@ Transform your written stories into stunning visual manga or comic book pages us
 - ⚡ **Performance Optimizations**: Caching, parallel processing, lazy loading
 - 🔄 **Continue Generation**: Resume interrupted generations seamlessly
 - 📱 **Enhanced UI/UX**: Modern design with improved user experience
+- 🛡️ **Stability Improvements**: Robust error handling and crash prevention
+- 🔧 **Developer Experience**: Comprehensive logging and debugging tools
+
+## 🆕 Latest Updates (v2.1.0)
+
+### 🚀 **Stability & Reliability**
+- **Fixed Frontend Crashes**: Resolved critical issues with undefined setting handling
+- **Enhanced Error Recovery**: Improved graceful degradation when AI services are unavailable
+- **Robust Image Processing**: Fixed VolcEngine URL compatibility issues for seamless panel generation
+- **Smart Fallback Systems**: Automatic model switching when primary services encounter issues
+
+### 🎨 **Style & Quality Improvements**
+- **Optimized Style Prefixes**: Refined prompts for Wuxia, Healing, Manhwa, and Cinematic styles
+- **Better AI Understanding**: Simplified and focused style descriptions for more consistent results
+- **Enhanced Visual Consistency**: Improved character reference handling across all panels
+- **Cultural Authenticity**: More accurate style representations for different comic traditions
+
+### 🔧 **Technical Enhancements**
+- **Advanced Debugging**: Comprehensive logging system for better issue diagnosis
+- **Improved API Routing**: Enhanced parameter passing between AI model handlers
+- **Network Resilience**: Better timeout handling and connection error management
+- **Memory Optimization**: Reduced memory usage and improved performance for large projects
 
 ## Screenshots
 
@@ -51,13 +73,17 @@ Transform your written stories into stunning visual manga or comic book pages us
 - **VolcEngine Doubao**: Alternative AI model for diverse artistic styles
 - **Automatic Model Selection**: Smart fallback system for optimal results
 
-### 🎨 Six Distinct Comic Styles
+### 🎨 Ten Distinct Comic Styles
 - **Japanese Manga**: Traditional manga aesthetics with detailed linework
 - **American Comic**: Bold superhero comic book style
 - **Chinese Wuxia**: Martial arts and cultivation themes with Eastern aesthetics
 - **Healing Style**: Soft, warm, therapeutic visual style
 - **Korean Manhwa**: Modern webtoon-inspired artistic approach
 - **Cinematic**: Movie-like dramatic and realistic rendering
+- **Shojo**: Romantic and emotional manga style targeting young women
+- **Seinen**: Mature manga style for adult male audiences
+- **Chibi**: Cute, super-deformed character style
+- **Fantasy**: Epic fantasy art with magical and mythical elements
 
 ### 📁 Advanced Project Management
 - **Multiple Projects**: Create and manage separate story projects
@@ -184,6 +210,84 @@ pnpm dev
 ```
 
 Open [http://localhost:8000](http://localhost:8000) in your browser.
+
+## 🔄 Updating to Latest Version
+
+### For Existing Installations
+
+If you already have the project installed and want to update to the latest stable version:
+
+#### Method 1: Git Pull (Recommended)
+```bash
+cd story-to-manga-enhanced
+git pull origin main
+pnpm install  # Install any new dependencies
+pnpm dev      # Restart development server
+```
+
+#### Method 2: Fresh Installation
+If you encounter issues with git pull, you can do a fresh installation:
+```bash
+# Backup your .env.local file first
+cp .env.local .env.local.backup
+
+# Remove old installation
+rm -rf story-to-manga-enhanced
+
+# Fresh clone and setup
+git clone https://github.com/feifeixp/story-to-manga-enhanced.git
+cd story-to-manga-enhanced
+pnpm install
+
+# Restore your API keys
+cp .env.local.backup .env.local
+
+# Start development server
+pnpm dev
+```
+
+### For Production Deployments
+
+#### AWS Amplify
+Your deployment will automatically update when you push changes to your connected GitHub repository.
+
+#### Vercel
+Vercel will automatically redeploy when you push to your connected repository.
+
+#### Manual Server Updates
+```bash
+# On your production server
+cd /path/to/your/deployment
+git pull origin main
+pnpm install
+pnpm build
+pm2 restart your-app-name  # or your process manager
+```
+
+### 📋 Update Checklist
+
+After updating, verify these features are working:
+- [ ] Project creation and management
+- [ ] Story analysis and character generation
+- [ ] Panel generation with your preferred AI model
+- [ ] Image editing and redraw functionality
+- [ ] Export and download features
+- [ ] Language switching (Chinese/English)
+
+### 🆘 Update Troubleshooting
+
+**If you encounter issues after updating:**
+
+1. **Clear Browser Cache**: Hard refresh (Ctrl+F5 or Cmd+Shift+R)
+2. **Clear Application Data**:
+   - Open browser DevTools → Application → Storage → Clear site data
+3. **Reinstall Dependencies**:
+   ```bash
+   rm -rf node_modules package-lock.json
+   pnpm install
+   ```
+4. **Check API Keys**: Ensure your `.env.local` file has valid API keys
+5. **Restart Development Server**: Stop and restart `pnpm dev`
 
 ## 🔄 How It Works
 

@@ -124,7 +124,6 @@ The panel should include:
 Generate a single comic panel image with proper framing and composition.`;
 
 			finalPrompt = panelInstructions;
-`;
 		}
 
 		// 处理参考图片：将代理URL转换为实际图片数据
