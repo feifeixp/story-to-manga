@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
 		// 清理提示词中的角色名字，避免在图片中显示文字
 		finalPrompt = cleanDialogueInPrompt(finalPrompt);
 
-		// 使用标准的风格配置，确保与生成panel API完全一致
-		const stylePrefix = getStylePrompt(style as any, 'panel', language);
+		// 使用promptPrefix而不是panelPrompt，确保风格一致性
+		const stylePrefix = getStylePrompt(style as any, 'prefix', language);
 
 		redrawLogger.info(
 			{
@@ -98,6 +98,8 @@ export async function POST(request: NextRequest) {
 				style,
 				language,
 				style_prefix_preview: stylePrefix.substring(0, 100) + "...",
+				original_prompt_preview: originalPrompt.substring(0, 200) + "...",
+				final_prompt_preview: finalPrompt.substring(0, 200) + "...",
 			},
 			"🎨 Generated style prefix for redraw",
 		);
@@ -225,6 +227,17 @@ Generate a single comic panel image with proper framing and composition.`;
 				let generationPromise: Promise<any>;
 
 				if (imageType === 'panel') {
+					// 添加最终提示词调试信息
+					redrawLogger.info(
+						{
+							requestId,
+							final_prompt_to_ai: finalPrompt,
+							prompt_length: finalPrompt.length,
+							reference_images_count: processedReferenceImages.length,
+						},
+						"🚀 Sending final prompt to AI for panel redraw",
+					);
+
 					// 对于panel类型，使用与generate-panel API完全相同的调用方式
 					generationPromise = aiRouter.generateComicPanel(
 						finalPrompt,
