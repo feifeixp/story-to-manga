@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAIModelRouter } from "@/lib/aiModelRouter";
+import { getStylePrompt } from "@/lib/styleConfig";
 import {
 	logApiRequest,
 	logApiResponse,
@@ -50,8 +51,39 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Use new prompt if provided, otherwise use original prompt
-		const promptToUse = newPrompt || originalPrompt;
+		// 构建与生成panel API一致的提示词
+		let finalPrompt: string;
+
+		if (newPrompt) {
+			// 如果用户提供了新的提示词，使用新提示词
+			finalPrompt = newPrompt;
+		} else {
+			// 否则使用原始提示词
+			finalPrompt = originalPrompt;
+		}
+
+		// 使用标准的风格配置，确保与生成panel API完全一致
+		const stylePrefix = getStylePrompt(style as any, 'prefix', language);
+
+		// 为panel类型构建完整的提示词（与generate-panel API保持一致）
+		if (imageType === 'panel') {
+			finalPrompt = `
+Create a single comic panel in ${stylePrefix}.
+
+${finalPrompt}
+
+IMPORTANT: Use the character reference images provided to maintain visual consistency. Each character should match their appearance from the reference images exactly.
+
+The panel should include:
+- Clear panel border
+- Speech bubbles with dialogue text (if any) - IMPORTANT: If dialogue includes character attribution like "Character: 'text'", only put the spoken text in the speech bubble, NOT the character name
+- Thought bubbles if needed
+- Sound effects where appropriate
+- Consistent character designs matching the references
+
+Generate a single comic panel image with proper framing and composition.
+`;
+		}
 
 		// 处理参考图片：将代理URL转换为实际图片数据
 		console.log(`Processing ${referenceImages.length} reference images:`, referenceImages);
@@ -111,7 +143,7 @@ export async function POST(request: NextRequest) {
 			{
 				image_type: imageType,
 				image_id: imageId,
-				prompt_length: promptToUse.length,
+				prompt_length: finalPrompt.length,
 				reference_images_count: referenceImages.length,
 				processed_reference_images_count: processedReferenceImages.length,
 				language: language,
@@ -119,13 +151,14 @@ export async function POST(request: NextRequest) {
 			"Calling AI Model Router for image redraw",
 		);
 
-		// Use AI model router to redraw the image
+		// Use AI model router to redraw the image - 使用与generate-panel API相同的方法
 		const aiRouter = getAIModelRouter();
 		let result;
 
 		if (imageType === 'panel') {
+			// 对于panel类型，使用与generate-panel API完全相同的调用方式
 			result = await aiRouter.generateComicPanel(
-				promptToUse,
+				finalPrompt,
 				processedReferenceImages,
 				language as "en" | "zh",
 				aiModel as any,
@@ -133,8 +166,9 @@ export async function POST(request: NextRequest) {
 				style,
 			);
 		} else if (imageType === 'character') {
+			// 对于character类型，使用generateMangaPanel方法
 			result = await aiRouter.generateMangaPanel(
-				promptToUse,
+				finalPrompt,
 				language as "en" | "zh",
 				aiModel as any,
 				processedReferenceImages,

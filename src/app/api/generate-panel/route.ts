@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAIModelRouter } from "@/lib/aiModelRouter";
 import { cacheHelpers } from "@/lib/cacheManager";
+import { getStylePrompt } from "@/lib/styleConfig";
 import {
 	logApiRequest,
 	logApiResponse,
@@ -89,15 +90,8 @@ export async function POST(request: NextRequest) {
 			});
 		}
 
-		// 根据语言和风格调整样式描述，确保一致性
-		const stylePrefix =
-			style === "manga"
-				? language === "zh"
-					? "日式漫画风格（黑白配网点），使用中文文字和对话框，保持角色外观一致性"
-					: "Japanese manga visual style (black and white with screentones), use English text and speech bubbles, maintain character appearance consistency"
-				: language === "zh"
-					? "美式漫画风格，全彩色，清晰线条艺术，使用中文文字和对话框，保持角色外观一致性"
-					: "American comic book style, full color, clean line art, use English text and speech bubbles, maintain character appearance consistency";
+		// 使用标准的风格配置，确保一致性
+		const stylePrefix = getStylePrompt(style as any, 'prefix', language);
 
 		// Process single panel
 		panelLogger.debug(
