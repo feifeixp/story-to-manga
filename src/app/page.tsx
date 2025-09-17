@@ -1656,12 +1656,26 @@ export default function Home() {
 		setError(null);
 
 		try {
-			// Step 1: Analyze story
-			const analysisResponse = await fetch("/api/analyze-story", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ story, style }),
-			});
+			// Step 1: Analyze story (with timeout control)
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 75000); // 75秒超时，比后端60秒稍长
+
+			let analysisResponse;
+			try {
+				analysisResponse = await fetch("/api/analyze-story", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ story, style }),
+					signal: controller.signal,
+				});
+				clearTimeout(timeoutId);
+			} catch (fetchError) {
+				clearTimeout(timeoutId);
+				if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+					throw new Error('故事分析请求超时。这可能是因为：\n\n• 故事内容过长或复杂\n• 网络连接不稳定\n• 服务器负载较高\n\n建议：\n• 尝试简化故事内容\n• 检查网络连接\n• 稍后重试');
+				}
+				throw fetchError;
+			}
 
 			if (!analysisResponse.ok) {
 				throw new Error(
@@ -2359,11 +2373,27 @@ export default function Home() {
 
 	const retryAnalysis = async () => {
 		setCurrentStepText("Retrying story analysis...");
-		const response = await fetch("/api/analyze-story", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ story, style }),
-		});
+
+		// 添加超时控制
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 75000);
+
+		let response;
+		try {
+			response = await fetch("/api/analyze-story", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ story, style }),
+				signal: controller.signal,
+			});
+			clearTimeout(timeoutId);
+		} catch (fetchError) {
+			clearTimeout(timeoutId);
+			if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+				throw new Error('故事分析重试超时。请尝试简化故事内容或稍后重试。');
+			}
+			throw fetchError;
+		}
 
 		if (!response.ok) {
 			throw new Error(
@@ -2495,11 +2525,27 @@ export default function Home() {
 
 		try {
 			setCurrentStepText("Re-analyzing your story...");
-			const response = await fetch("/api/analyze-story", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ story, style }),
-			});
+
+			// 添加超时控制
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 75000);
+
+			let response;
+			try {
+				response = await fetch("/api/analyze-story", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ story, style }),
+					signal: controller.signal,
+				});
+				clearTimeout(timeoutId);
+			} catch (fetchError) {
+				clearTimeout(timeoutId);
+				if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+					throw new Error('故事重新分析超时。请尝试简化故事内容或稍后重试。');
+				}
+				throw fetchError;
+			}
 
 			if (!response.ok) {
 				throw new Error(

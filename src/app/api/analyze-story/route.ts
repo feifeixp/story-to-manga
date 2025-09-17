@@ -125,13 +125,20 @@ Please provide:
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
 				storyAnalysisLogger.info(
-					{ attempt, maxRetries },
-					`Attempting Gemini API call (attempt ${attempt}/${maxRetries})`
+					{
+						attempt,
+						maxRetries,
+						story_length: story.length,
+						word_count: wordCount,
+						model: model,
+						timeout_seconds: 60
+					},
+					`🔄 Attempting Gemini API call (attempt ${attempt}/${maxRetries})`
 				);
 
-				// 设置超时控制
+				// 设置超时控制 (故事分析需要更长时间，因为需要理解和分析整个故事内容)
 				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+					setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000);
 				});
 
 				const apiCallPromise = genAI.models.generateContent({
@@ -195,8 +202,13 @@ Please provide:
 				result = await Promise.race([apiCallPromise, timeoutPromise]);
 
 				storyAnalysisLogger.info(
-					{ attempt, success: true },
-					`Gemini API call succeeded on attempt ${attempt}`
+					{
+						attempt,
+						success: true,
+						response_length: result?.text?.length || 0,
+						duration_ms: Date.now() - startTime
+					},
+					`✅ Gemini API call succeeded on attempt ${attempt}`
 				);
 				break; // 成功则跳出重试循环
 
