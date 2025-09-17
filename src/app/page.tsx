@@ -1427,7 +1427,8 @@ export default function Home() {
 			});
 
 			if (!response.ok) {
-				throw new Error(`Failed to redraw image: ${response.statusText}`);
+				const errorMessage = await handleApiError(response, "Failed to redraw image");
+				throw new Error(errorMessage);
 			}
 
 			const result = await response.json();
@@ -1500,7 +1501,8 @@ export default function Home() {
 			});
 
 			if (!response.ok) {
-				throw new Error(`Failed to modify image: ${response.statusText}`);
+				const errorMessage = await handleApiError(response, "Failed to modify image");
+				throw new Error(errorMessage);
 			}
 
 			const result = await response.json();
