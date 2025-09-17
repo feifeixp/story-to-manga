@@ -43,6 +43,8 @@
 	"cinematicStyle": "电影风格",
 	"comicStyle": "漫画风格",
 	"selectStyle": "选择风格",
+	"selectedStyle": "已选择风格",
+	"styleLockedMessage": "项目风格已锁定，无法修改",
 	"japaneseManga": "日本漫画",
 	"americanComic": "美式漫画",
 	"koreanManhwa": "韩漫风格",

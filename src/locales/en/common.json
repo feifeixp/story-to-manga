@@ -20,6 +20,8 @@
 	"cinematicStyle": "Cinematic Style",
 	"comicStyle": "Comic Style",
 	"selectStyle": "Select Style",
+	"selectedStyle": "Selected Style",
+	"styleLockedMessage": "Style is locked for this project and cannot be changed",
 	"japaneseManga": "Japanese Manga",
 	"americanComic": "American Comic",
 	"koreanManhwa": "Korean Manhwa",

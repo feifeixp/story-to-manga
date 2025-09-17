@@ -3609,162 +3609,185 @@ export default function Home() {
 							{t("description")}
 						</p>
 
-						{/* Style Selection */}
+						{/* Style Selection/Display */}
 						<div className="mb-4">
 							<div className="text-manga-black font-medium mb-2">
 								{t("comicStyle")}
 							</div>
-							<div className="grid grid-cols-2 gap-2">
-								{/* Japanese Manga */}
-								<div>
-									<input
-										type="radio"
-										className="sr-only"
-										name="style"
-										id={mangaRadioId}
-										checked={style === "manga"}
-										onChange={() => {
-											setStyle("manga");
-											trackEvent({
-												action: "change_style",
-												category: "user_interaction",
-												label: "manga",
-											});
-										}}
-									/>
-									<label
-										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
-										htmlFor={mangaRadioId}
-									>
-										{t("japaneseManga")}
-									</label>
+							{currentProjectId ? (
+								// 项目已创建，只显示当前选择的风格，不允许修改
+								<div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+									<div className="flex items-center justify-between">
+										<span className="text-sm text-gray-600">
+											{t("selectedStyle")}:
+										</span>
+										<span className="font-medium text-manga-black">
+											{style === "manga" && t("japaneseManga")}
+											{style === "comic" && t("americanComic")}
+											{style === "wuxia" && t("wuxiaCultivation")}
+											{style === "healing" && t("healingAnime")}
+											{style === "manhwa" && t("koreanManhwa")}
+											{style === "cinematic" && t("cinematicStyle")}
+										</span>
+									</div>
+									<p className="text-xs text-gray-500 mt-1">
+										{t("styleLockedMessage")}
+									</p>
 								</div>
+							) : (
+								// 新项目创建，允许选择风格
+								<div className="grid grid-cols-2 gap-2">
+									{/* Japanese Manga */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id={mangaRadioId}
+											checked={style === "manga"}
+											onChange={() => {
+												setStyle("manga");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "manga",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor={mangaRadioId}
+										>
+											{t("japaneseManga")}
+										</label>
+									</div>
 
-								{/* American Comic */}
-								<div>
-									<input
-										type="radio"
-										className="sr-only"
-										name="style"
-										id={comicRadioId}
-										checked={style === "comic"}
-										onChange={() => {
-											setStyle("comic");
-											trackEvent({
-												action: "change_style",
-												category: "user_interaction",
-												label: "comic",
-											});
-										}}
-									/>
-									<label
-										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
-										htmlFor={comicRadioId}
-									>
-										{t("americanComic")}
-									</label>
-								</div>
+									{/* American Comic */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id={comicRadioId}
+											checked={style === "comic"}
+											onChange={() => {
+												setStyle("comic");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "comic",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor={comicRadioId}
+										>
+											{t("americanComic")}
+										</label>
+									</div>
 
-								{/* Wuxia Cultivation */}
-								<div>
-									<input
-										type="radio"
-										className="sr-only"
-										name="style"
-										id="wuxia-radio"
-										checked={style === "wuxia"}
-										onChange={() => {
-											setStyle("wuxia");
-											trackEvent({
-												action: "change_style",
-												category: "user_interaction",
-												label: "wuxia",
-											});
-										}}
-									/>
-									<label
-										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
-										htmlFor="wuxia-radio"
-									>
-										{t("wuxiaCultivation")}
-									</label>
-								</div>
+									{/* Wuxia Cultivation */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="wuxia-radio"
+											checked={style === "wuxia"}
+											onChange={() => {
+												setStyle("wuxia");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "wuxia",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="wuxia-radio"
+										>
+											{t("wuxiaCultivation")}
+										</label>
+									</div>
 
-								{/* Healing Anime */}
-								<div>
-									<input
-										type="radio"
-										className="sr-only"
-										name="style"
-										id="healing-radio"
-										checked={style === "healing"}
-										onChange={() => {
-											setStyle("healing");
-											trackEvent({
-												action: "change_style",
-												category: "user_interaction",
-												label: "healing",
-											});
-										}}
-									/>
-									<label
-										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
-										htmlFor="healing-radio"
-									>
-										{t("healingAnime")}
-									</label>
-								</div>
+									{/* Healing Anime */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="healing-radio"
+											checked={style === "healing"}
+											onChange={() => {
+												setStyle("healing");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "healing",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="healing-radio"
+										>
+											{t("healingAnime")}
+										</label>
+									</div>
 
-								{/* Korean Manhwa */}
-								<div>
-									<input
-										type="radio"
-										className="sr-only"
-										name="style"
-										id="manhwa-radio"
-										checked={style === "manhwa"}
-										onChange={() => {
-											setStyle("manhwa");
-											trackEvent({
-												action: "change_style",
-												category: "user_interaction",
-												label: "manhwa",
-											});
-										}}
-									/>
-									<label
-										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
-										htmlFor="manhwa-radio"
-									>
-										{t("koreanManhwa")}
-									</label>
-								</div>
+									{/* Korean Manhwa */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="manhwa-radio"
+											checked={style === "manhwa"}
+											onChange={() => {
+												setStyle("manhwa");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "manhwa",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="manhwa-radio"
+										>
+											{t("koreanManhwa")}
+										</label>
+									</div>
 
-								{/* Cinematic Style */}
-								<div>
-									<input
-										type="radio"
-										className="sr-only"
-										name="style"
-										id="cinematic-radio"
-										checked={style === "cinematic"}
-										onChange={() => {
-											setStyle("cinematic");
-											trackEvent({
-												action: "change_style",
-												category: "user_interaction",
-												label: "cinematic",
-											});
-										}}
-									/>
-									<label
-										className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
-										htmlFor="cinematic-radio"
-									>
-										{t("cinematicStyle")}
-									</label>
+									{/* Cinematic Style */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="cinematic-radio"
+											checked={style === "cinematic"}
+											onChange={() => {
+												setStyle("cinematic");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "cinematic",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="cinematic-radio"
+										>
+											{t("cinematicStyle")}
+										</label>
+									</div>
 								</div>
-							</div>
+							)}
 						</div>
 
 						{/* AI Model Selection */}
