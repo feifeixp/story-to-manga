@@ -1725,6 +1725,7 @@ export default function Home() {
 					story,
 					characters: analysis.characters,
 					setting: analysis.setting,
+					scenes: analysis.scenes,
 					style,
 				}),
 			});
@@ -2298,6 +2299,8 @@ export default function Home() {
 					body: JSON.stringify({
 						panel,
 						characterReferences,
+						setting: storyAnalysis.setting,
+						scenes: storyAnalysis.scenes,
 						uploadedCharacterReferences,
 						uploadedSettingReferences,
 						style,
@@ -2728,6 +2731,7 @@ export default function Home() {
 					panels: batchPanels,
 					characterReferences,
 					setting: storyAnalysis.setting,
+					scenes: storyAnalysis.scenes,
 					style,
 					uploadedSettingReferences,
 					language: i18n?.language || "en",

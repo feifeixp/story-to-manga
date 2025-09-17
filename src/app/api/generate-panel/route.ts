@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
 		const {
 			characterReferences,
 			setting,
+			scenes = [], // 添加场景信息参数
 			style,
 			uploadedSettingReferences = [],
 			language = "en", // 添加语言参数，默认为英文
@@ -129,10 +130,29 @@ export async function POST(request: NextRequest) {
 			})
 			.join(" and ");
 
+		// 查找面板对应的具体场景信息
+		const panelScene = panel.sceneId ? scenes.find((scene: any) => scene.id === panel.sceneId) : null;
+
 		let prompt = `
 Create a single comic panel in ${stylePrefix}.
 
-Setting: ${setting.location}, ${setting.timePeriod}, mood: ${setting.mood}
+Global Setting: ${setting.location}, ${setting.timePeriod}, mood: ${setting.mood}`;
+
+		// 添加具体场景信息
+		if (panelScene) {
+			prompt += `
+
+Specific Scene: ${panelScene.name}
+Scene Location: ${panelScene.location}
+Scene Description: ${panelScene.description}
+Time of Day: ${panelScene.timeOfDay || 'unspecified'}
+Scene Mood: ${panelScene.mood}
+Key Visual Elements: ${panelScene.visualElements.join(', ')}
+
+IMPORTANT: Maintain visual consistency with this specific scene. Use the scene's visual elements, mood, and location details to create a cohesive environment.`;
+		}
+
+		prompt += `
 
 Panel Details:
 Panel ${panel.panelNumber}: ${panel.cameraAngle} shot of ${charactersInPanel}. Scene: ${panel.sceneDescription}. ${panel.dialogue ? `Dialogue: "${cleanDialogue(panel.dialogue)}"` : "No dialogue."}. Mood: ${panel.visualMood}.

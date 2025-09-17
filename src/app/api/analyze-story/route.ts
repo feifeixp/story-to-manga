@@ -21,9 +21,20 @@ interface Setting {
 	mood: string;
 }
 
+interface Scene {
+	id: string;
+	name: string;
+	description: string;
+	location: string;
+	timeOfDay?: string;
+	mood: string;
+	visualElements: string[];
+}
+
 interface AnalysisData {
 	characters: Character[];
 	setting: Setting;
+	scenes: Scene[];
 }
 
 const apiKey = process.env["GOOGLE_AI_API_KEY"];
@@ -91,7 +102,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const prompt = `
-Analyze this story and extract the main characters with their detailed characteristics:
+Analyze this story and extract the main characters, setting, and specific scenes:
 
 Story: "${story}"
 
@@ -106,7 +117,18 @@ Please provide:
    - Personality traits
    - Role in the story
 
-3. Setting description (time period, location, mood)
+3. Global setting description (time period, general location, overall mood)
+
+4. Specific scenes that occur in the story (2-8 scenes maximum, based on story complexity) with:
+   - Unique ID (scene1, scene2, etc.)
+   - Scene name (brief descriptive name)
+   - Detailed description of the location/environment
+   - Specific location within the global setting
+   - Time of day (if relevant: morning, afternoon, evening, night)
+   - Mood/atmosphere of this specific scene
+   - Key visual elements that should be consistent (architecture, furniture, landscape features, etc.)
+
+Focus on identifying distinct locations where story events occur to ensure visual consistency across panels.
 `;
 
 		storyAnalysisLogger.info(
@@ -193,8 +215,49 @@ Please provide:
 									},
 									propertyOrdering: ["timePeriod", "location", "mood"],
 								},
+								scenes: {
+									type: Type.ARRAY,
+									items: {
+										type: Type.OBJECT,
+										properties: {
+											id: {
+												type: Type.STRING,
+											},
+											name: {
+												type: Type.STRING,
+											},
+											description: {
+												type: Type.STRING,
+											},
+											location: {
+												type: Type.STRING,
+											},
+											timeOfDay: {
+												type: Type.STRING,
+											},
+											mood: {
+												type: Type.STRING,
+											},
+											visualElements: {
+												type: Type.ARRAY,
+												items: {
+													type: Type.STRING,
+												},
+											},
+										},
+										propertyOrdering: [
+											"id",
+											"name",
+											"description",
+											"location",
+											"timeOfDay",
+											"mood",
+											"visualElements",
+										],
+									},
+								},
 							},
-							propertyOrdering: ["title", "characters", "setting"],
+							propertyOrdering: ["title", "characters", "setting", "scenes"],
 						},
 					},
 				});
@@ -269,6 +332,17 @@ Please provide:
 					location: "无法确定地点",
 					mood: "无法确定氛围"
 				},
+				scenes: [
+					{
+						id: "scene1",
+						name: "未知场景",
+						description: "无法分析场景描述，请重新生成",
+						location: "无法确定具体地点",
+						timeOfDay: "未知时间",
+						mood: "无法确定场景氛围",
+						visualElements: ["无法分析视觉元素"]
+					}
+				],
 				error: "故事分析失败，建议重新尝试生成"
 			};
 

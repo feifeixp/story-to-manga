@@ -11,6 +11,7 @@ import {
 interface Panel {
 	panelNumber: number;
 	characters: string[];
+	sceneId: string; // 引用具体场景ID
 	sceneDescription: string;
 	dialogue: string;
 	cameraAngle: string;
@@ -31,24 +32,26 @@ export async function POST(request: NextRequest) {
 	logApiRequest(storyChunkingLogger, endpoint);
 
 	try {
-		const { story, characters, setting, style } = await request.json();
+		const { story, characters, setting, scenes, style } = await request.json();
 
 		storyChunkingLogger.debug(
 			{
 				story_length: story?.length || 0,
 				characters_count: characters?.length || 0,
+				scenes_count: scenes?.length || 0,
 				style,
 				setting: !!setting,
 			},
 			"Received story chunking request",
 		);
 
-		if (!story || !characters || !setting || !style) {
+		if (!story || !characters || !setting || !scenes || !style) {
 			storyChunkingLogger.warn(
 				{
 					story: !!story,
 					characters: !!characters,
 					setting: !!setting,
+					scenes: !!scenes,
 					style: !!style,
 				},
 				"Missing required parameters",
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
 				{ error: "Missing parameters" },
 			);
 			return NextResponse.json(
-				{ error: "Story, characters, setting, and style are required" },
+				{ error: "Story, characters, setting, scenes, and style are required" },
 				{ status: 400 },
 			);
 		}
@@ -198,24 +201,36 @@ General comic panel guidelines:
 
 		const layoutGuidance = getLayoutGuidance(style);
 
+		// 构建场景信息字符串
+		const sceneInfo = scenes.map((scene: any) =>
+			`${scene.id}: ${scene.name} - ${scene.description} (Location: ${scene.location}, Time: ${scene.timeOfDay || 'unspecified'}, Mood: ${scene.mood}, Visual Elements: ${scene.visualElements.join(', ')})`
+		).join('\n');
+
 		const prompt = `
 Break down this story into individual comic panels with detailed descriptions.
 
 Story: "${story}"
 Characters: ${characterNames}
-Setting: ${setting.location}, ${setting.timePeriod}, ${setting.mood}
+Global Setting: ${setting.location}, ${setting.timePeriod}, ${setting.mood}
+
+Available Scenes:
+${sceneInfo}
+
 Style: ${style}
 
 ${layoutGuidance}
 
 Create 2-50 panels based on the story's complexity and pacing needs. Choose the optimal number of panels to tell this story effectively - simple stories may need fewer panels (2-8), while complex narratives may require more (10-50). For very long stories, break them into logical segments and create detailed panel sequences.
 
+IMPORTANT: For each panel, you MUST reference one of the available scenes by its ID (scene1, scene2, etc.) to ensure visual consistency. Choose the most appropriate scene based on where the action takes place in the story.
+
 For each panel, describe:
 - Characters present
-- Action/scene description
+- Scene ID (must match one of the available scenes above)
+- Action/scene description (should be consistent with the referenced scene)
 - Dialogue (if any)
 - Camera angle (close-up, medium shot, wide shot, etc.)
-- Visual mood/atmosphere
+- Visual mood/atmosphere (should complement the scene's mood)
 
 Return as a flat array of panels with sequential panel numbers.
 `;
@@ -254,6 +269,9 @@ Return as a flat array of panels with sequential panel numbers.
 											type: Type.STRING,
 										},
 									},
+									sceneId: {
+										type: Type.STRING,
+									},
 									sceneDescription: {
 										type: Type.STRING,
 									},
@@ -270,6 +288,7 @@ Return as a flat array of panels with sequential panel numbers.
 								propertyOrdering: [
 									"panelNumber",
 									"characters",
+									"sceneId",
 									"sceneDescription",
 									"dialogue",
 									"cameraAngle",

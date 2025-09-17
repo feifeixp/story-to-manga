@@ -17,10 +17,21 @@ interface Setting {
 	mood: string;
 }
 
+export interface Scene {
+	id: string;
+	name: string;
+	description: string;
+	location: string;
+	timeOfDay?: string;
+	mood: string;
+	visualElements: string[];
+}
+
 export interface StoryAnalysis {
 	title: string;
 	characters: Character[];
 	setting: Setting;
+	scenes: Scene[];
 }
 
 export interface CharacterReference {
@@ -33,6 +44,7 @@ export interface StoryBreakdown {
 	panels: {
 		panelNumber: number;
 		characters: string[];
+		sceneId: string; // 引用具体场景ID
 		sceneDescription: string;
 		dialogue?: string;
 		cameraAngle: string;
