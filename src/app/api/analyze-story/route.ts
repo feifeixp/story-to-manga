@@ -203,14 +203,18 @@ Please provide:
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
 
-				storyAnalysisLogger.warn(
+				// 详细记录错误信息
+				storyAnalysisLogger.error(
 					{
 						attempt,
 						maxRetries,
 						error: lastError.message,
+						error_stack: lastError.stack,
+						story_length: story.length,
+						story_preview: story.substring(0, 200) + "...",
 						willRetry: attempt < maxRetries
 					},
-					`Gemini API call failed on attempt ${attempt}`
+					`Gemini API call failed on attempt ${attempt} - detailed error info`
 				);
 
 				if (attempt < maxRetries) {
@@ -227,27 +231,33 @@ Please provide:
 
 		// 如果所有重试都失败了，提供备用方案
 		if (!result && lastError) {
-			storyAnalysisLogger.warn(
-				{ error: lastError.message },
-				"All Gemini API attempts failed, providing fallback analysis"
+			storyAnalysisLogger.error(
+				{
+					error: lastError.message,
+					story_length: story.length,
+					story_preview: story.substring(0, 300),
+					final_error: "All Gemini API attempts failed, this should not happen in normal operation"
+				},
+				"CRITICAL: All Gemini API attempts failed, providing fallback analysis"
 			);
 
-			// 提供一个基本的故事分析作为备用方案
+			// 提供明确的错误信息作为备用方案
 			const fallbackAnalysis = {
-				title: "未命名故事",
+				title: "故事分析失败 - 请重试",
 				characters: [
 					{
-						name: "主角",
-						physicalDescription: "年轻人，普通身材，黑发",
-						personality: "勇敢、善良、有正义感",
-						role: "故事的主要角色"
+						name: "未知角色",
+						physicalDescription: "无法分析角色外观，请重新生成",
+						personality: "无法分析角色性格，请重新生成",
+						role: "故事角色"
 					}
 				],
 				setting: {
 					timePeriod: style === "wuxia" ? "古代武侠时期" : style === "manga" ? "现代" : "未知时期",
-					location: "未知地点",
-					mood: "冒险"
-				}
+					location: "无法确定地点",
+					mood: "无法确定氛围"
+				},
+				error: "故事分析失败，建议重新尝试生成"
 			};
 
 			storyAnalysisLogger.info(
