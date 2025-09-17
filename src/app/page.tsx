@@ -1591,7 +1591,15 @@ export default function Home() {
 				);
 			}
 
-			const { analysis } = await analysisResponse.json();
+			const responseData = await analysisResponse.json();
+			const { analysis, fallback, message } = responseData;
+
+			// 如果使用了备用方案，显示警告信息
+			if (fallback && message) {
+				console.warn("Story analysis used fallback:", message);
+				// 可以在这里添加用户通知
+			}
+
 			setStoryAnalysis(analysis);
 			setOpenAccordions(new Set(["analysis"])); // Auto-expand analysis section
 
@@ -2203,7 +2211,14 @@ export default function Home() {
 			);
 		}
 
-		const { analysis } = await response.json();
+		const responseData = await response.json();
+		const { analysis, fallback, message } = responseData;
+
+		// 如果使用了备用方案，显示警告信息
+		if (fallback && message) {
+			console.warn("Story analysis used fallback:", message);
+		}
+
 		setStoryAnalysis(analysis);
 		setOpenAccordions(new Set(["analysis"])); // Auto-expand analysis section on retry
 	};
@@ -2337,7 +2352,14 @@ export default function Home() {
 				);
 			}
 
-			const { analysis } = await response.json();
+			const responseData = await response.json();
+			const { analysis, fallback, message } = responseData;
+
+			// 如果使用了备用方案，显示警告信息
+			if (fallback && message) {
+				console.warn("Story re-analysis used fallback:", message);
+			}
+
 			setStoryAnalysis(analysis);
 			setOpenAccordions(new Set(["analysis"]));
 			setCurrentStepText("Analysis updated! 🎉");

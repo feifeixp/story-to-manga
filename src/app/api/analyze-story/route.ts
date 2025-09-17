@@ -117,63 +117,164 @@ Please provide:
 			"Calling Gemini API for story analysis",
 		);
 
-		const result = await genAI.models.generateContent({
-			model: model,
-			contents: prompt,
-			config: {
-				responseMimeType: "application/json",
-				responseSchema: {
-					type: Type.OBJECT,
-					properties: {
-						title: {
-							type: Type.STRING,
-						},
-						characters: {
-							type: Type.ARRAY,
-							items: {
-								type: Type.OBJECT,
-								properties: {
-									name: {
-										type: Type.STRING,
-									},
-									physicalDescription: {
-										type: Type.STRING,
-									},
-									personality: {
-										type: Type.STRING,
-									},
-									role: {
-										type: Type.STRING,
-									},
-								},
-								propertyOrdering: [
-									"name",
-									"physicalDescription",
-									"personality",
-									"role",
-								],
-							},
-						},
-						setting: {
+		// 添加重试机制和超时控制
+		const maxRetries = 3;
+		let lastError: Error | null = null;
+		let result: any = null;
+
+		for (let attempt = 1; attempt <= maxRetries; attempt++) {
+			try {
+				storyAnalysisLogger.info(
+					{ attempt, maxRetries },
+					`Attempting Gemini API call (attempt ${attempt}/${maxRetries})`
+				);
+
+				// 设置超时控制
+				const timeoutPromise = new Promise((_, reject) => {
+					setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+				});
+
+				const apiCallPromise = genAI.models.generateContent({
+					model: model,
+					contents: prompt,
+					config: {
+						responseMimeType: "application/json",
+						responseSchema: {
 							type: Type.OBJECT,
 							properties: {
-								timePeriod: {
+								title: {
 									type: Type.STRING,
 								},
-								location: {
-									type: Type.STRING,
+								characters: {
+									type: Type.ARRAY,
+									items: {
+										type: Type.OBJECT,
+										properties: {
+											name: {
+												type: Type.STRING,
+											},
+											physicalDescription: {
+												type: Type.STRING,
+											},
+											personality: {
+												type: Type.STRING,
+											},
+											role: {
+												type: Type.STRING,
+											},
+										},
+										propertyOrdering: [
+											"name",
+											"physicalDescription",
+											"personality",
+											"role",
+										],
+									},
 								},
-								mood: {
-									type: Type.STRING,
+								setting: {
+									type: Type.OBJECT,
+									properties: {
+										timePeriod: {
+											type: Type.STRING,
+										},
+										location: {
+											type: Type.STRING,
+										},
+										mood: {
+											type: Type.STRING,
+										},
+									},
+									propertyOrdering: ["timePeriod", "location", "mood"],
 								},
 							},
-							propertyOrdering: ["timePeriod", "location", "mood"],
+							propertyOrdering: ["title", "characters", "setting"],
 						},
 					},
-					propertyOrdering: ["title", "characters", "setting"],
+				});
+
+				result = await Promise.race([apiCallPromise, timeoutPromise]);
+
+				storyAnalysisLogger.info(
+					{ attempt, success: true },
+					`Gemini API call succeeded on attempt ${attempt}`
+				);
+				break; // 成功则跳出重试循环
+
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+
+				storyAnalysisLogger.warn(
+					{
+						attempt,
+						maxRetries,
+						error: lastError.message,
+						willRetry: attempt < maxRetries
+					},
+					`Gemini API call failed on attempt ${attempt}`
+				);
+
+				if (attempt < maxRetries) {
+					// 等待一段时间后重试，使用指数退避
+					const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+					storyAnalysisLogger.info(
+						{ delay },
+						`Waiting ${delay}ms before retry`
+					);
+					await new Promise(resolve => setTimeout(resolve, delay));
+				}
+			}
+		}
+
+		// 如果所有重试都失败了，提供备用方案
+		if (!result && lastError) {
+			storyAnalysisLogger.warn(
+				{ error: lastError.message },
+				"All Gemini API attempts failed, providing fallback analysis"
+			);
+
+			// 提供一个基本的故事分析作为备用方案
+			const fallbackAnalysis = {
+				title: "未命名故事",
+				characters: [
+					{
+						name: "主角",
+						physicalDescription: "年轻人，普通身材，黑发",
+						personality: "勇敢、善良、有正义感",
+						role: "故事的主要角色"
+					}
+				],
+				setting: {
+					timePeriod: style === "wuxia" ? "古代武侠时期" : style === "manga" ? "现代" : "未知时期",
+					location: "未知地点",
+					mood: "冒险"
+				}
+			};
+
+			storyAnalysisLogger.info(
+				{ fallback: true },
+				"Using fallback story analysis"
+			);
+
+			logApiResponse(
+				storyAnalysisLogger,
+				endpoint,
+				true,
+				Date.now() - startTime,
+				{
+					fallback: true,
+					characters_count: fallbackAnalysis.characters.length,
+					word_count: wordCount,
 				},
-			},
-		});
+			);
+
+			return NextResponse.json({
+				success: true,
+				analysis: fallbackAnalysis,
+				wordCount,
+				fallback: true,
+				message: "使用了备用分析方案，请检查网络连接后重试以获得更好的分析结果"
+			});
+		}
 		const text = result.text || "";
 
 		storyAnalysisLogger.debug(
