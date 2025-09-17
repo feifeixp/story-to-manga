@@ -1786,9 +1786,18 @@ export default function Home() {
 				);
 			}
 
-			const { characterReferences } = await charRefResponse.json();
+			const charResult = await charRefResponse.json();
+			console.log('🎯 Character generation response received:', {
+				success: !!charResult.characterReferences,
+				count: charResult.characterReferences?.length || 0,
+				characters: charResult.characterReferences?.map((ref: any) => ref.name) || []
+			});
+
+			const { characterReferences } = charResult;
 			setCharacterReferences(characterReferences);
 			setOpenAccordions(new Set(["characters"])); // Auto-expand characters section
+
+			console.log('🎯 Character references set in state:', characterReferences?.length || 0);
 
 			// Step 3: Break down story into panels
 			setCurrentStepText("Planning comic layout...");
@@ -1967,6 +1976,16 @@ export default function Home() {
 			trackPerformance("total_generation_time", generationTime);
 		} catch (error) {
 			console.error("Generation error:", error);
+			console.log('🚨 Generation failed at step:', currentStepText);
+			console.log('🚨 Current state when error occurred:', {
+				hasStoryAnalysis: !!storyAnalysis,
+				hasCharacterReferences: characterReferences.length,
+				hasStoryBreakdown: !!storyBreakdown,
+				generatedPanels: generatedPanels.length,
+				isGenerating,
+				currentStepText
+			});
+
 			const errorMessage =
 				error instanceof Error ? error.message : "Generation failed";
 			showError(errorMessage);
