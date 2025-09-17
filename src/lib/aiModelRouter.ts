@@ -180,7 +180,7 @@ class VolcEngineHandler {
 				response_format: "url",
 				size: imageSize?.volcEngineSize || "2K",
 				stream: false,
-				watermark: true,
+				watermark: false,
 			};
 
 			const result = await this.client.generateMangaPanel(request);

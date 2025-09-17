@@ -177,7 +177,7 @@ export default function ProjectManager({
 
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										{t("style")}
+										{t("comicStyle")}
 									</label>
 									<select
 										value={newProjectStyle}
@@ -186,7 +186,10 @@ export default function ProjectManager({
 									>
 										<option value="manga">{t("manga")}</option>
 										<option value="comic">{t("comic")}</option>
-										<option value="webtoon">{t("webtoon")}</option>
+										<option value="wuxia">{t("wuxiaCultivation")}</option>
+										<option value="healing">{t("healingStyle")}</option>
+										<option value="manhwa">{t("manhwaStyle")}</option>
+										<option value="cinematic">{t("cinematicStyle")}</option>
 									</select>
 								</div>
 
