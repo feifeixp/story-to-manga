@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
 				reference_images_count: referenceImages?.length || 0,
 				ai_model: aiModel,
 				language,
+				style,
 			},
 			"📝 Processing image redraw request",
 		);
@@ -90,6 +91,16 @@ export async function POST(request: NextRequest) {
 
 		// 使用标准的风格配置，确保与生成panel API完全一致
 		const stylePrefix = getStylePrompt(style as any, 'panel', language);
+
+		redrawLogger.info(
+			{
+				requestId,
+				style,
+				language,
+				style_prefix_preview: stylePrefix.substring(0, 100) + "...",
+			},
+			"🎨 Generated style prefix for redraw",
+		);
 
 		// 为panel类型构建完整的提示词（与generate-panel API保持一致）
 		if (imageType === 'panel') {
