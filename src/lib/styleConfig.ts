@@ -22,8 +22,8 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 		name: "日式漫画",
 		description: "传统日本漫画风格，黑白配网点",
 		promptPrefix: {
-			zh: "日式漫画风格（黑白配网点），使用中文文字和对话框，保持角色外观一致性，细腻的线条艺术，经典的网点阴影技法，动态的分镜构图",
-			en: "Japanese manga style (black and white with screentones), using English text and speech bubbles, maintain character appearance consistency, detailed line art, classic screentone shading techniques, dynamic panel composition"
+			zh: "日式漫画风格，黑白配网点，细腻线条，经典网点阴影，动态分镜构图",
+			en: "Japanese manga style, black and white with screentones, detailed line art, classic screentone shading, dynamic panel composition"
 		},
 		characterPrompt: {
 			zh: "角色参考图：日式漫画风格，黑白线稿，详细的角色设计，清晰的线条艺术，完整的网点处理，中文标注",
@@ -38,8 +38,8 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 		name: "美式漫画",
 		description: "美式超级英雄漫画风格，全彩色",
 		promptPrefix: {
-			zh: "美式漫画风格，全彩色，清晰线条艺术，使用中文文字和对话框，保持角色外观一致性，鲜艳的色彩，戏剧性的光影效果，英雄主义构图",
-			en: "American comic book style, full color, clean line art, using English text and speech bubbles, maintain character appearance consistency, vibrant colors, dramatic lighting effects, heroic composition"
+			zh: "美式漫画风格，全彩色，清晰线条，鲜艳色彩，戏剧性光影，英雄主义构图",
+			en: "American comic book style, full color, clean line art, vibrant colors, dramatic lighting, heroic composition"
 		},
 		characterPrompt: {
 			zh: "角色参考图：美式漫画风格，全彩色，肌肉线条分明，英雄主义设计，戏剧性姿态，中文标注",
@@ -118,8 +118,8 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 		name: "少女漫画",
 		description: "梦幻唯美的少女漫画风格",
 		promptPrefix: {
-			zh: "少女漫画风格，梦幻唯美，纤细的线条，使用中文文字和对话框，保持角色外观一致性，浪漫氛围，花瓣/星光等点缀元素，柔和色调或黑白精致描绘，情感细腻",
-			en: "Shojo manga style, dreamy and romantic, delicate line art, using English text and speech bubbles, maintain character appearance consistency, romantic atmosphere, decorative elements like petals/stars, soft tones or refined black-and-white, emotional delicacy"
+			zh: "少女漫画风格，梦幻唯美，纤细线条，浪漫氛围，花瓣星光点缀，柔和色调，情感细腻",
+			en: "Shojo manga style, dreamy and romantic, delicate line art, romantic atmosphere, decorative elements like petals/stars, soft tones, emotional delicacy"
 		},
 		characterPrompt: {
 			zh: "角色参考图：少女漫画风格，梦幻唯美，纤细线条，浪漫氛围，花瓣星光点缀，柔和色调，情感细腻，中文标注",
@@ -134,8 +134,8 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 		name: "青年漫画",
 		description: "写实硬朗的青年向漫画风格",
 		promptPrefix: {
-			zh: "青年漫画风格，写实硬朗，细致的线条与光影，使用中文文字和对话框，保持角色外观一致性，成熟主题，复杂场景，强烈的氛围张力",
-			en: "Seinen manga style, realistic and gritty, detailed linework and shading, using English text and speech bubbles, maintain character appearance consistency, mature themes, complex settings, strong atmospheric tension"
+			zh: "青年漫画风格，写实硬朗，细致线条光影，成熟主题，复杂场景，强烈氛围张力",
+			en: "Seinen manga style, realistic and gritty, detailed linework and shading, mature themes, complex settings, strong atmospheric tension"
 		},
 		characterPrompt: {
 			zh: "角色参考图：青年漫画风格，写实硬朗，细致线条光影，成熟主题，复杂设定，强烈氛围张力，中文标注",
@@ -150,8 +150,8 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 		name: "Q版漫画",
 		description: "夸张可爱的Q版超变形风格",
 		promptPrefix: {
-			zh: "Q版漫画风格，夸张可爱，圆润的线条，使用中文文字和对话框，保持角色外观一致性，表情夸张化，卡通感强烈，轻松幽默氛围",
-			en: "Chibi comic style, exaggeratedly cute, rounded line art, using English text and speech bubbles, maintain character appearance consistency, over-expressive faces, strong cartoonish feel, light and humorous tone"
+			zh: "Q版漫画风格，夸张可爱，圆润线条，表情夸张，卡通感强烈，轻松幽默氛围",
+			en: "Chibi comic style, exaggeratedly cute, rounded line art, over-expressive faces, strong cartoonish feel, light and humorous tone"
 		},
 		characterPrompt: {
 			zh: "角色参考图：Q版漫画风格，夸张可爱，圆润线条，表情夸张，卡通感强烈，轻松幽默，中文标注",
@@ -166,8 +166,8 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 		name: "奇幻史诗",
 		description: "宏大背景的奇幻史诗风格",
 		promptPrefix: {
-			zh: "奇幻史诗风格，宏大背景设定，华丽的服饰与道具，使用中文文字和对话框，保持角色外观一致性，史诗感构图，神秘光影，魔法元素点缀",
-			en: "Fantasy epic style, grand backgrounds, elaborate costumes and props, using English text and speech bubbles, maintain character appearance consistency, epic compositions, mystical lighting, magical elements"
+			zh: "奇幻史诗风格，宏大背景设定，华丽服饰道具，史诗感构图，神秘光影，魔法元素点缀",
+			en: "Fantasy epic style, grand backgrounds, elaborate costumes and props, epic compositions, mystical lighting, magical elements"
 		},
 		characterPrompt: {
 			zh: "角色参考图：奇幻史诗风格，宏大背景，华丽服饰道具，史诗感构图，神秘光影，魔法元素，中文标注",
