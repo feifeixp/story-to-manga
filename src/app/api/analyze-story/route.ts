@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { type NextRequest, NextResponse } from "next/server";
 import { parseGeminiJSON } from "@/lib/json-parser";
 import {
@@ -160,16 +160,62 @@ Focus on identifying distinct locations where story events occur to ensure visua
 					`🔄 Attempting Gemini API call (attempt ${attempt}/${maxRetries})`
 				);
 
-				// 设置超时控制 (由于Gemini服务器当前负载高，增加到45秒)
+				// 设置超时控制 (延长到120秒)
 				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000);
+					setTimeout(() => reject(new Error('Request timeout after 120 seconds')), 120000);
 				});
 
-				// 尝试不使用JSON schema，让Gemini自由生成JSON，然后手动解析
-				// 这样可以避免复杂schema导致的性能问题
+				// 使用完整的JSON schema确保结构化输出
 				const apiCallPromise = genAI.models.generateContent({
 					model: model,
-					contents: prompt + "\n\nPlease respond with valid JSON only, no additional text.",
+					contents: prompt,
+					config: {
+						responseMimeType: "application/json",
+						responseSchema: {
+							type: Type.OBJECT,
+							properties: {
+								title: { type: Type.STRING },
+								characters: {
+									type: Type.ARRAY,
+									items: {
+										type: Type.OBJECT,
+										properties: {
+											name: { type: Type.STRING },
+											physicalDescription: { type: Type.STRING },
+											personality: { type: Type.STRING },
+											role: { type: Type.STRING },
+										},
+									},
+								},
+								setting: {
+									type: Type.OBJECT,
+									properties: {
+										timePeriod: { type: Type.STRING },
+										location: { type: Type.STRING },
+										mood: { type: Type.STRING },
+									},
+								},
+								scenes: {
+									type: Type.ARRAY,
+									items: {
+										type: Type.OBJECT,
+										properties: {
+											id: { type: Type.STRING },
+											name: { type: Type.STRING },
+											description: { type: Type.STRING },
+											location: { type: Type.STRING },
+											timeOfDay: { type: Type.STRING },
+											mood: { type: Type.STRING },
+											visualElements: {
+												type: Type.ARRAY,
+												items: { type: Type.STRING },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				});
 
 				result = await Promise.race([apiCallPromise, timeoutPromise]);

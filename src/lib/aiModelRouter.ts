@@ -90,9 +90,9 @@ class NanoBananaHandler {
 				}
 			}
 
-			// 添加超时控制 (45秒超时)
+			// 添加超时控制 (120秒超时)
 			const timeoutPromise = new Promise((_, reject) => {
-				setTimeout(() => reject(new Error('NanoBanana API timeout after 45 seconds')), 45000);
+				setTimeout(() => reject(new Error('NanoBanana API timeout after 120 seconds')), 120000);
 			});
 
 			const apiCallPromise = model.generateContent(inputParts);
@@ -153,7 +153,7 @@ class NanoBananaHandler {
 
 				// 为安全重试也添加超时控制
 				const safeTimeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('NanoBanana safety retry timeout after 45 seconds')), 45000);
+					setTimeout(() => reject(new Error('NanoBanana safety retry timeout after 120 seconds')), 120000);
 				});
 
 				const safeApiCallPromise = model.generateContent(safeInputParts);
@@ -252,9 +252,9 @@ class VolcEngineHandler {
 				watermark: false,
 			};
 
-			// 添加超时控制 (45秒超时)
+			// 添加超时控制 (120秒超时)
 			const timeoutPromise = new Promise((_, reject) => {
-				setTimeout(() => reject(new Error('VolcEngine API timeout after 45 seconds')), 45000);
+				setTimeout(() => reject(new Error('VolcEngine API timeout after 120 seconds')), 120000);
 			});
 
 			const apiCallPromise = this.client.generateMangaPanel(request);

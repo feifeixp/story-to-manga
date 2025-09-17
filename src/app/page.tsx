@@ -1112,7 +1112,7 @@ export default function Home() {
 				if (controller && !controller.signal.aborted) {
 					controller.abort();
 				}
-			}, 60000); // 60秒超时
+			}, 120000); // 120秒超时
 
 			const response = await fetch('/api/generate-panel', {
 				method: 'POST',
@@ -1444,9 +1444,9 @@ export default function Home() {
 			// 转换参考图片格式：从对象数组转换为字符串数组
 			const referenceImageUrls = referenceImages ? referenceImages.map(ref => ref.image) : [];
 
-			// 创建带超时的fetch请求 (60秒超时，比后端45秒稍长)
+			// 创建带超时的fetch请求 (120秒超时)
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 60000);
+			const timeoutId = setTimeout(() => controller.abort(), 120000);
 
 			try {
 				const response = await fetch("/api/redraw-image", {
@@ -1533,9 +1533,9 @@ export default function Home() {
 
 		setIsImageProcessing(true);
 		try {
-			// 创建带超时的fetch请求 (60秒超时)
+			// 创建带超时的fetch请求 (120秒超时)
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 60000);
+			const timeoutId = setTimeout(() => controller.abort(), 120000);
 
 			try {
 				const response = await fetch("/api/modify-image", {
@@ -1680,7 +1680,7 @@ export default function Home() {
 		try {
 			// Step 1: Analyze story (with timeout control)
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 75000); // 75秒超时，比后端60秒稍长
+			const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒超时
 
 			let analysisResponse;
 			try {
@@ -1714,7 +1714,7 @@ export default function Home() {
 			// Step 2: Generate character references (with timeout control)
 			setCurrentStepText("Creating character designs...");
 			const charController = new AbortController();
-			const charTimeoutId = setTimeout(() => charController.abort(), 60000); // 60秒超时，比后端45秒稍长
+			const charTimeoutId = setTimeout(() => charController.abort(), 120000); // 120秒超时
 
 			let charRefResponse;
 			try {
@@ -2416,7 +2416,7 @@ export default function Home() {
 
 		// 添加超时控制
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 75000);
+		const timeoutId = setTimeout(() => controller.abort(), 120000);
 
 		let response;
 		try {
@@ -2455,7 +2455,7 @@ export default function Home() {
 
 		// 添加超时控制
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 60000);
+		const timeoutId = setTimeout(() => controller.abort(), 120000);
 
 		let response;
 		try {
@@ -2586,7 +2586,7 @@ export default function Home() {
 
 			// 添加超时控制
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 75000);
+			const timeoutId = setTimeout(() => controller.abort(), 120000);
 
 			let response;
 			try {
@@ -2642,7 +2642,7 @@ export default function Home() {
 
 			// 添加超时控制
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 60000);
+			const timeoutId = setTimeout(() => controller.abort(), 120000);
 
 			let response;
 			try {
