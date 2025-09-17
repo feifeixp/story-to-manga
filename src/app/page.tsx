@@ -1068,11 +1068,17 @@ export default function Home() {
 	// 生成单个面板的辅助函数（优化版）
 	const generateSinglePanel = async (panel: any, retryCount = 0) => {
 		const maxRetries = 2;
+		let controller: AbortController | null = null;
+		let timeoutId: NodeJS.Timeout | null = null;
 
 		try {
 			// 添加请求超时控制
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+			controller = new AbortController();
+			timeoutId = setTimeout(() => {
+				if (controller && !controller.signal.aborted) {
+					controller.abort();
+				}
+			}, 60000); // 60秒超时
 
 			const response = await fetch('/api/generate-panel', {
 				method: 'POST',
@@ -1099,7 +1105,11 @@ export default function Home() {
 				signal: controller.signal,
 			});
 
-			clearTimeout(timeoutId);
+			// 清理超时控制
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+				timeoutId = null;
+			}
 
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
@@ -1171,9 +1181,29 @@ export default function Home() {
 			}
 			return null;
 		} catch (error) {
+			// 清理超时控制
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+				timeoutId = null;
+			}
+
+			// 特殊处理AbortError
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.warn(`Panel ${panel.panelNumber} generation was aborted (attempt ${retryCount + 1})`);
+
+				// 如果是超时导致的abort，可以重试
+				if (retryCount < maxRetries && !generationState.isPaused) {
+					console.log(`Retrying panel ${panel.panelNumber} after timeout in 3 seconds...`);
+					await new Promise(resolve => setTimeout(resolve, 3000));
+					return generateSinglePanel(panel, retryCount + 1);
+				}
+
+				throw new Error(`Panel ${panel.panelNumber} generation timed out after ${retryCount + 1} attempts`);
+			}
+
 			console.error(`Error generating panel ${panel.panelNumber} (attempt ${retryCount + 1}):`, error);
 
-			// 自动重试机制
+			// 自动重试机制（非AbortError）
 			if (retryCount < maxRetries && !generationState.isPaused) {
 				console.log(`Retrying panel ${panel.panelNumber} in 2 seconds...`);
 				await new Promise(resolve => setTimeout(resolve, 2000));
