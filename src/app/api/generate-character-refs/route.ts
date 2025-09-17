@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
 			});
 		}
 
-		// Select the appropriate AI model
-		const selectedModel = selectAIModel('en', aiModel as AIModel);
+		// Select the appropriate AI model based on user language
+		const selectedModel = selectAIModel(language, aiModel as AIModel);
 		const aiRouter = getAIModelRouter();
 
 		characterGenLogger.info({

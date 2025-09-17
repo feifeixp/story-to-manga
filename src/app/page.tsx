@@ -362,6 +362,7 @@ function CharacterCard({
 interface PanelCardProps {
 	panel: {
 		panelNumber: number;
+		sceneId?: string;
 		sceneDescription?: string;
 		dialogue?: string;
 		characters?: string[];
@@ -373,6 +374,15 @@ interface PanelCardProps {
 	onImageClick?: (imageUrl: string, altText: string) => void;
 	onDownload?: () => void;
 	onEdit?: () => void;
+	scenes?: Array<{
+		id: string;
+		name: string;
+		description: string;
+		location: string;
+		timeOfDay?: string;
+		mood: string;
+		visualElements: string[];
+	}>;
 }
 
 function PanelCard({
@@ -381,8 +391,12 @@ function PanelCard({
 	onImageClick,
 	onDownload,
 	onEdit,
+	scenes = [],
 }: PanelCardProps) {
 	const { t } = useTranslation();
+
+	// 查找面板对应的场景信息
+	const panelScene = panel.sceneId ? scenes.find(scene => scene.id === panel.sceneId) : null;
 
 	return (
 		<div className={showImage ? "text-center" : "card-manga"}>
@@ -443,6 +457,14 @@ function PanelCard({
 						<p className="card-text speech-bubble text-sm">
 							"{panel.dialogue}"
 						</p>
+					)}
+					{/* 显示场景信息 */}
+					{panelScene && (
+						<div className="bg-manga-light-gray/20 p-2 rounded text-xs mb-2">
+							<div><strong>场景:</strong> {panelScene.name}</div>
+							<div><strong>位置:</strong> {panelScene.location}</div>
+							{panelScene.timeOfDay && <div><strong>时间:</strong> {panelScene.timeOfDay}</div>}
+						</div>
 					)}
 					<div className="text-sm text-manga-medium-gray">
 						{panel.characters && (
@@ -4418,6 +4440,28 @@ export default function Home() {
 												<p>
 													<strong>{t("mood")}:</strong> {storyAnalysis.setting.mood}
 												</p>
+
+												{/* 场景信息显示 */}
+												{storyAnalysis.scenes && storyAnalysis.scenes.length > 0 && (
+													<>
+														<h5 className="font-semibold mt-4 mb-2">场景设定:</h5>
+														<div className="space-y-3">
+															{storyAnalysis.scenes.map((scene, index) => (
+																<div key={scene.id} className="bg-manga-light-gray/30 p-3 rounded-lg">
+																	<p><strong>场景 {index + 1}:</strong> {scene.name}</p>
+																	<p><strong>位置:</strong> {scene.location}</p>
+																	<p><strong>描述:</strong> {scene.description}</p>
+																	{scene.timeOfDay && <p><strong>时间:</strong> {scene.timeOfDay}</p>}
+																	<p><strong>氛围:</strong> {scene.mood}</p>
+																	{scene.visualElements && scene.visualElements.length > 0 && (
+																		<p><strong>视觉元素:</strong> {scene.visualElements.join('，')}</p>
+																	)}
+																</div>
+															))}
+														</div>
+													</>
+												)}
+
 												<div className="mt-3">
 													<RerunButton
 														onClick={rerunAnalysis}
@@ -4668,6 +4712,7 @@ export default function Home() {
 															key={`panel-${panel.panelNumber}`}
 															panel={panel}
 															showImage={false}
+															scenes={storyAnalysis?.scenes || []}
 														/>
 													))}
 												</div>
