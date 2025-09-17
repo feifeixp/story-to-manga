@@ -3628,6 +3628,10 @@ export default function Home() {
 											{style === "healing" && t("healingAnime")}
 											{style === "manhwa" && t("koreanManhwa")}
 											{style === "cinematic" && t("cinematicStyle")}
+											{style === "shojo" && t("shojoManga")}
+											{style === "seinen" && t("seinenManga")}
+											{style === "chibi" && t("chibiComic")}
+											{style === "fantasy" && t("fantasyEpic")}
 										</span>
 									</div>
 									<p className="text-xs text-gray-500 mt-1">
@@ -3784,6 +3788,106 @@ export default function Home() {
 											htmlFor="cinematic-radio"
 										>
 											{t("cinematicStyle")}
+										</label>
+									</div>
+
+									{/* Shojo Manga */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="shojo-radio"
+											checked={style === "shojo"}
+											onChange={() => {
+												setStyle("shojo");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "shojo",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="shojo-radio"
+										>
+											{t("shojoManga")}
+										</label>
+									</div>
+
+									{/* Seinen Manga */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="seinen-radio"
+											checked={style === "seinen"}
+											onChange={() => {
+												setStyle("seinen");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "seinen",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="seinen-radio"
+										>
+											{t("seinenManga")}
+										</label>
+									</div>
+
+									{/* Chibi Comic */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="chibi-radio"
+											checked={style === "chibi"}
+											onChange={() => {
+												setStyle("chibi");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "chibi",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="chibi-radio"
+										>
+											{t("chibiComic")}
+										</label>
+									</div>
+
+									{/* Fantasy Epic */}
+									<div>
+										<input
+											type="radio"
+											className="sr-only"
+											name="style"
+											id="fantasy-radio"
+											checked={style === "fantasy"}
+											onChange={() => {
+												setStyle("fantasy");
+												trackEvent({
+													action: "change_style",
+													category: "user_interaction",
+													label: "fantasy",
+												});
+											}}
+										/>
+										<label
+											className="btn-manga-outline w-full text-center cursor-pointer rounded-lg block py-2 text-sm"
+											htmlFor="fantasy-radio"
+										>
+											{t("fantasyEpic")}
 										</label>
 									</div>
 								</div>

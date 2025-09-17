@@ -190,6 +190,10 @@ export default function ProjectManager({
 										<option value="healing">{t("healingStyle")}</option>
 										<option value="manhwa">{t("manhwaStyle")}</option>
 										<option value="cinematic">{t("cinematicStyle")}</option>
+										<option value="shojo">{t("shojoManga")}</option>
+										<option value="seinen">{t("seinenManga")}</option>
+										<option value="chibi">{t("chibiComic")}</option>
+										<option value="fantasy">{t("fantasyEpic")}</option>
 									</select>
 								</div>
 

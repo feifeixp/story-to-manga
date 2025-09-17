@@ -113,6 +113,70 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 			zh: "漫画面板：电影级视觉效果，写实场景，专业摄影构图，戏剧性光影，电影级质感，景深效果",
 			en: "Comic panel: Cinematic visual effects, realistic scenes, professional photography composition, dramatic lighting, cinematic texture, depth of field effects"
 		}
+	},
+	shojo: {
+		name: "少女漫画",
+		description: "梦幻唯美的少女漫画风格",
+		promptPrefix: {
+			zh: "少女漫画风格，梦幻唯美，纤细的线条，使用中文文字和对话框，保持角色外观一致性，浪漫氛围，花瓣/星光等点缀元素，柔和色调或黑白精致描绘，情感细腻",
+			en: "Shojo manga style, dreamy and romantic, delicate line art, using English text and speech bubbles, maintain character appearance consistency, romantic atmosphere, decorative elements like petals/stars, soft tones or refined black-and-white, emotional delicacy"
+		},
+		characterPrompt: {
+			zh: "角色参考图：少女漫画风格，梦幻唯美，纤细线条，浪漫氛围，花瓣星光点缀，柔和色调，情感细腻，中文标注",
+			en: "Character reference sheet: Shojo manga style, dreamy and romantic, delicate line art, romantic atmosphere, decorative elements like petals/stars, soft tones, emotional delicacy, English annotations"
+		},
+		panelPrompt: {
+			zh: "漫画面板：少女漫画风格，梦幻浪漫，纤细线条，花瓣星光装饰，柔和色调，情感细腻表达",
+			en: "Comic panel: Shojo manga style, dreamy and romantic, delicate line art, decorative elements like petals/stars, soft tones, delicate emotional expression"
+		}
+	},
+	seinen: {
+		name: "青年漫画",
+		description: "写实硬朗的青年向漫画风格",
+		promptPrefix: {
+			zh: "青年漫画风格，写实硬朗，细致的线条与光影，使用中文文字和对话框，保持角色外观一致性，成熟主题，复杂场景，强烈的氛围张力",
+			en: "Seinen manga style, realistic and gritty, detailed linework and shading, using English text and speech bubbles, maintain character appearance consistency, mature themes, complex settings, strong atmospheric tension"
+		},
+		characterPrompt: {
+			zh: "角色参考图：青年漫画风格，写实硬朗，细致线条光影，成熟主题，复杂设定，强烈氛围张力，中文标注",
+			en: "Character reference sheet: Seinen manga style, realistic and gritty, detailed linework and shading, mature themes, complex settings, strong atmospheric tension, English annotations"
+		},
+		panelPrompt: {
+			zh: "漫画面板：青年漫画风格，写实硬朗，细致光影，成熟主题，复杂场景，强烈氛围张力",
+			en: "Comic panel: Seinen manga style, realistic and gritty, detailed linework and shading, mature themes, complex settings, strong atmospheric tension"
+		}
+	},
+	chibi: {
+		name: "Q版漫画",
+		description: "夸张可爱的Q版超变形风格",
+		promptPrefix: {
+			zh: "Q版漫画风格，夸张可爱，圆润的线条，使用中文文字和对话框，保持角色外观一致性，表情夸张化，卡通感强烈，轻松幽默氛围",
+			en: "Chibi comic style, exaggeratedly cute, rounded line art, using English text and speech bubbles, maintain character appearance consistency, over-expressive faces, strong cartoonish feel, light and humorous tone"
+		},
+		characterPrompt: {
+			zh: "角色参考图：Q版漫画风格，夸张可爱，圆润线条，表情夸张，卡通感强烈，轻松幽默，中文标注",
+			en: "Character reference sheet: Chibi comic style, exaggeratedly cute, rounded line art, over-expressive faces, strong cartoonish feel, light and humorous tone, English annotations"
+		},
+		panelPrompt: {
+			zh: "漫画面板：Q版漫画风格，夸张可爱，圆润线条，表情夸张，卡通感强烈，轻松幽默氛围",
+			en: "Comic panel: Chibi comic style, exaggeratedly cute, rounded line art, over-expressive faces, strong cartoonish feel, light and humorous atmosphere"
+		}
+	},
+	fantasy: {
+		name: "奇幻史诗",
+		description: "宏大背景的奇幻史诗风格",
+		promptPrefix: {
+			zh: "奇幻史诗风格，宏大背景设定，华丽的服饰与道具，使用中文文字和对话框，保持角色外观一致性，史诗感构图，神秘光影，魔法元素点缀",
+			en: "Fantasy epic style, grand backgrounds, elaborate costumes and props, using English text and speech bubbles, maintain character appearance consistency, epic compositions, mystical lighting, magical elements"
+		},
+		characterPrompt: {
+			zh: "角色参考图：奇幻史诗风格，宏大背景，华丽服饰道具，史诗感构图，神秘光影，魔法元素，中文标注",
+			en: "Character reference sheet: Fantasy epic style, grand backgrounds, elaborate costumes and props, epic compositions, mystical lighting, magical elements, English annotations"
+		},
+		panelPrompt: {
+			zh: "漫画面板：奇幻史诗风格，宏大背景，华丽服饰道具，史诗感构图，神秘光影，魔法元素点缀",
+			en: "Comic panel: Fantasy epic style, grand backgrounds, elaborate costumes and props, epic compositions, mystical lighting, magical elements"
+		}
 	}
 };
 

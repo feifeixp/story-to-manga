@@ -26,6 +26,10 @@
 	"americanComic": "American Comic",
 	"koreanManhwa": "Korean Manhwa",
 	"healingAnime": "Healing Anime",
+	"shojoManga": "Shojo Manga",
+	"seinenManga": "Seinen Manga",
+	"chibiComic": "Chibi Comic",
+	"fantasyEpic": "Fantasy Epic",
 	"settings": {
 		"title": "Settings",
 		"aiModel": "AI Model",

@@ -24,7 +24,7 @@
 ```json
 {
   "story": "用户输入的故事文本",
-  "style": "manga | comic | wuxia | healing | manhwa | cinematic" // 漫画风格选择
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic | shojo | seinen | chibi | fantasy" // 漫画风格选择
 }
 ```
 
@@ -35,6 +35,10 @@
 - **healing**: 治愈系日漫风格（温暖柔和）
 - **manhwa**: 韩漫风格（现代都市）
 - **cinematic**: 电影风格（写实主义）
+- **shojo**: 少女漫画风格（梦幻唯美）
+- **seinen**: 青年漫画风格（写实硬朗）
+- **chibi**: Q版漫画风格（夸张可爱）
+- **fantasy**: 奇幻史诗风格（宏大背景）
 
 ### 提示词模板
 ```
@@ -102,7 +106,7 @@ Please provide:
   "story": "故事文本",
   "characters": [角色数组],
   "setting": {设定对象},
-  "style": "manga | comic | wuxia | healing | manhwa | cinematic"
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic | shojo | seinen | chibi | fantasy"
 }
 ```
 
@@ -201,6 +205,50 @@ Cinematic panel guidelines:
 - Professional cinematography principles
 ```
 
+#### Shojo风格
+```
+Shojo manga panel guidelines:
+- Tall, slender panels for elegant flow
+- Decorative panel borders (lace, flowers, sparkles)
+- Focus on close-ups of eyes and expressions
+- Diagonal or floating layouts for romance
+- Emphasis on emotional atmosphere over action
+- Light, airy compositions with layered tones
+```
+
+#### Seinen风格
+```
+Seinen manga panel guidelines:
+- Realistic proportions and structured panels
+- Heavy shading and contrast
+- Wide shots for urban/realistic settings
+- Cinematic close-ups for psychological intensity
+- Panel pacing reflects tension and realism
+- Mature, grounded compositions
+```
+
+#### Chibi风格
+```
+Chibi panel guidelines:
+- Small, rounded panels
+- Exaggerated facial expressions and actions
+- Minimalistic backgrounds
+- Bold sound effects and motion cues
+- Playful panel layouts (heart shapes, bubbles)
+- Comedic timing in panel sequence
+```
+
+#### Fantasy风格
+```
+Fantasy epic panel guidelines:
+- Large, sweeping landscape panels
+- Vertical panels for towering castles/forests
+- Dynamic diagonal layouts for battles
+- Glow and aura effects in panel design
+- Emphasis on scale and grandeur
+- Heroic and mythical framing
+```
+
 ### 输出格式
 ```json
 {
@@ -240,7 +288,7 @@ Cinematic panel guidelines:
 {
   "characters": [角色数组],
   "setting": {设定对象},
-  "style": "manga | comic | wuxia | healing | manhwa | cinematic",
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic | shojo | seinen | chibi | fantasy",
   "uploadedCharacterReferences": [用户上传的参考图片]
 }
 ```
@@ -332,7 +380,7 @@ Cinematic photorealistic style, realistic character modeling, professional light
   "panel": {面板对象},
   "characterReferences": [角色参考数组],
   "setting": {设定对象},
-  "style": "manga | comic | wuxia | healing | manhwa | cinematic",
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic | shojo | seinen | chibi | fantasy",
   "uploadedSettingReferences": [场景参考图片],
   "language": "en | zh",
   "aiModel": "auto | nanobanana | volcengine"

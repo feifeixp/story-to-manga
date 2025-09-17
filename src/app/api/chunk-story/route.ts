@@ -144,6 +144,46 @@ Cinematic panel guidelines:
 - Movie storyboard-style layouts
 - Professional cinematography principles
 `;
+				case "shojo":
+					return `
+Shojo manga panel guidelines:
+- Tall, slender panels for elegant flow
+- Decorative panel borders (lace, flowers, sparkles)
+- Focus on close-ups of eyes and expressions
+- Diagonal or floating layouts for romance
+- Emphasis on emotional atmosphere over action
+- Light, airy compositions with layered tones
+`;
+				case "seinen":
+					return `
+Seinen manga panel guidelines:
+- Realistic proportions and structured panels
+- Heavy shading and contrast
+- Wide shots for urban/realistic settings
+- Cinematic close-ups for psychological intensity
+- Panel pacing reflects tension and realism
+- Mature, grounded compositions
+`;
+				case "chibi":
+					return `
+Chibi panel guidelines:
+- Small, rounded panels
+- Exaggerated facial expressions and actions
+- Minimalistic backgrounds
+- Bold sound effects and motion cues
+- Playful panel layouts (heart shapes, bubbles)
+- Comedic timing in panel sequence
+`;
+				case "fantasy":
+					return `
+Fantasy epic panel guidelines:
+- Large, sweeping landscape panels
+- Vertical panels for towering castles/forests
+- Dynamic diagonal layouts for battles
+- Glow and aura effects in panel design
+- Emphasis on scale and grandeur
+- Heroic and mythical framing
+`;
 				default:
 					return `
 General comic panel guidelines:
