@@ -78,9 +78,10 @@ export async function POST(request: NextRequest) {
 			"Extracted character names and determined layout style",
 		);
 
-		const layoutGuidance =
-			style === "manga"
-				? `
+		const getLayoutGuidance = (style: string) => {
+			switch (style) {
+				case "manga":
+					return `
 Manga panel guidelines:
 - Dynamic panel shapes and sizes
 - Vertical emphasis for dramatic moments
@@ -88,8 +89,9 @@ Manga panel guidelines:
 - Close-ups for emotional beats
 - Wide shots for establishing scenes
 - Dramatic angles and perspectives
-`
-				: `
+`;
+				case "comic":
+					return `
 American comic panel guidelines:
 - Rectangular panels with consistent borders
 - Wide establishing shots
@@ -98,6 +100,63 @@ American comic panel guidelines:
 - Clean, structured compositions
 - Bold, clear visual storytelling
 `;
+				case "wuxia":
+					return `
+Wuxia cultivation panel guidelines:
+- Flowing, organic panel shapes that follow natural elements
+- Vertical panels for flying and ascending scenes
+- Circular or curved panels for meditation and spiritual moments
+- Wide landscape panels for mountain and nature scenes
+- Close-ups with ethereal lighting effects
+- Traditional scroll-like compositions
+- Emphasis on movement and energy flow
+`;
+				case "healing":
+					return `
+Healing anime panel guidelines:
+- Soft, rounded panel borders
+- Warm, cozy framing for intimate moments
+- Small panels for detailed emotional expressions
+- Wide panels for peaceful daily life scenes
+- Gentle transitions between panels
+- Focus on character interactions and emotions
+- Comfortable, non-threatening compositions
+`;
+				case "manhwa":
+					return `
+Korean manhwa panel guidelines:
+- Clean, modern rectangular panels
+- Vertical scrolling-friendly layouts
+- Wide panels for urban landscapes
+- Medium shots for character interactions
+- Close-ups with detailed facial expressions
+- Contemporary, stylish compositions
+- Digital-native panel arrangements
+`;
+				case "cinematic":
+					return `
+Cinematic panel guidelines:
+- Film-like aspect ratios (16:9, 2.35:1)
+- Professional camera angles and shots
+- Establishing shots, medium shots, close-ups sequence
+- Dramatic lighting and composition
+- Depth of field effects in panel design
+- Movie storyboard-style layouts
+- Professional cinematography principles
+`;
+				default:
+					return `
+General comic panel guidelines:
+- Clear panel borders and gutters
+- Varied panel sizes for pacing
+- Establishing shots to set scenes
+- Close-ups for emotional moments
+- Consistent visual flow
+`;
+			}
+		};
+
+		const layoutGuidance = getLayoutGuidance(style);
 
 		const prompt = `
 Break down this story into individual comic panels with detailed descriptions.

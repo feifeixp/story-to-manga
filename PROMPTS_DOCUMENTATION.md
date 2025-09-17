@@ -24,9 +24,17 @@
 ```json
 {
   "story": "用户输入的故事文本",
-  "style": "manga | comic" // 漫画风格选择
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic" // 漫画风格选择
 }
 ```
+
+### 支持的风格类型
+- **manga**: 日式漫画风格（黑白配网点）
+- **comic**: 美式漫画风格（全彩色）
+- **wuxia**: 武侠修仙风格（古风意境）
+- **healing**: 治愈系日漫风格（温暖柔和）
+- **manhwa**: 韩漫风格（现代都市）
+- **cinematic**: 电影风格（写实主义）
 
 ### 提示词模板
 ```
@@ -94,7 +102,7 @@ Please provide:
   "story": "故事文本",
   "characters": [角色数组],
   "setting": {设定对象},
-  "style": "manga | comic"
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic"
 }
 ```
 
@@ -145,6 +153,54 @@ American comic panel guidelines:
 - Bold, clear visual storytelling
 ```
 
+#### Wuxia风格
+```
+Wuxia cultivation panel guidelines:
+- Flowing, organic panel shapes that follow natural elements
+- Vertical panels for flying and ascending scenes
+- Circular or curved panels for meditation and spiritual moments
+- Wide landscape panels for mountain and nature scenes
+- Close-ups with ethereal lighting effects
+- Traditional scroll-like compositions
+- Emphasis on movement and energy flow
+```
+
+#### Healing风格
+```
+Healing anime panel guidelines:
+- Soft, rounded panel borders
+- Warm, cozy framing for intimate moments
+- Small panels for detailed emotional expressions
+- Wide panels for peaceful daily life scenes
+- Gentle transitions between panels
+- Focus on character interactions and emotions
+- Comfortable, non-threatening compositions
+```
+
+#### Manhwa风格
+```
+Korean manhwa panel guidelines:
+- Clean, modern rectangular panels
+- Vertical scrolling-friendly layouts
+- Wide panels for urban landscapes
+- Medium shots for character interactions
+- Close-ups with detailed facial expressions
+- Contemporary, stylish compositions
+- Digital-native panel arrangements
+```
+
+#### Cinematic风格
+```
+Cinematic panel guidelines:
+- Film-like aspect ratios (16:9, 2.35:1)
+- Professional camera angles and shots
+- Establishing shots, medium shots, close-ups sequence
+- Dramatic lighting and composition
+- Depth of field effects in panel design
+- Movie storyboard-style layouts
+- Professional cinematography principles
+```
+
 ### 输出格式
 ```json
 {
@@ -184,7 +240,7 @@ American comic panel guidelines:
 {
   "characters": [角色数组],
   "setting": {设定对象},
-  "style": "manga | comic",
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic",
   "uploadedCharacterReferences": [用户上传的参考图片]
 }
 ```
@@ -218,6 +274,26 @@ Japanese manga style, black and white, detailed character design with clean line
 #### Comic风格
 ```
 American comic book style, colorful superhero art with bold colors and clean line art
+```
+
+#### Wuxia风格
+```
+Chinese wuxia cultivation style, ancient costume, flowing long hair, immortal bearing, spiritual aura, traditional Chinese painting style, English annotations
+```
+
+#### Healing风格
+```
+Healing Japanese anime style, cute character design, warm colors, soft lines, friendly expressions, English annotations
+```
+
+#### Manhwa风格
+```
+Korean webtoon style, fashionable modern character design, refined facial features, urban style clothing, digital painting techniques, English annotations
+```
+
+#### Cinematic风格
+```
+Cinematic photorealistic style, realistic character modeling, professional lighting, cinematic texture, rich details, English annotations
 ```
 
 ### 输出格式
@@ -256,7 +332,7 @@ American comic book style, colorful superhero art with bold colors and clean lin
   "panel": {面板对象},
   "characterReferences": [角色参考数组],
   "setting": {设定对象},
-  "style": "manga | comic",
+  "style": "manga | comic | wuxia | healing | manhwa | cinematic",
   "uploadedSettingReferences": [场景参考图片],
   "language": "en | zh",
   "aiModel": "auto | nanobanana | volcengine"
@@ -291,22 +367,62 @@ Generate a single comic panel image with proper framing and composition.
 
 #### 中文 + Manga
 ```
-日式漫画风格（黑白配网点），使用中文文字和对话框，保持角色外观一致性
+日式漫画风格（黑白配网点），使用中文文字和对话框，保持角色外观一致性，细腻的线条艺术，经典的网点阴影技法，动态的分镜构图
 ```
 
 #### 英文 + Manga
 ```
-Japanese manga visual style (black and white with screentones), use English text and speech bubbles, maintain character appearance consistency
+Japanese manga style (black and white with screentones), using English text and speech bubbles, maintain character appearance consistency, detailed line art, classic screentone shading techniques, dynamic panel composition
 ```
 
 #### 中文 + Comic
 ```
-美式漫画风格，全彩色，清晰线条艺术，使用中文文字和对话框，保持角色外观一致性
+美式漫画风格，全彩色，清晰线条艺术，使用中文文字和对话框，保持角色外观一致性，鲜艳的色彩，戏剧性的光影效果，英雄主义构图
 ```
 
 #### 英文 + Comic
 ```
-American comic book style, full color, clean line art, use English text and speech bubbles, maintain character appearance consistency
+American comic book style, full color, clean line art, using English text and speech bubbles, maintain character appearance consistency, vibrant colors, dramatic lighting effects, heroic composition
+```
+
+#### 中文 + Wuxia
+```
+中国武侠修仙风格，古风水墨意境，飘逸的服饰，仙气缭绕，山水背景，使用中文文字和对话框，保持角色外观一致性，传统中国画技法，意境深远的构图，灵气氛围
+```
+
+#### 英文 + Wuxia
+```
+Chinese wuxia cultivation style, ancient ink painting atmosphere, flowing robes, ethereal aura, landscape backgrounds, using English text and speech bubbles, maintain character appearance consistency, traditional Chinese painting techniques, profound artistic composition, spiritual atmosphere
+```
+
+#### 中文 + Healing
+```
+治愈系日本动漫风格，温暖柔和的色彩，可爱的角色设计，使用中文文字和对话框，保持角色外观一致性，柔和的光线，温馨的氛围，细腻的情感表达，日常生活场景
+```
+
+#### 英文 + Healing
+```
+Healing Japanese anime style, warm and soft colors, cute character design, using English text and speech bubbles, maintain character appearance consistency, soft lighting, cozy atmosphere, delicate emotional expression, daily life scenes
+```
+
+#### 中文 + Manhwa
+```
+韩国网络漫画风格，现代都市背景，时尚的角色设计，使用中文文字和对话框，保持角色外观一致性，精致的数字绘画技法，现代感强烈，都市生活场景，流行文化元素
+```
+
+#### 英文 + Manhwa
+```
+Korean webtoon style, modern urban background, fashionable character design, using English text and speech bubbles, maintain character appearance consistency, refined digital painting techniques, strong modern feel, urban life scenes, pop culture elements
+```
+
+#### 中文 + Cinematic
+```
+电影级视觉风格，写实主义，电影摄影构图，使用中文文字和对话框，保持角色外观一致性，专业的光影效果，景深控制，电影级色彩分级，戏剧性的视角
+```
+
+#### 英文 + Cinematic
+```
+Cinematic visual style, photorealism, cinematographic composition, using English text and speech bubbles, maintain character appearance consistency, professional lighting effects, depth of field control, cinematic color grading, dramatic perspectives
 ```
 
 ### 输出格式
