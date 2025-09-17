@@ -237,30 +237,33 @@ class VolcEngineHandler {
 				imageRefs.push(...settingRefs.slice(0, remainingSlots));
 			}
 
-			// Convert relative image-proxy URLs to absolute URLs for VolcEngine
-			const absoluteImageRefs = imageRefs.map(img => {
-				if (img.startsWith('/api/image-proxy')) {
-					// Convert relative path to absolute URL
-					return `http://localhost:8000${img}`;
+			// Extract original URLs from image-proxy paths for VolcEngine
+			const volcEngineImageRefs = imageRefs.map(img => {
+				if (img.startsWith('/api/image-proxy?url=')) {
+					// Extract the original URL from the image-proxy path
+					const urlParam = img.split('url=')[1];
+					if (urlParam) {
+						return decodeURIComponent(urlParam);
+					}
 				}
 				return img;
 			});
 
-			console.log(`VolcEngine using ${absoluteImageRefs.length} reference images`)
+			console.log(`VolcEngine using ${volcEngineImageRefs.length} reference images`)
 
 			// 调试：检查图片格式
-			absoluteImageRefs.forEach((img, index) => {
+			volcEngineImageRefs.forEach((img, index) => {
 				console.log(`Image ${index + 1} format:`, {
 					isBase64: img.startsWith('data:image/'),
 					isUrl: img.startsWith('http'),
-					isImageProxy: img.includes('/api/image-proxy'),
+					isVolcEngineUrl: img.includes('ark-content-generation'),
 					preview: img.substring(0, 80) + '...'
 				});
 			});
 
 			const request: GenerateImageRequest = {
 				prompt: enhancedPrompt,
-				...(absoluteImageRefs.length > 0 && { image: absoluteImageRefs }),
+				...(volcEngineImageRefs.length > 0 && { image: volcEngineImageRefs }),
 				sequential_image_generation: "auto",
 				sequential_image_generation_options: {
 					max_images: 1,
