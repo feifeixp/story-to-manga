@@ -21,25 +21,32 @@ Transform your written stories into stunning visual manga or comic book pages us
 - 🛡️ **Stability Improvements**: Robust error handling and crash prevention
 - 🔧 **Developer Experience**: Comprehensive logging and debugging tools
 
-## 🆕 Latest Updates (v2.1.0)
+## 🆕 Latest Updates (v2.2.0) - December 2024
 
-### 🚀 **Stability & Reliability**
-- **Fixed Frontend Crashes**: Resolved critical issues with undefined setting handling
-- **Enhanced Error Recovery**: Improved graceful degradation when AI services are unavailable
-- **Robust Image Processing**: Fixed VolcEngine URL compatibility issues for seamless panel generation
-- **Smart Fallback Systems**: Automatic model switching when primary services encounter issues
+### 🎯 **Critical Bug Fixes & Stability**
+- **🔧 Character Reference System**: Fixed critical issue where wrong character references were used in panel generation
+- **🎨 Style Consistency**: Resolved redraw functionality producing inconsistent styles (manga vs wuxia issue)
+- **🌐 Language Localization**: Implemented comprehensive Chinese language support for all AI-generated content
+- **⚡ Frontend Error Resolution**: Fixed all TypeScript errors, undefined variables, and null safety issues
+- **🔗 Repository Links**: Updated all GitHub links to point to correct project repository
 
-### 🎨 **Style & Quality Improvements**
-- **Optimized Style Prefixes**: Refined prompts for Wuxia, Healing, Manhwa, and Cinematic styles
-- **Better AI Understanding**: Simplified and focused style descriptions for more consistent results
-- **Enhanced Visual Consistency**: Improved character reference handling across all panels
-- **Cultural Authenticity**: More accurate style representations for different comic traditions
+### 🚀 **Enhanced AI Generation**
+- **🎭 Dynamic Character Matching**: Panels now automatically use correct character references based on scene content
+- **📝 Intelligent Prompt Construction**: Language-aware prompts ensure Chinese users get Chinese content
+- **🎨 Style Prefix Standardization**: All 10 comic styles now use consistent, optimized prompt formats
+- **🔄 Improved Redraw Logic**: Fixed black/white manga bias in redraw functionality
 
-### 🔧 **Technical Enhancements**
-- **Advanced Debugging**: Comprehensive logging system for better issue diagnosis
-- **Improved API Routing**: Enhanced parameter passing between AI model handlers
-- **Network Resilience**: Better timeout handling and connection error management
-- **Memory Optimization**: Reduced memory usage and improved performance for large projects
+### 🌍 **Internationalization Improvements**
+- **📖 Story Analysis**: Chinese language stories now generate Chinese titles, character descriptions, and settings
+- **🎬 Panel Generation**: Scene descriptions and dialogue properly localized based on user language
+- **🎨 Character Creation**: Style-appropriate character generation with language-specific annotations
+- **🔧 API Consistency**: All endpoints now respect user language preferences
+
+### 🛠️ **Developer Experience**
+- **📊 Comprehensive Logging**: Added detailed debugging logs for all AI generation processes
+- **🔍 Error Tracking**: Enhanced error reporting with request IDs and detailed context
+- **⚙️ Code Quality**: Resolved all linting issues, spell check warnings, and type safety problems
+- **📚 Documentation**: Updated all configuration files and repository metadata
 
 ## Screenshots
 
@@ -211,11 +218,13 @@ pnpm dev
 
 Open [http://localhost:8000](http://localhost:8000) in your browser.
 
-## 🔄 Updating to Latest Version
+## 🔄 Updating to Latest Version (v2.2.0)
+
+### 🚨 Important: Breaking Changes in v2.2.0
+
+This version includes significant improvements to character reference handling and style consistency. **Your existing projects will continue to work**, but new projects will benefit from enhanced features.
 
 ### For Existing Installations
-
-If you already have the project installed and want to update to the latest stable version:
 
 #### Method 1: Git Pull (Recommended)
 ```bash
@@ -241,6 +250,33 @@ pnpm install
 
 # Restore your API keys
 cp .env.local.backup .env.local
+```
+
+### 🆕 What's New After Update
+
+After updating to v2.2.0, you'll immediately benefit from:
+
+1. **🎯 Better Character Consistency**: Panels now automatically use the correct character references
+2. **🎨 Fixed Style Issues**: Redraw functionality now maintains proper style (no more unwanted manga style)
+3. **🌐 Chinese Language Support**: Full localization for Chinese users
+4. **🔧 Enhanced Stability**: Resolved all major frontend crashes and TypeScript errors
+5. **📱 Improved UI**: Better error handling and user feedback
+
+### 🔧 Troubleshooting Update Issues
+
+If you experience issues after updating:
+
+```bash
+# Clear Next.js cache
+rm -rf .next
+
+# Reinstall dependencies
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+
+# Restart development server
+pnpm dev
+```
 
 # Start development server
 pnpm dev

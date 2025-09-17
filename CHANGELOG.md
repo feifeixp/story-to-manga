@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2024-12-17
+
+### 🎯 Critical Bug Fixes
+
+#### Character Reference System
+- **Fixed**: Critical issue where wrong character references were used in panel generation
+- **Fixed**: Dynamic character matching now correctly selects references based on panel content
+- **Fixed**: Batch panel generation now uses character-specific references instead of fixed selection
+- **Fixed**: Frontend redraw functionality now auto-selects correct character references
+
+#### Style Consistency Issues
+- **Fixed**: Redraw functionality producing inconsistent styles (manga vs wuxia issue)
+- **Fixed**: Removed "漫画面板" (manga panel) bias from redraw prompts that caused black/white style
+- **Fixed**: Style prefix standardization across all 10 comic styles
+- **Fixed**: Prompt construction now uses correct style prefixes instead of conflicting instructions
+
+### 🌐 Language Localization
+
+#### Comprehensive Chinese Support
+- **Added**: Language-aware prompt construction for all AI generation endpoints
+- **Added**: Chinese story analysis generates Chinese titles, character descriptions, and settings
+- **Added**: Chinese panel generation with proper scene descriptions and dialogue
+- **Added**: Chinese character creation with style-appropriate annotations
+- **Fixed**: All AI-generated content now respects user language preferences
+
+### ⚡ Frontend Stability & Quality
+
+#### Error Resolution
+- **Fixed**: All TypeScript errors including implicit 'any' types and undefined variables
+- **Fixed**: Null safety issues with proper optional chaining and type guards
+- **Fixed**: Spell check warnings for technical terms and project-specific vocabulary
+- **Fixed**: Image proxy error handling for expired VolcEngine URLs
+
+#### Code Quality Improvements
+- **Added**: Comprehensive debugging logs for all AI generation processes
+- **Added**: Request ID tracking for better error diagnosis
+- **Added**: Enhanced error reporting with detailed context
+- **Removed**: All unused code and variables
+
+### 🔗 Repository & Configuration
+
+#### GitHub Links Update
+- **Fixed**: Report Issue button now points to correct repository
+- **Fixed**: All GitHub links updated from victorhuangwq/story-to-manga to feifeixp/story-to-manga-enhanced
+- **Updated**: Package.json repository metadata and issue tracking URLs
+- **Updated**: GitHub Issue templates and discussion links
+
+### 🛠️ Developer Experience
+
+#### Enhanced Debugging
+- **Added**: Detailed logging for character reference selection process
+- **Added**: Style prefix generation tracking and validation
+- **Added**: Complete prompt construction visibility for troubleshooting
+- **Added**: AI model response tracking with performance metrics
+
+#### Technical Improvements
+- **Improved**: API parameter passing and validation
+- **Improved**: Error handling with graceful degradation
+- **Improved**: Memory usage optimization for large projects
+- **Enhanced**: Network resilience and timeout handling
+
 ## [2.0.0] - 2025-01-16
 
 ### 🚀 Major New Features
