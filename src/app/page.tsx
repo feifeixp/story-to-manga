@@ -1410,25 +1410,39 @@ export default function Home() {
 			// 转换参考图片格式：从对象数组转换为字符串数组
 			const referenceImageUrls = referenceImages ? referenceImages.map(ref => ref.image) : [];
 
-			const response = await fetch("/api/redraw-image", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					imageType: editingImage.type,
-					imageId: editingImage.id,
-					originalPrompt: editingImage.originalPrompt,
-					newPrompt: newPrompt,
-					language: i18n?.language || "en",
-					aiModel: aiModel,
-					imageSize: imageSize,
-					style: style, // 添加项目风格参数
-					referenceImages: referenceImageUrls,
-				}),
-			});
+			// 创建带超时的fetch请求 (60秒超时，比后端45秒稍长)
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-			if (!response.ok) {
-				const errorMessage = await handleApiError(response, "Failed to redraw image");
-				throw new Error(errorMessage);
+			try {
+				const response = await fetch("/api/redraw-image", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						imageType: editingImage.type,
+						imageId: editingImage.id,
+						originalPrompt: editingImage.originalPrompt,
+						newPrompt: newPrompt,
+						language: i18n?.language || "en",
+						aiModel: aiModel,
+						imageSize: imageSize,
+						style: style, // 添加项目风格参数
+						referenceImages: referenceImageUrls,
+					}),
+					signal: controller.signal,
+				});
+				clearTimeout(timeoutId);
+
+				if (!response.ok) {
+					const errorMessage = await handleApiError(response, "Failed to redraw image");
+					throw new Error(errorMessage);
+				}
+			} catch (fetchError) {
+				clearTimeout(timeoutId);
+				if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+					throw new Error('重绘请求超时，请稍后重试。如果问题持续，请尝试简化提示词或减少参考图片数量。');
+				}
+				throw fetchError;
 			}
 
 			const result = await response.json();
@@ -1485,24 +1499,38 @@ export default function Home() {
 
 		setIsImageProcessing(true);
 		try {
-			const response = await fetch("/api/modify-image", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					imageType: editingImage.type,
-					imageId: editingImage.id,
-					originalImage: editingImage.image,
-					modificationPrompt: modificationPrompt,
-					originalPrompt: editingImage.originalPrompt,
-					language: i18n?.language || "en",
-					aiModel: aiModel,
-					imageSize: imageSize,
-				}),
-			});
+			// 创建带超时的fetch请求 (60秒超时)
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-			if (!response.ok) {
-				const errorMessage = await handleApiError(response, "Failed to modify image");
-				throw new Error(errorMessage);
+			try {
+				const response = await fetch("/api/modify-image", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						imageType: editingImage.type,
+						imageId: editingImage.id,
+						originalImage: editingImage.image,
+						modificationPrompt: modificationPrompt,
+						originalPrompt: editingImage.originalPrompt,
+						language: i18n?.language || "en",
+						aiModel: aiModel,
+						imageSize: imageSize,
+					}),
+					signal: controller.signal,
+				});
+				clearTimeout(timeoutId);
+
+				if (!response.ok) {
+					const errorMessage = await handleApiError(response, "Failed to modify image");
+					throw new Error(errorMessage);
+				}
+			} catch (fetchError) {
+				clearTimeout(timeoutId);
+				if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+					throw new Error('图像修改请求超时，请稍后重试。如果问题持续，请尝试简化修改要求。');
+				}
+				throw fetchError;
 			}
 
 			const result = await response.json();

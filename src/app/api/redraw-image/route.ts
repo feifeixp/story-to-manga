@@ -31,9 +31,11 @@ function cleanDialogueInPrompt(prompt: string): string {
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/redraw-image";
+	const requestId = Math.random().toString(36).substring(2, 15);
 	let imageType: string;
 	let imageId: string;
 
+	redrawLogger.info({ requestId }, "🎨 Starting image redraw request");
 	logApiRequest(panelLogger, endpoint);
 
 	try {
@@ -50,8 +52,9 @@ export async function POST(request: NextRequest) {
 			style = "manga", // 漫画风格
 		} = requestData;
 
-		panelLogger.debug(
+		redrawLogger.info(
 			{
+				requestId,
 				image_type: imageType,
 				image_id: imageId,
 				has_new_prompt: !!newPrompt,
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
 				ai_model: aiModel,
 				language,
 			},
-			"Received image redraw request",
+			"📝 Processing image redraw request",
 		);
 
 		if (!imageType || !imageId || !originalPrompt) {
@@ -184,8 +187,8 @@ Generate a single comic panel image with proper framing and composition.
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
 				redrawLogger.info(
-					{ attempt, maxRetries, imageType },
-					`Attempting AI model generation (attempt ${attempt}/${maxRetries})`
+					{ requestId, attempt, maxRetries, imageType },
+					`🔄 Attempting AI model generation (attempt ${attempt}/${maxRetries})`
 				);
 
 				// 设置超时控制
@@ -220,8 +223,8 @@ Generate a single comic panel image with proper framing and composition.
 				result = await Promise.race([generationPromise, timeoutPromise]);
 
 				redrawLogger.info(
-					{ attempt, success: true, imageType },
-					`AI model generation succeeded on attempt ${attempt}`
+					{ requestId, attempt, success: true, imageType },
+					`✅ AI model generation succeeded on attempt ${attempt}`
 				);
 				break; // 成功则跳出重试循环
 
@@ -230,13 +233,14 @@ Generate a single comic panel image with proper framing and composition.
 
 				redrawLogger.warn(
 					{
+						requestId,
 						attempt,
 						maxRetries,
 						imageType,
 						error: lastError.message,
 						willRetry: attempt < maxRetries
 					},
-					`AI model generation failed on attempt ${attempt}`
+					`❌ AI model generation failed on attempt ${attempt}`
 				);
 
 				if (attempt < maxRetries) {
@@ -254,8 +258,8 @@ Generate a single comic panel image with proper framing and composition.
 		// 如果所有重试都失败了
 		if (!result && lastError) {
 			redrawLogger.error(
-				{ error: lastError.message, imageType },
-				"All AI model generation attempts failed for image redraw"
+				{ requestId, error: lastError.message, imageType },
+				"💥 All AI model generation attempts failed for image redraw"
 			);
 			throw lastError;
 		}
@@ -279,8 +283,9 @@ Generate a single comic panel image with proper framing and composition.
 			throw new Error("Invalid image data format received from AI model");
 		}
 
-		panelLogger.info(
+		redrawLogger.info(
 			{
+				requestId,
 				image_type: imageType,
 				image_id: imageId,
 				model_used: result.modelUsed,
@@ -289,7 +294,7 @@ Generate a single comic panel image with proper framing and composition.
 					: 0,
 				duration_ms: Date.now() - startTime,
 			},
-			"Successfully redrew image",
+			"🎉 Successfully redrew image",
 		);
 
 		logApiResponse(panelLogger, endpoint, true, Date.now() - startTime, {
