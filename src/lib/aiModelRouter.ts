@@ -90,7 +90,13 @@ class NanoBananaHandler {
 				}
 			}
 
-			const result = await model.generateContent(inputParts);
+			// 添加超时控制 (45秒超时)
+			const timeoutPromise = new Promise((_, reject) => {
+				setTimeout(() => reject(new Error('NanoBanana API timeout after 45 seconds')), 45000);
+			});
+
+			const apiCallPromise = model.generateContent(inputParts);
+			const result = await Promise.race([apiCallPromise, timeoutPromise]);
 			const response = result.response;
 
 			// Check if we got image data
@@ -145,7 +151,13 @@ class NanoBananaHandler {
 					}
 				}
 
-				const safeResult = await model.generateContent(safeInputParts);
+				// 为安全重试也添加超时控制
+				const safeTimeoutPromise = new Promise((_, reject) => {
+					setTimeout(() => reject(new Error('NanoBanana safety retry timeout after 45 seconds')), 45000);
+				});
+
+				const safeApiCallPromise = model.generateContent(safeInputParts);
+				const safeResult = await Promise.race([safeApiCallPromise, safeTimeoutPromise]);
 				const safeResponse = safeResult.response;
 
 				// Check safe result
@@ -240,7 +252,13 @@ class VolcEngineHandler {
 				watermark: false,
 			};
 
-			const result = await this.client.generateMangaPanel(request);
+			// 添加超时控制 (45秒超时)
+			const timeoutPromise = new Promise((_, reject) => {
+				setTimeout(() => reject(new Error('VolcEngine API timeout after 45 seconds')), 45000);
+			});
+
+			const apiCallPromise = this.client.generateMangaPanel(request);
+			const result = await Promise.race([apiCallPromise, timeoutPromise]);
 
 			console.log("VolcEngine API Response:", JSON.stringify(result, null, 2));
 

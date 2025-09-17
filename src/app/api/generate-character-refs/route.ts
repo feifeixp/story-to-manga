@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 				const result = await aiRouter.generateComicPanel(
 					prompt,
 					referenceImages,
-					'en', // language
+					language as "en" | "zh", // 使用传入的语言参数
 					selectedModel,
 					undefined // imageSize
 				);

@@ -1689,20 +1689,34 @@ export default function Home() {
 			setStoryAnalysis(analysis);
 			setOpenAccordions(new Set(["analysis"])); // Auto-expand analysis section
 
-			// Step 2: Generate character references
+			// Step 2: Generate character references (with timeout control)
 			setCurrentStepText("Creating character designs...");
-			const charRefResponse = await fetch("/api/generate-character-refs", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					characters: analysis.characters,
-					setting: analysis.setting,
-					style,
-					uploadedCharacterReferences,
-					language: i18n?.language || 'en',
-					aiModel,
-				}),
-			});
+			const charController = new AbortController();
+			const charTimeoutId = setTimeout(() => charController.abort(), 60000); // 60秒超时，比后端45秒稍长
+
+			let charRefResponse;
+			try {
+				charRefResponse = await fetch("/api/generate-character-refs", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						characters: analysis.characters,
+						setting: analysis.setting,
+						style,
+						uploadedCharacterReferences,
+						language: i18n?.language || 'en',
+						aiModel,
+					}),
+					signal: charController.signal,
+				});
+				clearTimeout(charTimeoutId);
+			} catch (charError) {
+				clearTimeout(charTimeoutId);
+				if (charError instanceof Error && charError.name === 'AbortError') {
+					throw new Error('角色生成超时，请检查网络连接后重试，或尝试简化角色描述');
+				}
+				throw charError;
+			}
 
 			if (!charRefResponse.ok) {
 				throw new Error(
@@ -2416,18 +2430,34 @@ export default function Home() {
 		if (!storyAnalysis) throw new Error("Story analysis required");
 
 		setCurrentStepText("Retrying character generation...");
-		const response = await fetch("/api/generate-character-refs", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				characters: storyAnalysis.characters,
-				setting: storyAnalysis.setting,
-				style,
-				uploadedCharacterReferences,
-				language: i18n?.language || 'en',
-				aiModel,
-			}),
-		});
+
+		// 添加超时控制
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+		let response;
+		try {
+			response = await fetch("/api/generate-character-refs", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					characters: storyAnalysis.characters,
+					setting: storyAnalysis.setting,
+					style,
+					uploadedCharacterReferences,
+					language: i18n?.language || 'en',
+					aiModel,
+				}),
+				signal: controller.signal,
+			});
+			clearTimeout(timeoutId);
+		} catch (fetchError) {
+			clearTimeout(timeoutId);
+			if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+				throw new Error('角色生成重试超时，请检查网络连接后重试');
+			}
+			throw fetchError;
+		}
 
 		if (!response.ok) {
 			throw new Error(
@@ -2587,18 +2617,34 @@ export default function Home() {
 
 		try {
 			setCurrentStepText("Re-creating character designs...");
-			const response = await fetch("/api/generate-character-refs", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					characters: storyAnalysis.characters,
-					setting: storyAnalysis.setting,
-					style,
-					uploadedCharacterReferences,
-					language: i18n?.language || 'en',
-					aiModel,
-				}),
-			});
+
+			// 添加超时控制
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+			let response;
+			try {
+				response = await fetch("/api/generate-character-refs", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						characters: storyAnalysis.characters,
+						setting: storyAnalysis.setting,
+						style,
+						uploadedCharacterReferences,
+						language: i18n?.language || 'en',
+						aiModel,
+					}),
+					signal: controller.signal,
+				});
+				clearTimeout(timeoutId);
+			} catch (fetchError) {
+				clearTimeout(timeoutId);
+				if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+					throw new Error('角色重新生成超时，请检查网络连接后重试');
+				}
+				throw fetchError;
+			}
 
 			if (!response.ok) {
 				throw new Error(
