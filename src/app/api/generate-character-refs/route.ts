@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import { type NextRequest, NextResponse } from "next/server";
 import {
 	characterGenLogger,
@@ -8,408 +7,131 @@ import {
 } from "@/lib/logger";
 import { getStylePrompt } from "@/lib/styleConfig";
 import { cacheHelpers } from "@/lib/cacheManager";
+import { getAIModelRouter, selectAIModel, type AIModel } from "@/lib/aiModelRouter";
 import type { ComicStyle } from "@/types";
-
-const genAI = new GoogleGenAI({ apiKey: process.env["GOOGLE_AI_API_KEY"]! });
-const geminiModel = "gemini-2.5-flash-image-preview";
-
-// Helper function to convert base64 to format expected by Gemini
-function prepareImageForGemini(base64Image: string) {
-	// Remove data:image/xxx;base64, prefix if present
-	const base64Data = base64Image.replace(/^data:image\/[^;]+;base64,/, "");
-	return {
-		inlineData: {
-			data: base64Data,
-			mimeType: "image/jpeg",
-		},
-	};
-}
-
-// Helper function to generate character using VolcEngine
-async function generateCharacterWithVolcEngine(prompt: string, uploadedImages: string[] = []) {
-	const volcEngineUrl = "https://visual-model-api.volcengineapi.com/api/v1/img2img_inpainting";
-
-	const requestBody: any = {
-		req_key: `character_${Date.now()}`,
-		prompt: prompt,
-		model_version: "general_v1.4",
-		seed: -1,
-		scale: 7.5,
-		ddim_steps: 20,
-		width: 512,
-		height: 768, // Taller for character reference
-		return_url: true,
-		logo_info: {
-			add_logo: false,
-		},
-	};
-
-	// Add reference image if provided
-	if (uploadedImages.length > 0 && uploadedImages[0]) {
-		// Use first uploaded image as reference
-		const base64Data = uploadedImages[0].replace(/^data:image\/[^;]+;base64,/, "");
-		requestBody.image = base64Data;
-	}
-
-	const response = await fetch(volcEngineUrl, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"Authorization": `Bearer ${process.env["VOLCENGINE_API_KEY"]}`,
-		},
-		body: JSON.stringify(requestBody),
-	});
-
-	if (!response.ok) {
-		throw new Error(`VolcEngine API error: ${response.status}`);
-	}
-
-	const result = await response.json();
-
-	if (result.code !== 10000 || !result.data?.image_url) {
-		throw new Error(`VolcEngine generation failed: ${result.message || 'Unknown error'}`);
-	}
-
-	// Download the image and convert to base64
-	const imageResponse = await fetch(result.data.image_url);
-	if (!imageResponse.ok) {
-		throw new Error("Failed to download generated image");
-	}
-
-	const imageBuffer = await imageResponse.arrayBuffer();
-	const base64Image = Buffer.from(imageBuffer).toString('base64');
-
-	return `data:image/jpeg;base64,${base64Image}`;
-}
 
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
 	const endpoint = "/api/generate-character-refs";
 
-	logApiRequest(characterGenLogger, endpoint);
+	logApiRequest(characterGenLogger, endpoint, "POST");
 
 	try {
-		const {
-			characters,
-			setting,
+		const body = await request.json();
+		const { characters, setting, style, uploadedCharacterRefs = [], aiModel = "auto" } = body;
+
+		characterGenLogger.debug({
+			characters_count: characters?.length || 0,
 			style,
-			uploadedCharacterReferences = [],
-			aiModel = 'nanobanana', // Default to nanobanana for backward compatibility
-		} = await request.json();
+			setting: !!setting,
+			uploaded_refs_count: uploadedCharacterRefs?.length || 0,
+			ai_model: aiModel,
+		}, "Received character reference generation request");
 
-		characterGenLogger.debug(
-			{
-				characters_count: characters?.length || 0,
-				style,
-				setting: !!setting,
-				uploaded_refs_count: uploadedCharacterReferences?.length || 0,
-			},
-			"Received character reference generation request",
-		);
-
-		if (!characters || !setting || !style) {
-			characterGenLogger.warn(
-				{
-					characters: !!characters,
-					setting: !!setting,
-					style: !!style,
-				},
-				"Missing required parameters",
-			);
-			logApiResponse(
-				characterGenLogger,
-				endpoint,
-				false,
-				Date.now() - startTime,
-				{ error: "Missing parameters" },
-			);
+		if (!characters || !Array.isArray(characters) || characters.length === 0) {
 			return NextResponse.json(
-				{ error: "Characters, setting, and style are required" },
-				{ status: 400 },
+				{ success: false, error: "No characters provided" },
+				{ status: 400 }
 			);
 		}
 
-		// 检查缓存
-		const cachedResult = cacheHelpers.getCachedCharacterRef(characters, setting, style);
-		if (cachedResult && Array.isArray(cachedResult)) {
+		// Check cache first
+		const cachedRefs = cacheHelpers.getCachedCharacterRef(characters, setting, style);
+		if (cachedRefs) {
 			characterGenLogger.info("Returning cached character references");
-			logApiResponse(
-				characterGenLogger,
-				endpoint,
-				true,
-				Date.now() - startTime,
-				{ cached: true, characters_count: cachedResult.length },
-			);
 			return NextResponse.json({
 				success: true,
-				characterReferences: cachedResult,
-				cached: true,
+				characterReferences: cachedRefs,
 			});
 		}
 
-		const characterReferences = [];
+		// Select the appropriate AI model
+		const selectedModel = selectAIModel('en', aiModel as AIModel);
+		const aiRouter = getAIModelRouter();
 
-		characterGenLogger.info(
-			{
-				model: aiModel,
-				characters_to_generate: characters.length,
-			},
-			"Starting character reference generation",
-		);
+		characterGenLogger.info({
+			model: aiModel,
+			selected_model: selectedModel,
+			characters_to_generate: characters.length,
+		}, "Starting character reference generation");
+
+		const characterReferences: Array<{
+			name: string;
+			image: string;
+			description: string;
+		}> = [];
+
+		const styleConfig = getStylePrompt(style as ComicStyle);
+		const stylePrefix = styleConfig.characterPrompt;
 
 		for (const character of characters) {
 			const characterStartTime = Date.now();
-			characterGenLogger.debug(
-				{ character_name: character.name },
-				"Generating character reference",
-			);
-			// Get style-specific prompt using the new style configuration system
-			const stylePrefix = getStylePrompt(style as ComicStyle, 'character', 'en');
-
-			// Find uploaded references that match this character
-			const matchingUploads = uploadedCharacterReferences.filter(
-				(ref: { name: string; image: string; id: string; fileName: string }) =>
-					ref.name.toLowerCase().includes(character.name.toLowerCase()) ||
-					character.name.toLowerCase().includes(ref.name.toLowerCase()),
-			);
-
-			let prompt = `
-Character reference sheet in ${stylePrefix}. 
-
-Full body character design showing front view of ${character.name}:
-- Physical appearance: ${character.physicalDescription}
-- Personality: ${character.personality}
-- Role: ${character.role}
-- Setting context: ${setting.timePeriod}, ${setting.location}
-`;
-
-			// Add reference to uploaded images if any match
-			if (matchingUploads.length > 0) {
-				prompt += `
-
-IMPORTANT: Use the provided reference images as inspiration for this character's design. The reference images show visual elements that should be incorporated while adapting them to the ${stylePrefix} aesthetic. Maintain the essence and key visual features shown in the references.
-`;
-			} else if (uploadedCharacterReferences.length > 0) {
-				prompt += `
-
-Note: Reference images are provided, but use them as general style inspiration for this character design.
-`;
-			}
-
-			prompt += `
-
-The character should be drawn in a neutral pose against a plain background, showing their full design clearly for reference purposes. This is a character reference sheet that will be used to maintain consistency across multiple comic panels.
-`;
-
-			// Prepare input parts for Gemini API
-			const inputParts: Array<
-				{ text: string } | { inlineData: { data: string; mimeType: string } }
-			> = [{ text: prompt }];
-
-			// Add uploaded reference images to input
-			for (const upload of uploadedCharacterReferences as {
-				name: string;
-				image: string;
-				id: string;
-				fileName: string;
-			}[]) {
-				if (upload.image) {
-					inputParts.push(prepareImageForGemini(upload.image));
-				}
-			}
+			
+			characterGenLogger.debug({
+				character_name: character.name,
+			}, "Generating character reference");
 
 			try {
-				characterGenLogger.debug(
-					{
-						character_name: character.name,
-						prompt_length: prompt.length,
-						style_prefix: `${stylePrefix.substring(0, 50)}...`,
-						matching_uploads: matchingUploads.length,
-						total_uploads: uploadedCharacterReferences.length,
-						input_parts_count: inputParts.length,
-						ai_model: aiModel,
-					},
-					`Calling ${aiModel} API for character generation`,
+				// Create prompt for character generation
+				const prompt = `Character reference sheet: ${stylePrefix}. Create a character design for ${character.name}. Focus on: ${character.physicalDescription}. Character personality: ${character.personality}. Role: ${character.role}. Setting: ${setting.timePeriod} in ${setting.location}. Mood: ${setting.mood}. Full body character reference sheet with multiple angles and expressions.`;
+
+				// Find matching uploaded images for this character
+				const matchingUploads = uploadedCharacterRefs.filter((ref: any) => 
+					ref.characterName === character.name
 				);
 
-				let imageData: string;
-				let mimeType = "image/jpeg";
+				characterGenLogger.debug({
+					character_name: character.name,
+					prompt_length: prompt.length,
+					style_prefix: stylePrefix.substring(0, 50) + "...",
+					matching_uploads: matchingUploads.length,
+					total_uploads: uploadedCharacterRefs.length,
+					selected_model: selectedModel,
+				}, `Calling ${selectedModel} API for character generation`);
 
-				if (aiModel === 'volcengine') {
-					// Use VolcEngine for character generation
-					const uploadedImageUrls = uploadedCharacterReferences
-						.filter((ref: any) => ref.image)
-						.map((ref: any) => ref.image);
+				// Use AI Model Router for character generation
+				const referenceImages = matchingUploads
+					.filter((ref: any) => ref.image)
+					.map((ref: any) => ref.image);
 
-					imageData = await generateCharacterWithVolcEngine(prompt, uploadedImageUrls);
+				const result = await aiRouter.generateCharacterReference(
+					prompt,
+					referenceImages,
+					undefined, // settingRefs
+					'en', // language
+					undefined, // imageSize
+					style as ComicStyle,
+					selectedModel
+				);
+
+				if (result.success && result.imageData) {
+					const imageSizeKB = result.imageData
+						? Math.round((result.imageData.split(',')[1]?.length || 0) * 0.75 / 1024)
+						: 0;
 
 					characterReferences.push({
 						name: character.name,
-						image: imageData,
+						image: result.imageData,
 						description: character.physicalDescription,
 					});
 
-					characterGenLogger.info(
-						{
-							character_name: character.name,
-							mime_type: mimeType,
-							image_size_kb: imageData
-								? Math.round((imageData.split(',')[1]?.length || 0) * 0.75 / 1024)
-								: 0,
-							duration_ms: Date.now() - characterStartTime,
-							model_used: 'volcengine',
-						},
-						"Successfully generated character reference with VolcEngine",
-					);
+					characterGenLogger.info({
+						character_name: character.name,
+						mime_type: "image/jpeg",
+						image_size_kb: imageSizeKB,
+						duration_ms: Date.now() - characterStartTime,
+						model_used: result.modelUsed,
+					}, `Successfully generated character reference with ${result.modelUsed}`);
 				} else {
-					// Use Gemini (nanobanana) for character generation
-					const result = await genAI.models.generateContent({
-						model: geminiModel,
-						contents: inputParts,
-					});
+					// Handle generation failure
+					const errorMessage = result.error || "Character generation failed";
+					characterGenLogger.error({
+						character_name: character.name,
+						error: errorMessage,
+						model_used: result.modelUsed,
+					}, "Character generation failed");
 
-					// Process the response following the official pattern
-					const candidate = result.candidates?.[0];
-
-					// Add detailed logging for debugging
-					characterGenLogger.debug(
-						{
-							character_name: character.name,
-							result_structure: {
-								has_candidates: !!result.candidates,
-								candidates_length: result.candidates?.length || 0,
-								first_candidate: candidate ? {
-									has_content: !!candidate.content,
-									has_parts: !!candidate.content?.parts,
-									parts_length: candidate.content?.parts?.length || 0,
-									finish_reason: candidate.finishReason,
-									safety_ratings: candidate.safetyRatings?.map(r => ({ category: r.category, probability: r.probability }))
-								} : null
-							}
-						},
-						"Gemini API response structure analysis"
-					);
-
-					if (!candidate?.content?.parts) {
-						// Handle IMAGE_SAFETY specifically
-						if (candidate?.finishReason === 'IMAGE_SAFETY') {
-							characterGenLogger.warn({
-								character_name: character.name,
-								finish_reason: candidate.finishReason
-							}, "Image generation blocked by safety filter, trying with modified prompt");
-
-							// Try with a more generic character description
-							const safeCharacterName = character.name.replace(/[^\w\s]/g, '').replace(/\b(Fang|Yuan|Death|Kill|Blood|War|Fight|Battle|Demon|Evil|Dark)\b/gi, 'Hero');
-							const safePrompt = `Character reference sheet in ${stylePrefix}. Create a character design for a ${safeCharacterName || 'protagonist'} character. Focus on: ${character.physicalDescription.replace(/[^\w\s,.-]/g, '')}. Character personality: ${character.personality.replace(/[^\w\s,.-]/g, '')}. Role: ${character.role.replace(/[^\w\s,.-]/g, '')}. Setting: ${setting.timePeriod} in ${setting.location}. Mood: ${setting.mood}. Safe, appropriate character design only.`;
-
-							characterGenLogger.info({
-								character_name: character.name,
-								safe_character_name: safeCharacterName,
-								safe_prompt_length: safePrompt.length
-							}, "Retrying with safety-filtered prompt");
-
-							// Retry with safe prompt
-							const safeResult = await genAI.models.generateContent({
-								model: geminiModel,
-								contents: [{ text: safePrompt }],
-							});
-							const safeCandidate = safeResult.candidates?.[0];
-
-							if (safeCandidate?.content?.parts) {
-								characterGenLogger.info({
-									character_name: character.name,
-									retry_success: true
-								}, "Safety retry succeeded");
-
-								// Process the safe result
-								for (const part of safeCandidate.content.parts) {
-									if (part.inlineData) {
-										const imageData = part.inlineData.data;
-										const mimeType = part.inlineData.mimeType || "image/png";
-										const imageSizeKB = Math.round((imageData.length * 3) / 4 / 1024);
-
-										characterGenLogger.info({
-											character_name: character.name,
-											mime_type: mimeType,
-											image_size_kb: imageSizeKB,
-											retry_attempt: true
-										}, "Successfully generated character reference with safety retry");
-
-										characterReferences.push({
-											name: character.name,
-											image: `data:${mimeType};base64,${imageData}`,
-											description: character.physicalDescription,
-										});
-
-										break;
-									}
-								}
-								continue; // Skip to next character
-							}
-						}
-
-						const errorDetails = {
-							has_result: !!result,
-							has_candidates: !!result.candidates,
-							candidates_count: result.candidates?.length || 0,
-							candidate_finish_reason: candidate?.finishReason,
-							candidate_safety_ratings: candidate?.safetyRatings,
-							full_result: JSON.stringify(result, null, 2)
-						};
-
-						characterGenLogger.error(
-							{
-								character_name: character.name,
-								error_details: errorDetails
-							},
-							"No content parts received - detailed analysis"
-						);
-
-						throw new Error(`No content parts received for character ${character.name}. Finish reason: ${candidate?.finishReason || 'unknown'}`);
-					}
-
-					let imageFound = false;
-					for (const part of candidate.content.parts) {
-						if (part.text) {
-							characterGenLogger.info(
-								{
-									character_name: character.name,
-									text_response: part.text,
-									text_length: part.text.length,
-								},
-								"Received text response from model (full content)",
-							);
-						} else if (part.inlineData) {
-							const imageData = part.inlineData.data;
-							const mimeType = part.inlineData.mimeType || "image/jpeg";
-
-							characterReferences.push({
-								name: character.name,
-								image: `data:${mimeType};base64,${imageData}`,
-								description: character.physicalDescription,
-							});
-
-							characterGenLogger.info(
-								{
-									character_name: character.name,
-									mime_type: mimeType,
-									image_size_kb: imageData
-										? Math.round((imageData.length * 0.75) / 1024)
-										: 0,
-									duration_ms: Date.now() - characterStartTime,
-									model_used: 'nanobanana',
-								},
-								"Successfully generated character reference with Gemini",
-							);
-
-							imageFound = true;
-							break;
-						}
-					}
-
-					if (!imageFound) {
-						throw new Error("No image data received in response parts");
-					}
+					throw new Error(errorMessage);
 				}
 			} catch (error) {
 				logError(characterGenLogger, error, "character reference generation", {
