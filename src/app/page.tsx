@@ -1079,8 +1079,14 @@ export default function Home() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					panel: {
-						description: panel.description,
+						description: panel.description || panel.sceneDescription,
+						panelDescription: panel.panelDescription || panel.sceneDescription,
+						sceneDescription: panel.sceneDescription,
 						panelNumber: panel.panelNumber,
+						characters: panel.characters || [],
+						dialogue: panel.dialogue,
+						cameraAngle: panel.cameraAngle,
+						visualMood: panel.visualMood,
 					},
 					characterReferences: characterReferences,
 					setting: storyAnalysis?.setting || '',
