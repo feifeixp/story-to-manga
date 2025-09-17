@@ -119,11 +119,14 @@ class NanoBananaHandler {
 					.replace(/\b(kill|death|blood|war|fight|battle|demon|evil|dark|violence|weapon|sword|knife|gun)\b/gi, 'action') // Replace potentially problematic words
 					.replace(/\b(Fang|Yuan)\b/gi, 'Hero'); // Replace specific character names that might trigger filters
 
+				// Add style prefix to safe prompt
+				const safeEnhancedPrompt = `${stylePrefix}。${safePrompt}`;
+
 				console.log("Retrying with safety-filtered prompt");
 
 				// Retry with safer prompt
 				const safeInputParts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
-					{ text: safePrompt }
+					{ text: safeEnhancedPrompt }
 				];
 
 				// Add reference images if provided

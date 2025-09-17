@@ -353,8 +353,7 @@ The character should be drawn in a neutral pose against a plain background, show
 					if (!imageFound) {
 						throw new Error("No image data received in response parts");
 					}
-				}
-			} catch (error) {
+				} catch (error) {
 				logError(characterGenLogger, error, "character reference generation", {
 					character_name: character.name,
 					duration_ms: Date.now() - characterStartTime,
