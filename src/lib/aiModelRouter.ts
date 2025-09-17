@@ -57,7 +57,7 @@ class NanoBananaHandler {
 		characterRefs?: string[],
 		settingRefs?: string[],
 		language: "en" | "zh" = "en",
-		imageSize?: ImageSizeConfig,
+		_imageSize?: ImageSizeConfig, // Prefixed with underscore to indicate unused
 		style: ComicStyle = "manga",
 	): Promise<any> {
 		try {
@@ -96,7 +96,7 @@ class NanoBananaHandler {
 			});
 
 			const apiCallPromise = model.generateContent(inputParts);
-			const result = await Promise.race([apiCallPromise, timeoutPromise]);
+			const result = await Promise.race([apiCallPromise, timeoutPromise]) as any;
 			const response = result.response;
 
 			// Check if we got image data
@@ -140,10 +140,10 @@ class NanoBananaHandler {
 					for (const ref of characterRefs) {
 						if (ref.startsWith('data:')) {
 							const [header, data] = ref.split(',');
-							const mimeType = header.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+							const mimeType = header?.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
 							safeInputParts.push({
 								inlineData: {
-									data: data,
+									data: data || '',
 									mimeType: mimeType
 								}
 							});
@@ -157,7 +157,7 @@ class NanoBananaHandler {
 				});
 
 				const safeApiCallPromise = model.generateContent(safeInputParts);
-				const safeResult = await Promise.race([safeApiCallPromise, safeTimeoutPromise]);
+				const safeResult = await Promise.race([safeApiCallPromise, safeTimeoutPromise]) as any;
 				const safeResponse = safeResult.response;
 
 				// Check safe result
@@ -473,7 +473,7 @@ export class AIModelRouter {
 					success: result.success,
 					modelUsed: "volcengine",
 					imageData: result.success ? result.data : undefined,
-					error: result.error || undefined,
+					...(result.error && { error: result.error }),
 				};
 			} else if (selectedModel === "nanobanana") {
 				if (!this.nanoBananaHandler) {
@@ -512,7 +512,7 @@ export class AIModelRouter {
 						success: result.success,
 						modelUsed: "volcengine",
 						imageData: result.success ? result.data : undefined,
-						error: result.error || undefined,
+						...(result.error && { error: result.error }),
 					};
 				} else {
 					return {
@@ -538,7 +538,7 @@ export class AIModelRouter {
 						success: result.success,
 						modelUsed: "volcengine",
 						imageData: result.success ? result.data : undefined,
-						error: result.error || undefined,
+						...(result.error && { error: result.error }),
 					};
 				} else if (fallbackModel === "nanobanana" && this.nanoBananaHandler) {
 					// 将referenceImages分为角色和设定参考图片

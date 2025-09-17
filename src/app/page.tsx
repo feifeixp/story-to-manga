@@ -42,7 +42,7 @@ import type {
 	ImageSizeConfig,
 } from "@/types/project";
 import { DEFAULT_IMAGE_SIZE } from "@/types/project";
-import { imageOptimizer, OPTIMIZATION_PRESETS, imageUtils } from "@/lib/imageOptimizer";
+import { imageOptimizer, OPTIMIZATION_PRESETS } from "@/lib/imageOptimizer";
 import { cacheManager } from "@/lib/cacheManager";
 
 type FailedStep = "analysis" | "characters" | "layout" | "panels" | null;
@@ -962,7 +962,7 @@ export default function Home() {
 	// Edit mode states
 	const [editingStoryAnalysis, setEditingStoryAnalysis] = useState(false);
 	const [editingStoryBreakdown, setEditingStoryBreakdown] = useState(false);
-	const [editingPanelIndex, setEditingPanelIndex] = useState<number | null>(null);
+
 
 	// Temporary edit data
 	const [tempStoryAnalysis, setTempStoryAnalysis] = useState<StoryAnalysis | null>(null);
@@ -1027,8 +1027,6 @@ export default function Home() {
 	const endIndex = Math.min(startIndex + PANELS_PER_PAGE, generatedPanels.length);
 	const currentPagePanels = generatedPanels.slice(startIndex, endIndex);
 
-	// 为了兼容现有的 ShareableComicLayout 组件
-	const visiblePanelRange = { start: startIndex, end: endIndex };
 	const isLazyLoadingEnabled = generatedPanels.length > 20;
 
 	// 检测大量面板并启用分页优化
@@ -1268,7 +1266,7 @@ export default function Home() {
 			isPaused: false,
 			totalPanels: storyBreakdown.panels.length,
 			completedPanels: generatedPanels.length,
-			currentPanel: remainingPanels && remainingPanels.length > 0 ? remainingPanels[0].panelNumber : 0,
+			currentPanel: remainingPanels && remainingPanels.length > 0 ? remainingPanels[0]?.panelNumber || 0 : 0,
 		}));
 
 		try {
@@ -1312,7 +1310,6 @@ export default function Home() {
 			}));
 
 			// 性能监控
-			const batchStartTime = Date.now();
 			let totalGenerationTime = 0;
 
 			for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
@@ -1486,8 +1483,9 @@ export default function Home() {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 120000);
 
+			let response: Response;
 			try {
-				const response = await fetch("/api/redraw-image", {
+				response = await fetch("/api/redraw-image", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
@@ -1575,8 +1573,9 @@ export default function Home() {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 120000);
 
+			let response: Response;
 			try {
-				const response = await fetch("/api/modify-image", {
+				response = await fetch("/api/modify-image", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
@@ -2191,7 +2190,6 @@ export default function Home() {
 		// Clear edit states
 		setEditingStoryAnalysis(false);
 		setEditingStoryBreakdown(false);
-		setEditingPanelIndex(null);
 		setTempStoryAnalysis(null);
 		setTempStoryBreakdown(null);
 		// Clear generation state
@@ -2374,8 +2372,8 @@ export default function Home() {
 					body: JSON.stringify({
 						panel,
 						characterReferences,
-						setting: storyAnalysis.setting,
-						scenes: storyAnalysis.scenes,
+						setting: storyAnalysis?.setting,
+						scenes: storyAnalysis?.scenes,
 						uploadedCharacterReferences,
 						uploadedSettingReferences,
 						style,
@@ -2386,7 +2384,7 @@ export default function Home() {
 				});
 
 				if (!panelResponse.ok) {
-					const errorMessage = await handleApiError(panelResponse, `Failed to generate panel ${i + 1}`);
+					await handleApiError(panelResponse, `Failed to generate panel ${i + 1}`);
 					setFailedPanels(prev => new Set([...prev, i + 1]));
 					console.warn(`Panel ${i + 1} failed, continuing with next panels`);
 					continue;
@@ -3133,7 +3131,7 @@ export default function Home() {
 
 	// Comic compositor functionality
 	const preloadImages = async (imageUrls: string[]): Promise<void> => {
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve) => {
 			let loadedCount = 0;
 			const totalImages = imageUrls.length;
 			
