@@ -224,39 +224,32 @@ class VolcEngineHandler {
 			const enhancedPrompt = `${stylePrefix}。${prompt}`;
 
 			// Prepare reference images for VolcEngine API (limit to 4 images)
-			// VolcEngine API只接受URL格式，不接受base64格式
 			const imageRefs: string[] = [];
 
-			// Add character reference images (只添加URL格式的图片)
+			// Add character reference images
 			if (characterRefs && characterRefs.length > 0) {
-				const validCharacterRefs = characterRefs.filter(img =>
-					img.startsWith('http://') || img.startsWith('https://') || img.startsWith('/api/image-proxy')
-				);
-				imageRefs.push(...validCharacterRefs.slice(0, 2)); // Max 2 character refs
+				imageRefs.push(...characterRefs.slice(0, 2)); // Max 2 character refs
 			}
 
-			// Add setting reference images (只添加URL格式的图片)
+			// Add setting reference images
 			if (settingRefs && settingRefs.length > 0) {
-				const validSettingRefs = settingRefs.filter(img =>
-					img.startsWith('http://') || img.startsWith('https://') || img.startsWith('/api/image-proxy')
-				);
 				const remainingSlots = 4 - imageRefs.length;
-				imageRefs.push(...validSettingRefs.slice(0, remainingSlots));
+				imageRefs.push(...settingRefs.slice(0, remainingSlots));
 			}
 
-			console.log(`VolcEngine using ${imageRefs.length} reference images (URL format only)`)
+			console.log(`VolcEngine using ${imageRefs.length} reference images`)
 
 			// 调试：检查图片格式
-			if (characterRefs && characterRefs.length > 0) {
-				console.log(`Original character refs: ${characterRefs.length}, Valid URL refs: ${imageRefs.filter(img => characterRefs.includes(img)).length}`);
-			}
-			if (settingRefs && settingRefs.length > 0) {
-				console.log(`Original setting refs: ${settingRefs.length}, Valid URL refs: ${imageRefs.filter(img => settingRefs.includes(img)).length}`);
-			}
+			imageRefs.forEach((img, index) => {
+				console.log(`Image ${index + 1} format:`, {
+					isBase64: img.startsWith('data:image/'),
+					isUrl: img.startsWith('http'),
+					preview: img.substring(0, 50) + '...'
+				});
+			});
 
 			const request: GenerateImageRequest = {
 				prompt: enhancedPrompt,
-				// 只有当有有效的URL格式图片时才添加image参数
 				...(imageRefs.length > 0 && { image: imageRefs }),
 				sequential_image_generation: "auto",
 				sequential_image_generation_options: {
