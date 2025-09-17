@@ -7,11 +7,11 @@
 	"author": "Your Name <your.email@example.com>",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/yourusername/story-to-manga-enhanced.git"
+		"url": "https://github.com/feifeixp/story-to-manga-enhanced.git"
 	},
-	"homepage": "https://github.com/yourusername/story-to-manga-enhanced#readme",
+	"homepage": "https://github.com/feifeixp/story-to-manga-enhanced#readme",
 	"bugs": {
-		"url": "https://github.com/yourusername/story-to-manga-enhanced/issues"
+		"url": "https://github.com/feifeixp/story-to-manga-enhanced/issues"
 	},
 	"scripts": {
 		"dev": "next dev -p 8000",

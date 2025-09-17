@@ -5222,7 +5222,7 @@ export default function Home() {
 
 			{/* Floating Report Issue Button */}
 			<a
-				href="https://github.com/victorhuangwq/story-to-manga/issues/new"
+				href="https://github.com/feifeixp/story-to-manga-enhanced/issues/new"
 				target="_blank"
 				rel="noopener noreferrer"
 				className="floating-report-btn"
