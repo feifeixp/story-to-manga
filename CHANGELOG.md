@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2024-12-17
+
+### 🔧 Production Build Fixes
+
+#### TypeScript Build Errors Resolution
+- **Fixed**: API parameter type mismatches in modify-image and redraw-image routes
+- **Fixed**: Variable scope issues with imageType and imageId declarations in error handling
+- **Fixed**: exactOptionalPropertyTypes compliance issues in ProjectManager and projectStorage
+- **Fixed**: Null safety checks for array access and object properties throughout codebase
+- **Fixed**: Image optimizer type safety for error handling edge cases
+- **Fixed**: Index signature access issues in IMAGE_SIZE_PRESETS configuration
+
+#### Code Quality Improvements
+- **Enhanced**: Type safety with proper optional chaining operators
+- **Added**: Fallback values for undefined cases to prevent runtime errors
+- **Improved**: Error handling in image optimization with proper type guards
+- **Standardized**: Parameter passing for AI model router functions across all APIs
+
+#### Production Readiness
+- **Verified**: Complete TypeScript compilation without errors
+- **Tested**: Build process generates optimized production bundle
+- **Maintained**: Full type safety throughout entire codebase
+- **Enhanced**: Robust error handling for all edge cases
+
+### 📊 Build Performance
+- **Bundle Size**: Main route optimized to 116 kB (237 kB First Load JS)
+- **API Routes**: All 11 API endpoints optimized to 142 B each
+- **Static Generation**: Successfully generates 14/14 static pages
+- **Type Checking**: Complete linting and type validation passes
+
 ## [2.2.0] - 2024-12-17
 
 ### 🎯 Critical Bug Fixes
