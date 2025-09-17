@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getAIModelRouter } from "@/lib/aiModelRouter";
+import { getAIModelRouter, selectAIModel } from "@/lib/aiModelRouter";
 import { getStylePrompt } from "@/lib/styleConfig";
 import {
 	logApiRequest,
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// 使用标准的风格配置，确保与生成panel API完全一致
-		const stylePrefix = getStylePrompt(style as any, 'prefix', language);
+		const stylePrefix = getStylePrompt(style as any, 'panel', language);
 
 		// 为panel类型构建完整的提示词（与generate-panel API保持一致）
 		if (imageType === 'panel') {
@@ -155,6 +155,7 @@ Generate a single comic panel image with proper framing and composition.
 		);
 
 		// Use AI model router to redraw the image with retry mechanism - 使用与generate-panel API相同的方法，添加重试机制
+		const selectedModel = selectAIModel(language as "en" | "zh", aiModel as any);
 		const aiRouter = getAIModelRouter();
 		const maxRetries = 3;
 		let lastError: Error | null = null;
@@ -180,19 +181,17 @@ Generate a single comic panel image with proper framing and composition.
 						finalPrompt,
 						processedReferenceImages,
 						language as "en" | "zh",
-						aiModel as any,
-						imageSize,
-						style,
+						selectedModel,
+						imageSize
 					);
 				} else if (imageType === 'character') {
-					// 对于character类型，使用generateMangaPanel方法
-					generationPromise = aiRouter.generateMangaPanel(
+					// 对于character类型，也使用generateComicPanel方法
+					generationPromise = aiRouter.generateComicPanel(
 						finalPrompt,
-						language as "en" | "zh",
-						aiModel as any,
 						processedReferenceImages,
-						[],
-						style,
+						language as "en" | "zh",
+						selectedModel,
+						imageSize
 					);
 				} else {
 					throw new Error(`Unsupported image type: ${imageType}`);
