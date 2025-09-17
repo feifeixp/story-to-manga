@@ -85,7 +85,10 @@ export async function POST(request: NextRequest) {
 
 			try {
 				// Create prompt for character generation
-				const prompt = `Character reference sheet: ${stylePrefix}. Create a character design for ${character.name}. Focus on: ${character.physicalDescription}. Character personality: ${character.personality}. Role: ${character.role}. Setting: ${setting.timePeriod} in ${setting.location}. Mood: ${setting.mood}. Full body character reference sheet with multiple angles and expressions.`;
+				const settingDescription = setting
+					? `Setting: ${setting.timePeriod} in ${setting.location}. Mood: ${setting.mood}.`
+					: "Generic fantasy setting.";
+				const prompt = `Character reference sheet: ${stylePrefix}. Create a character design for ${character.name}. Focus on: ${character.physicalDescription}. Character personality: ${character.personality}. Role: ${character.role}. ${settingDescription} Full body character reference sheet with multiple angles and expressions.`;
 
 				// Find matching uploaded images for this character
 				const matchingUploads = uploadedCharacterRefs.filter((ref: any) => 
