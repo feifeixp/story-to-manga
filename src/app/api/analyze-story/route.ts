@@ -278,12 +278,14 @@ Please provide:
 			);
 
 			return NextResponse.json({
-				success: true,
+				success: false,
+				error: "故事分析失败，请重试",
+				details: "AI分析服务暂时不可用，请检查网络连接后重试",
+				fallback: true,
 				analysis: fallbackAnalysis,
 				wordCount,
-				fallback: true,
 				message: "使用了备用分析方案，请检查网络连接后重试以获得更好的分析结果"
-			});
+			}, { status: 503 }); // 503 Service Unavailable
 		}
 		const text = result.text || "";
 

@@ -868,6 +868,18 @@ export default function Home() {
 			}
 		}
 
+		if (response.status === 503) {
+			try {
+				const data = await response.json();
+				if (data.fallback) {
+					return `🚫 故事分析失败：${data.error || '服务暂时不可用'}\n\n${data.details || ''}\n\n请检查以下问题：\n• 网络连接是否正常\n• 故事内容是否完整清晰\n• 是否包含过多特殊字符或格式\n\n建议：\n• 简化故事内容后重试\n• 检查网络连接\n• 稍后再试`;
+				}
+				return data.error || defaultMessage;
+			} catch {
+				return "服务暂时不可用，请稍后重试";
+			}
+		}
+
 		return defaultMessage;
 	};
 
@@ -1658,13 +1670,7 @@ export default function Home() {
 			}
 
 			const responseData = await analysisResponse.json();
-			const { analysis, fallback, message } = responseData;
-
-			// 如果使用了备用方案，显示警告信息
-			if (fallback && message) {
-				console.warn("Story analysis used fallback:", message);
-				// 可以在这里添加用户通知
-			}
+			const { analysis } = responseData;
 
 			setStoryAnalysis(analysis);
 			setOpenAccordions(new Set(["analysis"])); // Auto-expand analysis section
@@ -2366,12 +2372,7 @@ export default function Home() {
 		}
 
 		const responseData = await response.json();
-		const { analysis, fallback, message } = responseData;
-
-		// 如果使用了备用方案，显示警告信息
-		if (fallback && message) {
-			console.warn("Story analysis used fallback:", message);
-		}
+		const { analysis } = responseData;
 
 		setStoryAnalysis(analysis);
 		setOpenAccordions(new Set(["analysis"])); // Auto-expand analysis section on retry
@@ -2507,12 +2508,7 @@ export default function Home() {
 			}
 
 			const responseData = await response.json();
-			const { analysis, fallback, message } = responseData;
-
-			// 如果使用了备用方案，显示警告信息
-			if (fallback && message) {
-				console.warn("Story re-analysis used fallback:", message);
-			}
+			const { analysis } = responseData;
 
 			setStoryAnalysis(analysis);
 			setOpenAccordions(new Set(["analysis"]));
