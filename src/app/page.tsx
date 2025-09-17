@@ -1714,7 +1714,7 @@ export default function Home() {
 			// Step 2: Generate character references (with timeout control)
 			setCurrentStepText("Creating character designs...");
 			const charController = new AbortController();
-			const charTimeoutId = setTimeout(() => charController.abort(), 120000); // 120秒超时
+			const charTimeoutId = setTimeout(() => charController.abort(), 180000); // 180秒超时，角色生成可能需要更长时间
 
 			let charRefResponse;
 			try {
@@ -2455,7 +2455,7 @@ export default function Home() {
 
 		// 添加超时控制
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 120000);
+		const timeoutId = setTimeout(() => controller.abort(), 180000);
 
 		let response;
 		try {
@@ -2642,7 +2642,7 @@ export default function Home() {
 
 			// 添加超时控制
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 120000);
+			const timeoutId = setTimeout(() => controller.abort(), 180000);
 
 			let response;
 			try {

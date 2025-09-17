@@ -64,11 +64,23 @@ export async function POST(request: NextRequest) {
 
 		const stylePrefix = getStylePrompt(style as ComicStyle, 'character', language as "en" | "zh");
 
+		// 详细日志记录风格和语言信息
+		characterGenLogger.info({
+			style,
+			language,
+			selected_model: selectedModel,
+			style_prefix_preview: stylePrefix.substring(0, 100) + "...",
+			characters_count: characters.length,
+		}, "Starting character generation with style and language settings");
+
 		for (const character of characters) {
 			const characterStartTime = Date.now();
-			
+
 			characterGenLogger.debug({
 				character_name: character.name,
+				style,
+				language,
+				selected_model: selectedModel,
 			}, "Generating character reference");
 
 			try {
@@ -80,13 +92,16 @@ export async function POST(request: NextRequest) {
 					ref.characterName === character.name
 				);
 
-				characterGenLogger.debug({
+				characterGenLogger.info({
 					character_name: character.name,
 					prompt_length: prompt.length,
-					style_prefix: stylePrefix.substring(0, 50) + "...",
+					style: style,
+					language: language,
+					style_prefix: stylePrefix.substring(0, 100) + "...",
 					matching_uploads: matchingUploads.length,
 					total_uploads: uploadedCharacterRefs.length,
 					selected_model: selectedModel,
+					full_prompt_preview: prompt.substring(0, 200) + "...",
 				}, `Calling ${selectedModel} API for character generation`);
 
 				// Use AI Model Router for character generation
@@ -99,7 +114,8 @@ export async function POST(request: NextRequest) {
 					referenceImages,
 					language as "en" | "zh", // 使用传入的语言参数
 					selectedModel,
-					undefined // imageSize
+					undefined, // imageSize
+					style as ComicStyle // 传递风格参数
 				);
 
 				if (result.success && result.imageData) {
