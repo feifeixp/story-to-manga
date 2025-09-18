@@ -21,7 +21,38 @@ Transform your written stories into stunning visual manga or comic book pages us
 - 🛡️ **Stability Improvements**: Robust error handling and crash prevention
 - 🔧 **Developer Experience**: Comprehensive logging and debugging tools
 
-## 🆕 Latest Updates (v2.2.1) - December 2024
+## 🆕 Latest Updates (v2.3.0) - December 2024
+
+### 🏠 **Professional Homepage & User Experience**
+
+- **🎨 Modern Landing Page**: Complete homepage with product introduction, hero section, and feature highlights
+- **👥 User Authentication**: Demo login system with user profile management and session handling
+- **🌟 Community Features**: Featured works showcase with engagement metrics (likes, views, tags)
+- **📱 Responsive Design**: Mobile-first approach with adaptive layouts for all screen sizes
+- **🎯 Intuitive Navigation**: Clear call-to-action buttons and seamless flow between homepage and application
+
+### 🎨 **UI Component System**
+
+- **🧩 shadcn/ui Architecture**: Professional component system with Button, Card, and Badge components
+- **🎨 Multiple Variants**: Button variants (default, outline, ghost, destructive) with different sizes
+- **📦 Reusable Components**: Consistent design language across all interface elements
+- **🔧 Developer-Friendly**: TypeScript-first components with proper forwarded refs and variant support
+
+### 🔄 **Application Restructuring**
+
+- **🏠 Homepage Route (/)**: New landing page showcasing application capabilities and community features
+- **⚙️ Main Application (/app)**: Preserved all existing functionality in dedicated application route
+- **🌐 Seamless Integration**: Smooth navigation between marketing page and functional application
+- **📱 Consistent Experience**: Unified language preferences and user settings across all pages
+
+### 🌍 **Enhanced Internationalization**
+
+- **🏠 Homepage Localization**: Complete Chinese and English support for all homepage content
+- **🎯 Dynamic Content**: Featured works, descriptions, and UI elements adapt to user language
+- **🔄 Language Persistence**: User language preference maintained across homepage and application
+- **📱 Auto-Detection**: Automatic language detection based on browser settings
+
+## 📋 Previous Updates (v2.2.1) - December 2024
 
 ### 🎯 **Critical Bug Fixes & Stability**
 

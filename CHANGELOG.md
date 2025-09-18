@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2024-12-17
+
+### 🏠 Added - Professional Homepage & User Experience
+- **New Landing Page**: Complete homepage with product introduction, hero section, and feature highlights
+- **User Authentication System**: Demo login functionality with user profile management
+- **Community Features**: Featured works showcase with engagement metrics (likes, views, tags)
+- **Responsive Design**: Mobile-first approach with adaptive layouts for all screen sizes
+- **Call-to-Action Elements**: Clear navigation flow from homepage to application
+
+### 🎨 Added - Modern UI Component System
+- **shadcn/ui Architecture**: Professional component system with TypeScript support
+- **Button Component**: Multiple variants (default, outline, ghost, destructive) with different sizes
+- **Card Component System**: Header, content, and description components for structured layouts
+- **Badge Component**: Tag and label system for categorization
+- **Utility Functions**: className merging with clsx and tailwind-merge integration
+
+### 🔄 Changed - Application Structure
+- **Route Restructuring**: Moved main application from root (/) to /app route
+- **Homepage Integration**: New landing page at root route showcasing application capabilities
+- **Navigation Flow**: Seamless transition between marketing page and functional application
+- **Preserved Functionality**: All existing features maintained in restructured application
+
+### 🌍 Enhanced - Internationalization
+- **Homepage Localization**: Complete Chinese and English support for all homepage content
+- **Dynamic Content**: Featured works and UI elements adapt to user language preference
+- **Language Persistence**: User language settings maintained across all pages
+- **Auto-Detection**: Automatic language detection based on browser settings
+
+### 🛠️ Technical Improvements
+- **Tailwind Configuration**: Added shadcn/ui color system and border radius utilities
+- **Component Architecture**: Proper forwarded refs and variant support for all components
+- **Build Optimization**: Maintained production build performance (18.1kB homepage, 116kB app)
+- **Type Safety**: Complete TypeScript support for all new components and features
+
 ## [2.2.1] - 2024-12-17
 
 ### 🔧 Production Build Fixes
