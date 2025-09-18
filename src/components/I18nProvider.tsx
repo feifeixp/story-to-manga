@@ -9,6 +9,7 @@ interface I18nContextType {
   i18n: i18n | null;
   setLocale: (locale: string) => void;
   locale: string;
+  language: string; // 添加 language 属性作为 locale 的别名
 }
 
 const I18nContext = createContext<I18nContextType | null>(null);
@@ -96,6 +97,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
     i18n: i18nInstance,
     setLocale,
     locale,
+    language: locale, // 添加 language 属性作为 locale 的别名
   };
 
   if (!isInitialized || !i18nInstance) {
