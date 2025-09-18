@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "react-i18next";
 import { useI18n } from "@/components/I18nProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
@@ -11,15 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import {
 	BookOpen,
 	Palette,
-	Users,
 	Zap,
 	Globe,
-	Star,
 	ArrowRight,
 	Play,
 	Share2,
 	Heart,
-	Download,
 	Eye
 } from "lucide-react";
 
@@ -47,54 +43,10 @@ interface SharedWork {
 
 export default function HomePage() {
 	const router = useRouter();
-	const { t } = useTranslation();
-	const { language } = useI18n();
+	const { t, language } = useI18n();
 	const [user, setUser] = useState<User | null>(null);
 	const [showLogin, setShowLogin] = useState(false);
-	const [featuredWorks, setFeaturedWorks] = useState<SharedWork[]>([
-		{
-			id: '1',
-			title: language === 'zh' ? '修仙传奇：宁泽的冒险' : 'Cultivation Legend: Ning Ze\'s Adventure',
-			description: language === 'zh' ? '一个年轻修仙者在神秘世界中的成长故事' : 'A young cultivator\'s growth story in a mysterious world',
-			author: language === 'zh' ? '创作者小明' : 'Creator Ming',
-			authorAvatar: 'https://via.placeholder.com/32x32/6366F1/FFFFFF?text=M',
-			thumbnail: 'https://via.placeholder.com/400x300/8B5CF6/FFFFFF?text=Wuxia+Style',
-			style: 'wuxia',
-			panels: 25,
-			likes: 1234,
-			views: 5678,
-			tags: language === 'zh' ? ['武侠', '修仙', '冒险'] : ['wuxia', 'cultivation', 'adventure'],
-			createdAt: language === 'zh' ? '3天前' : '3 days ago'
-		},
-		{
-			id: '2',
-			title: language === 'zh' ? '超级英雄联盟' : 'Super Hero Alliance',
-			description: language === 'zh' ? '现代都市中的超级英雄团队故事' : 'Modern city superhero team story',
-			author: language === 'zh' ? '漫画达人' : 'Comic Master',
-			authorAvatar: 'https://via.placeholder.com/32x32/EF4444/FFFFFF?text=C',
-			thumbnail: 'https://via.placeholder.com/400x300/EF4444/FFFFFF?text=Comic+Style',
-			style: 'comic',
-			panels: 18,
-			likes: 892,
-			views: 3456,
-			tags: language === 'zh' ? ['超级英雄', '动作', '科幻'] : ['superhero', 'action', 'sci-fi'],
-			createdAt: language === 'zh' ? '1周前' : '1 week ago'
-		},
-		{
-			id: '3',
-			title: language === 'zh' ? '治愈系日常' : 'Healing Daily Life',
-			description: language === 'zh' ? '温暖治愈的日常生活小故事' : 'Warm and healing daily life stories',
-			author: language === 'zh' ? '暖心作者' : 'Warm Author',
-			authorAvatar: 'https://via.placeholder.com/32x32/10B981/FFFFFF?text=W',
-			thumbnail: 'https://via.placeholder.com/400x300/10B981/FFFFFF?text=Healing+Style',
-			style: 'healing',
-			panels: 12,
-			likes: 567,
-			views: 2134,
-			tags: language === 'zh' ? ['治愈', '日常', '温馨'] : ['healing', 'daily', 'warm'],
-			createdAt: language === 'zh' ? '5天前' : '5 days ago'
-		}
-	]);
+	const [featuredWorks, setFeaturedWorks] = useState<SharedWork[]>([]);
 
 	// 模拟用户数据和作品数据
 	useEffect(() => {
