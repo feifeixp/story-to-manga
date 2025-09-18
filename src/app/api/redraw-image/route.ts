@@ -49,11 +49,16 @@ export async function POST(request: NextRequest) {
 			language = "en",
 			aiModel = "auto",
 			imageSize, // 图片尺寸配置
-			style = "manga", // 漫画风格
+			style, // 漫画风格 - 不设置默认值，使用前端传递的值
 		} = requestData;
 
 		imageType = requestImageType;
 		imageId = requestImageId;
+
+		// 验证必需参数
+		if (!style) {
+			throw new Error("Style parameter is required for image redraw");
+		}
 
 		redrawLogger.info(
 			{
@@ -107,7 +112,7 @@ export async function POST(request: NextRequest) {
 			"🎨 Generated style prefix for redraw",
 		);
 
-		// 为panel类型构建完整的提示词，避免"漫画面板"导致的黑白色问题
+		// 为不同类型构建完整的提示词，确保风格一致性
 		if (imageType === 'panel') {
 			const panelInstructions = language === 'zh'
 				? `创建一个图像，风格：${stylePrefix}。
@@ -140,6 +145,36 @@ The panel should include:
 Generate a single panel image with proper framing and composition.`;
 
 			finalPrompt = panelInstructions;
+		} else if (imageType === 'character') {
+			// 为角色重绘使用角色专用的风格提示词
+			const characterStylePrompt = getStylePrompt(style as any, 'character', language);
+			const characterInstructions = language === 'zh'
+				? `${characterStylePrompt}
+
+${finalPrompt}
+
+重要：创建一个完整的角色参考图，包含：
+- 多个角度的角色设计（正面、侧面、背面）
+- 不同表情的展示
+- 角色的服装细节
+- 保持与原始设计的一致性
+- 清晰的线条和细节
+
+生成一个专业的角色参考图。`
+				: `${characterStylePrompt}
+
+${finalPrompt}
+
+IMPORTANT: Create a complete character reference sheet including:
+- Multiple angles of character design (front, side, back)
+- Different facial expressions
+- Clothing and accessory details
+- Consistency with original design
+- Clear lines and details
+
+Generate a professional character reference sheet.`;
+
+			finalPrompt = characterInstructions;
 		}
 
 		// 处理参考图片：将代理URL转换为实际图片数据
