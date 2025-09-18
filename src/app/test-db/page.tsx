@@ -11,14 +11,14 @@ export default function TestDBPage() {
   const testConnection = async () => {
     setLoading(true);
     setResult('Testing connection...');
-    
+
     try {
       // 测试基本连接
       const { data, error } = await supabase
         .from('comics')
-        .select('count(*)')
+        .select('id')
         .limit(1);
-      
+
       if (error) {
         setResult(`❌ Connection failed: ${error.message}`);
       } else {
@@ -34,28 +34,35 @@ export default function TestDBPage() {
   const testTables = async () => {
     setLoading(true);
     setResult('Testing tables...');
-    
+
     try {
-      const tables = ['profiles', 'comics', 'comic_panels', 'comic_likes', 'comic_favorites', 'comic_views'];
+      const tables = [
+        { name: 'profiles', columns: 'id' },
+        { name: 'comics', columns: 'id' },
+        { name: 'comic_panels', columns: 'id' },
+        { name: 'comic_likes', columns: 'id' },
+        { name: 'comic_favorites', columns: 'id' },
+        { name: 'comic_views', columns: 'id' }
+      ];
       const results = [];
-      
+
       for (const table of tables) {
         try {
           const { data, error } = await supabase
-            .from(table)
-            .select('count(*)')
+            .from(table.name)
+            .select(table.columns)
             .limit(1);
-          
+
           if (error) {
-            results.push(`❌ ${table}: ${error.message}`);
+            results.push(`❌ ${table.name}: ${error.message}`);
           } else {
-            results.push(`✅ ${table}: OK`);
+            results.push(`✅ ${table.name}: OK`);
           }
         } catch (error) {
-          results.push(`❌ ${table}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          results.push(`❌ ${table.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
-      
+
       setResult(results.join('\n'));
     } catch (error) {
       setResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
