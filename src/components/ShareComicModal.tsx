@@ -104,6 +104,10 @@ export function ShareComicModal({
     setShareResult(null);
 
     try {
+      console.log('🚀 Starting comic share process...');
+      console.log('User:', user);
+      console.log('Panels:', panels);
+
       const comicData: CreateComicData = {
         title: title.trim(),
         description: description.trim(),
@@ -117,12 +121,16 @@ export function ShareComicModal({
         is_published: isPublic
       };
 
+      console.log('📝 Comic data prepared:', comicData);
+
       const result = await ComicService.createComic(
         comicData,
         user.id,
         user.name || user.email || 'Anonymous',
         user.avatar
       );
+
+      console.log('📊 Service result:', result);
 
       if (result.success) {
         setShareResult({

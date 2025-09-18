@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://tairvnwvltidxcscsusl.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaXJ2bnd2bHRpZHhjc2NzdXNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNjY3MDIsImV4cCI6MjA3Mzc0MjcwMn0.9YU03FVkvHFzhxOiJfrIACiOcK460cN9kT-or641g94'
+// 从环境变量获取 Supabase 配置
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+// 验证环境变量是否存在
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables. Please check your .env.local file.')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 

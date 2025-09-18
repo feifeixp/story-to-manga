@@ -366,28 +366,39 @@ export class ComicService {
   // 创建新漫画作品
   static async createComic(data: CreateComicData, userId: string, userName: string, userAvatar?: string) {
     try {
+      console.log('🔧 ComicService.createComic called with:', { data, userId, userName, userAvatar });
+
       // 创建漫画主记录
+      const comicInsertData = {
+        title: data.title,
+        description: data.description,
+        author_id: userId,
+        author_name: userName,
+        author_avatar: userAvatar,
+        cover_image: data.panels[0]?.image_url, // 使用第一个面板作为封面
+        style: data.style,
+        tags: data.tags,
+        total_panels: data.panels.length,
+        is_published: data.is_published || false,
+        published_at: data.is_published ? new Date().toISOString() : null
+      };
+
+      console.log('📝 Inserting comic data:', comicInsertData);
+
       const { data: comic, error: comicError } = await supabase
         .from('comics')
-        .insert({
-          title: data.title,
-          description: data.description,
-          author_id: userId,
-          author_name: userName,
-          author_avatar: userAvatar,
-          cover_image: data.panels[0]?.image_url, // 使用第一个面板作为封面
-          style: data.style,
-          tags: data.tags,
-          total_panels: data.panels.length,
-          is_published: data.is_published || false,
-          published_at: data.is_published ? new Date().toISOString() : null
-        })
+        .insert(comicInsertData)
         .select()
         .single();
 
+      console.log('📊 Comic insert result:', { comic, comicError });
+
       if (comicError) {
+        console.error('❌ Comic insert error:', comicError);
         throw new Error(comicError.message);
       }
+
+      console.log('✅ Comic created successfully:', comic);
 
       // 创建漫画面板
       const panelsData = data.panels.map((panel, index) => ({
@@ -397,9 +408,13 @@ export class ComicService {
         text_content: panel.text_content
       }));
 
+      console.log('📝 Inserting panels data:', panelsData);
+
       const { error: panelsError } = await supabase
         .from('comic_panels')
         .insert(panelsData);
+
+      console.log('📊 Panels insert result:', { panelsError });
 
       if (panelsError) {
         throw new Error(panelsError.message);
