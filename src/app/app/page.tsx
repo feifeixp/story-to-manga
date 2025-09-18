@@ -1514,6 +1514,10 @@ export default function Home() {
 						imageSize: imageSize,
 						style: style, // 添加项目风格参数
 						referenceImages: referenceImageUrls,
+						// 添加场景数据以确保重绘时场景一致性
+						setting: storyAnalysis?.setting,
+						scenes: storyAnalysis?.scenes || [],
+						uploadedSettingReferences: uploadedSettingReferences || [],
 					}),
 					signal: controller.signal,
 				});

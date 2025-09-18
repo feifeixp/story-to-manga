@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
 			aiModel = "auto",
 			imageSize, // 图片尺寸配置
 			style, // 漫画风格 - 不设置默认值，使用前端传递的值
+			// 添加场景数据支持
+			setting,
+			scenes = [],
+			uploadedSettingReferences = [],
 		} = requestData;
 
 		imageType = requestImageType;
@@ -72,6 +76,9 @@ export async function POST(request: NextRequest) {
 				ai_model: aiModel,
 				language,
 				style,
+				has_setting: !!setting,
+				scenes_count: scenes?.length || 0,
+				uploaded_setting_refs_count: uploadedSettingReferences?.length || 0,
 			},
 			"📝 Processing image redraw request",
 		);
@@ -114,12 +121,62 @@ export async function POST(request: NextRequest) {
 
 		// 为不同类型构建完整的提示词，确保风格一致性
 		if (imageType === 'panel') {
+			// 构建场景信息
+			let sceneInfo = '';
+			if (setting) {
+				const settingInfo = language === 'zh'
+					? `
+
+全局设定：${setting.location}，${setting.timePeriod}，氛围：${setting.mood}`
+					: `
+
+Global Setting: ${setting.location}, ${setting.timePeriod}, mood: ${setting.mood}`;
+				sceneInfo += settingInfo;
+			}
+
+			// 如果有具体场景信息，添加场景详情
+			if (scenes && scenes.length > 0 && imageId) {
+				// 尝试根据面板ID找到对应的场景
+				const panelNumber = parseInt(imageId);
+				if (!isNaN(panelNumber) && scenes.length > 0) {
+					// 简单的场景匹配逻辑 - 可以根据实际需求调整
+					const sceneIndex = Math.min(Math.floor((panelNumber - 1) / 3), scenes.length - 1);
+					const panelScene = scenes[sceneIndex];
+
+					if (panelScene) {
+						const specificSceneInfo = language === 'zh'
+							? `
+
+具体场景：${panelScene.name}
+场景位置：${panelScene.location}
+场景描述：${panelScene.description}
+时间：${panelScene.timeOfDay || '未指定'}
+场景氛围：${panelScene.mood}
+关键视觉元素：${panelScene.visualElements?.join('，') || '无'}
+
+重要：保持与此特定场景的视觉一致性。使用场景的视觉元素、氛围和位置细节来创建连贯的环境。`
+							: `
+
+Specific Scene: ${panelScene.name}
+Scene Location: ${panelScene.location}
+Scene Description: ${panelScene.description}
+Time of Day: ${panelScene.timeOfDay || 'unspecified'}
+Scene Mood: ${panelScene.mood}
+Key Visual Elements: ${panelScene.visualElements?.join(', ') || 'none'}
+
+IMPORTANT: Maintain visual consistency with this specific scene. Use the scene's visual elements, mood, and location details to create a cohesive environment.`;
+
+						sceneInfo += specificSceneInfo;
+					}
+				}
+			}
+
 			const panelInstructions = language === 'zh'
-				? `创建一个图像，风格：${stylePrefix}。
+				? `创建一个图像，风格：${stylePrefix}。${sceneInfo}
 
 ${finalPrompt}
 
-重要：使用提供的角色参考图片保持视觉一致性。每个角色都应该与参考图片中的外观完全匹配。
+重要：使用提供的角色参考图片保持视觉一致性。每个角色都应该与参考图片中的外观完全匹配。${uploadedSettingReferences && uploadedSettingReferences.length > 0 ? '同时使用提供的设定/环境参考图片来指导此面板的视觉风格、氛围和环境细节。' : ''}
 
 面板应包含：
 - 清晰的面板边框
@@ -129,11 +186,11 @@ ${finalPrompt}
 - 与参考图片匹配的一致角色设计
 
 生成一个具有适当构图和框架的单个面板图像。`
-				: `Create an image in ${stylePrefix}.
+				: `Create an image in ${stylePrefix}.${sceneInfo}
 
 ${finalPrompt}
 
-IMPORTANT: Use the character reference images provided to maintain visual consistency. Each character should match their appearance from the reference images exactly.
+IMPORTANT: Use the character reference images provided to maintain visual consistency. Each character should match their appearance from the reference images exactly.${uploadedSettingReferences && uploadedSettingReferences.length > 0 ? ' Also use the provided setting/environment reference images to guide the visual style, atmosphere, and environmental details of this panel.' : ''}
 
 The panel should include:
 - Clear panel border
@@ -178,9 +235,31 @@ Generate a professional character reference sheet.`;
 		}
 
 		// 处理参考图片：将代理URL转换为实际图片数据
-		console.log(`Processing ${referenceImages.length} reference images:`, referenceImages);
+		// 对于面板重绘，还需要添加场景参考图片
+		let allReferenceImages = [...referenceImages];
+
+		// 如果是面板重绘且有场景参考图片，添加到参考图片列表中
+		if (imageType === 'panel' && uploadedSettingReferences && uploadedSettingReferences.length > 0) {
+			const settingImages = uploadedSettingReferences
+				.slice(0, 2) // 最多添加2张场景参考图片
+				.map((ref: { image?: string }) => ref.image)
+				.filter((img: string | undefined): img is string => !!img);
+
+			allReferenceImages.push(...settingImages);
+
+			redrawLogger.info(
+				{
+					requestId,
+					original_reference_count: referenceImages.length,
+					setting_reference_count: settingImages.length,
+					total_reference_count: allReferenceImages.length,
+				},
+				"🏞️ Added setting reference images for panel redraw",
+			);
+		}
+		console.log(`Processing ${allReferenceImages.length} reference images:`, allReferenceImages);
 		const processedReferenceImages: string[] = [];
-		for (const refImage of referenceImages) {
+		for (const refImage of allReferenceImages) {
 			try {
 				console.log(`Processing reference image: ${refImage.substring(0, 100)}...`);
 				if (refImage.startsWith('/api/image-proxy?url=')) {
