@@ -127,8 +127,8 @@ export function ShareComicModal({
       if (result.success) {
         setShareResult({
           success: true,
-          message: language === 'zh' 
-            ? `作品已成功${isPublic ? '发布' : '保存'}！${isPublic ? '其他用户现在可以看到你的作品了。' : '你可以稍后选择发布。'}` 
+          message: language === 'zh'
+            ? `作品已成功${isPublic ? '发布' : '保存'}！${isPublic ? '其他用户现在可以看到你的作品了。' : '你可以稍后选择发布。'}`
             : `Work ${isPublic ? 'published' : 'saved'} successfully! ${isPublic ? 'Other users can now see your work.' : 'You can choose to publish it later.'}`
         });
 
@@ -137,10 +137,21 @@ export function ShareComicModal({
           onClose();
         }, 3000);
       } else {
-        setShareResult({
-          success: false,
-          message: result.error || (language === 'zh' ? '分享失败，请重试' : 'Failed to share, please try again')
-        });
+        // 检查是否是数据库表不存在的错误
+        const errorMessage = result.error || '';
+        if (errorMessage.includes('table') && errorMessage.includes('comics')) {
+          setShareResult({
+            success: false,
+            message: language === 'zh'
+              ? '⚠️ 数据库未设置：请先在 Supabase 控制台执行数据库设置脚本。详细步骤请查看 DATABASE_SETUP_GUIDE.md 文件。'
+              : '⚠️ Database not set up: Please execute the database setup script in Supabase console first. See DATABASE_SETUP_GUIDE.md for details.'
+          });
+        } else {
+          setShareResult({
+            success: false,
+            message: result.error || (language === 'zh' ? '分享失败，请重试' : 'Failed to share, please try again')
+          });
+        }
       }
     } catch (error) {
       setShareResult({
