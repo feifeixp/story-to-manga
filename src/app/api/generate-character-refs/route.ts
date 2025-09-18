@@ -84,11 +84,25 @@ export async function POST(request: NextRequest) {
 			}, "Generating character reference");
 
 			try {
-				// Create prompt for character generation
+				// Create prompt for character generation with content filtering
 				const settingDescription = setting
 					? `Setting: ${setting.timePeriod} in ${setting.location}. Mood: ${setting.mood}.`
 					: "Generic fantasy setting.";
-				const prompt = `Character reference sheet: ${stylePrefix}. Create a character design for ${character.name}. Focus on: ${character.physicalDescription}. Character personality: ${character.personality}. Role: ${character.role}. ${settingDescription} Full body character reference sheet with multiple angles and expressions.`;
+
+				// Filter sensitive content from character descriptions
+				const filteredPhysicalDescription = character.physicalDescription
+					?.replace(/暴力|violence|violent/gi, '动作')
+					?.replace(/面具|mask/gi, '头饰')
+					?.replace(/劫案|robbery|heist/gi, '任务')
+					?.replace(/犯罪|crime|criminal/gi, '角色')
+					?.replace(/武器|weapon/gi, '道具') || '';
+
+				const filteredPersonality = character.personality
+					?.replace(/暴力|violence|violent/gi, '激烈')
+					?.replace(/犯罪|crime|criminal/gi, '复杂')
+					?.replace(/危险|dangerous/gi, '神秘') || '';
+
+				const prompt = `Character reference sheet: ${stylePrefix}. Create a character design for ${character.name}. Focus on: ${filteredPhysicalDescription}. Character personality: ${filteredPersonality}. Role: ${character.role}. ${settingDescription} Full body character reference sheet with multiple angles and expressions.`;
 
 				// Find matching uploaded images for this character
 				const matchingUploads = uploadedCharacterRefs.filter((ref: any) => 
@@ -142,6 +156,26 @@ export async function POST(request: NextRequest) {
 				} else {
 					// Handle generation failure
 					const errorMessage = result.error || "Character generation failed";
+
+					// Check for sensitive content detection
+					if (errorMessage.includes('InputTextSensitiveContentDetected') ||
+						errorMessage.includes('sensitive information')) {
+						characterGenLogger.warn({
+							character_name: character.name,
+							error: "Content filtered by safety system",
+							model_used: result.modelUsed,
+						}, "Character generation blocked by content filter");
+
+						// Return a generic error for sensitive content
+						return NextResponse.json(
+							{
+								error: `⚠️ Content Safety Issue: The character description for "${character.name}" contains content that cannot be processed by the AI safety system.\n\nTip: Try modifying the character description to remove potentially sensitive content, violence references, or mature themes.`,
+								errorType: "PROHIBITED_CONTENT"
+							},
+							{ status: 400 }
+						);
+					}
+
 					characterGenLogger.error({
 						character_name: character.name,
 						error: errorMessage,
@@ -151,6 +185,37 @@ export async function POST(request: NextRequest) {
 					throw new Error(errorMessage);
 				}
 			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+
+				// Check for sensitive content detection in catch block
+				if (errorMessage.includes('InputTextSensitiveContentDetected') ||
+					errorMessage.includes('sensitive information')) {
+					characterGenLogger.warn({
+						character_name: character.name,
+						error: "Content filtered by safety system",
+						duration_ms: Date.now() - characterStartTime,
+					}, "Character generation blocked by content filter");
+
+					logApiResponse(
+						characterGenLogger,
+						endpoint,
+						false,
+						Date.now() - startTime,
+						{
+							error: "Content safety violation",
+							failed_character: character.name,
+						},
+					);
+
+					return NextResponse.json(
+						{
+							error: `⚠️ Content Safety Issue: The character description for "${character.name}" contains content that cannot be processed by the AI safety system.\n\nTip: Try modifying the character description to remove potentially sensitive content, violence references, or mature themes.`,
+							errorType: "PROHIBITED_CONTENT"
+						},
+						{ status: 400 }
+					);
+				}
+
 				logError(characterGenLogger, error, "character reference generation", {
 					character_name: character.name,
 					duration_ms: Date.now() - characterStartTime,

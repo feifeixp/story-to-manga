@@ -883,7 +883,7 @@ export default function Home() {
 			try {
 				const data = await response.json();
 				if (data.errorType === "PROHIBITED_CONTENT") {
-					return `⚠️ Content Safety Issue: ${data.error}\n\nTip: Try modifying your story to remove potentially inappropriate content, violence, or mature themes.`;
+					return data.error || `⚠️ Content Safety Issue: The content contains elements that cannot be processed by the AI safety system.\n\nTip: Try modifying your story to remove potentially inappropriate content, violence, or mature themes.`;
 				}
 				return data.error || defaultMessage;
 			} catch {

@@ -385,9 +385,20 @@ Provide all content in English and ensure character descriptions are detailed an
 		let analysisData: AnalysisData;
 		try {
 			analysisData = parseGeminiJSON<AnalysisData>(text);
+
+			// Validate parsed data structure
+			if (!analysisData || typeof analysisData !== 'object') {
+				throw new Error('Invalid analysis data structure');
+			}
+
+			// Ensure characters array exists
+			if (!Array.isArray(analysisData.characters)) {
+				analysisData.characters = [];
+			}
+
 			storyAnalysisLogger.info(
 				{
-					characters_count: analysisData.characters.length,
+					characters_count: analysisData.characters?.length || 0,
 					has_setting: !!analysisData.setting,
 				},
 				"Successfully parsed story analysis",
@@ -418,7 +429,7 @@ Provide all content in English and ensure character descriptions are detailed an
 			true,
 			Date.now() - startTime,
 			{
-				characters_count: analysisData.characters.length,
+				characters_count: analysisData.characters?.length || 0,
 				word_count: wordCount,
 			},
 		);
