@@ -28,6 +28,7 @@ import {
 	createProject,
 } from "@/lib/projectStorage";
 import ProjectManager from "@/components/ProjectManager";
+import { ShareComicModal } from "@/components/ShareComicModal";
 import { ImageEditModal } from "@/components/ImageEditModal";
 import type {
 	CharacterReference,
@@ -931,6 +932,7 @@ export default function Home() {
 		useState<boolean>(false);
 	const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
 	const [errorModalMessage, setErrorModalMessage] = useState<string>("");
+	const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
 	// Download state
 	const [isDownloadingCharacters, setIsDownloadingCharacters] = useState(false);
@@ -5152,6 +5154,16 @@ export default function Home() {
 												{t("createShareableComicPage")}
 											</h5>
 											<div className="flex gap-2">
+												{/* 分享作品按钮 */}
+												<button
+													type="button"
+													className="btn-manga-primary text-sm"
+													onClick={() => setShowShareModal(true)}
+													disabled={!generatedPanels.length}
+												>
+													🚀 {t("shareWork") || (i18n.language === 'zh' ? '分享作品' : 'Share Work')}
+												</button>
+
 												{/* 下载当前页面 */}
 												<DownloadButton
 													onClick={generateComposite}
@@ -5424,6 +5436,19 @@ export default function Home() {
 					autoSelectedReferences={editingImage.autoSelectedReferences || []}
 				/>
 			)}
+
+			{/* 分享漫画模态框 */}
+			<ShareComicModal
+				isOpen={showShareModal}
+				onClose={() => setShowShareModal(false)}
+				storyTitle={storyAnalysis?.title || ''}
+				storyDescription={storyAnalysis?.summary || ''}
+				style={style}
+				panels={generatedPanels.map(panel => ({
+					image_url: panel.image,
+					text_content: panel.text
+				}))}
+			/>
 
 			{/* 性能统计显示 */}
 			{(optimizationStats.optimizedCount > 0 || cacheManager.getStats().totalItems > 0) && (

@@ -362,4 +362,201 @@ export class ComicService {
       };
     }
   }
+
+  // 创建新漫画作品
+  static async createComic(data: CreateComicData, userId: string, userName: string, userAvatar?: string) {
+    try {
+      // 创建漫画主记录
+      const { data: comic, error: comicError } = await supabase
+        .from('comics')
+        .insert({
+          title: data.title,
+          description: data.description,
+          author_id: userId,
+          author_name: userName,
+          author_avatar: userAvatar,
+          cover_image: data.panels[0]?.image_url, // 使用第一个面板作为封面
+          style: data.style,
+          tags: data.tags,
+          total_panels: data.panels.length,
+          is_published: data.is_published || false,
+          published_at: data.is_published ? new Date().toISOString() : null
+        })
+        .select()
+        .single();
+
+      if (comicError) {
+        throw new Error(comicError.message);
+      }
+
+      // 创建漫画面板
+      const panelsData = data.panels.map((panel, index) => ({
+        comic_id: comic.id,
+        panel_number: panel.panel_number || index + 1,
+        image_url: panel.image_url,
+        text_content: panel.text_content
+      }));
+
+      const { error: panelsError } = await supabase
+        .from('comic_panels')
+        .insert(panelsData);
+
+      if (panelsError) {
+        throw new Error(panelsError.message);
+      }
+
+      return {
+        success: true,
+        data: comic
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create comic'
+      };
+    }
+  }
+
+  // 更新漫画作品
+  static async updateComic(data: UpdateComicData) {
+    try {
+      const { id, panels, ...updateData } = data;
+
+      // 更新漫画主记录
+      const { error: comicError } = await supabase
+        .from('comics')
+        .update({
+          ...updateData,
+          total_panels: panels?.length || undefined,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (comicError) {
+        throw new Error(comicError.message);
+      }
+
+      // 如果有面板数据，更新面板
+      if (panels) {
+        // 删除现有面板
+        const { error: deleteError } = await supabase
+          .from('comic_panels')
+          .delete()
+          .eq('comic_id', id);
+
+        if (deleteError) {
+          throw new Error(deleteError.message);
+        }
+
+        // 插入新面板
+        const panelsData = panels.map((panel, index) => ({
+          comic_id: id,
+          panel_number: panel.panel_number || index + 1,
+          image_url: panel.image_url,
+          text_content: panel.text_content
+        }));
+
+        const { error: panelsError } = await supabase
+          .from('comic_panels')
+          .insert(panelsData);
+
+        if (panelsError) {
+          throw new Error(panelsError.message);
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update comic'
+      };
+    }
+  }
+
+  // 发布漫画作品
+  static async publishComic(comicId: string, userId: string) {
+    try {
+      const { error } = await supabase
+        .from('comics')
+        .update({
+          is_published: true,
+          published_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', comicId)
+        .eq('author_id', userId); // 确保只有作者可以发布
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to publish comic'
+      };
+    }
+  }
+
+  // 取消发布漫画作品
+  static async unpublishComic(comicId: string, userId: string) {
+    try {
+      const { error } = await supabase
+        .from('comics')
+        .update({
+          is_published: false,
+          published_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', comicId)
+        .eq('author_id', userId); // 确保只有作者可以取消发布
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to unpublish comic'
+      };
+    }
+  }
+
+  // 获取用户的漫画作品
+  static async getUserComics(userId: string, includeUnpublished: boolean = true) {
+    try {
+      let query = supabase
+        .from('comics')
+        .select(`
+          *,
+          panels:comic_panels(*)
+        `)
+        .eq('author_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (!includeUnpublished) {
+        query = query.eq('is_published', true);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch user comics'
+      };
+    }
+  }
 }
