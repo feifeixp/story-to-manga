@@ -117,29 +117,55 @@ Updated: ${profile.updated_at}`);
 
   const testViewComics = async () => {
     setLoading(true);
-    setResult('Testing comic viewing...');
+    setResult('🔄 Testing comic viewing...');
 
     try {
+      console.log('🚀 Starting comic viewing test...');
+
       const result = await ComicService.getComics({
         page: 1,
         limit: 5
       });
 
+      console.log('📊 Comic service result:', result);
+
       if (result.success) {
         const comics = result.data;
+        console.log('✅ Comics loaded successfully:', comics);
+
         setResult(`✅ Comic viewing successful!
 Found ${comics.length} comics:
 ${comics.map((comic, index) =>
-  `${index + 1}. "${comic.title}" by ${comic.author_name} (${comic.style})`
+  `${index + 1}. "${comic.title}" by ${comic.author?.name || comic.author_name || 'Unknown'} (${comic.style})`
 ).join('\n')}
 
 Total pages: ${result.pagination?.totalPages || 0}
-Total comics: ${result.pagination?.total || 0}`);
+Total comics: ${result.pagination?.total || 0}
+
+Debug info:
+- Result success: ${result.success}
+- Data length: ${comics.length}
+- First comic: ${comics[0] ? JSON.stringify(comics[0], null, 2) : 'None'}`);
       } else {
-        setResult(`❌ Failed to load comics: ${result.error}`);
+        console.error('❌ Comic viewing failed:', result.error);
+        setResult(`❌ Failed to load comics: ${result.error}
+
+Debug info:
+- Success: ${result.success}
+- Data: ${result.data ? 'Present' : 'Missing'}
+- Error: ${result.error || 'None'}
+- Full result: ${JSON.stringify(result, null, 2)}`);
       }
     } catch (error) {
-      setResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Comic viewing error:', error);
+      setResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}
+
+Stack trace:
+${error instanceof Error ? error.stack : 'No stack trace'}
+
+Debug info:
+- Error type: ${typeof error}
+- Error constructor: ${error?.constructor?.name}`);
     } finally {
       setLoading(false);
     }
