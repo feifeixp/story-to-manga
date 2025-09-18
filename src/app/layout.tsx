@@ -1,6 +1,7 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import { I18nProvider } from "@/components/I18nProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 import "../styles/manga-components.css";
 import "../styles/manga-theme.css";
 import "./globals.css";
@@ -24,7 +25,9 @@ export default function RootLayout({
 		<html lang="en">
 			<body suppressHydrationWarning={true}>
 				<I18nProvider>
-					{children}
+					<AuthProvider>
+						{children}
+					</AuthProvider>
 				</I18nProvider>
 				{isValidGaId && (
 					<GoogleAnalytics gaId={gaId} />

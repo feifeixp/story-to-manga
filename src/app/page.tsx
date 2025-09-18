@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
+import { useAuth } from "@/components/AuthProvider";
+import { AuthModal } from "@/components/AuthModal";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,13 +20,6 @@ import {
 	Heart,
 	Eye
 } from "lucide-react";
-
-interface User {
-	id: string;
-	name: string;
-	avatar?: string;
-	email: string;
-}
 
 interface SharedWork {
 	id: string;
@@ -43,9 +38,9 @@ interface SharedWork {
 
 export default function HomePage() {
 	const router = useRouter();
-	const { t, language } = useI18n();
-	const [user, setUser] = useState<User | null>(null);
-	const [showLogin, setShowLogin] = useState(false);
+	const { language } = useI18n();
+	const { user, signOut, loading } = useAuth();
+	const [showAuthModal, setShowAuthModal] = useState(false);
 	const [featuredWorks, setFeaturedWorks] = useState<SharedWork[]>([]);
 
 	// 模拟用户数据和作品数据
@@ -96,18 +91,11 @@ export default function HomePage() {
 	}, [language]);
 
 	const handleLogin = () => {
-		// 模拟登录
-		setUser({
-			id: "user1",
-			name: "Demo User",
-			email: "demo@example.com",
-			avatar: "https://via.placeholder.com/40x40/6366F1/FFFFFF?text=U"
-		});
-		setShowLogin(false);
+		setShowAuthModal(true);
 	};
 
-	const handleLogout = () => {
-		setUser(null);
+	const handleLogout = async () => {
+		await signOut();
 	};
 
 	const handleStartCreating = () => {
@@ -164,8 +152,8 @@ export default function HomePage() {
 								</Button>
 							</div>
 						) : (
-							<Button onClick={() => setShowLogin(true)}>
-								{language === 'zh' ? '登录' : 'Login'}
+							<Button onClick={handleLogin} disabled={loading}>
+								{loading ? (language === 'zh' ? '加载中...' : 'Loading...') : (language === 'zh' ? '登录' : 'Login')}
 							</Button>
 						)}
 					</div>
@@ -341,27 +329,11 @@ export default function HomePage() {
 				</div>
 			</footer>
 
-			{/* Login Modal */}
-			{showLogin && (
-				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-					<Card className="w-full max-w-md mx-4">
-						<CardHeader>
-							<CardTitle>{language === 'zh' ? '登录' : 'Login'}</CardTitle>
-							<CardDescription>
-								{language === 'zh' ? '登录以保存和分享你的作品' : 'Login to save and share your works'}
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<Button className="w-full" onClick={handleLogin}>
-								{language === 'zh' ? '演示登录' : 'Demo Login'}
-							</Button>
-							<Button variant="outline" className="w-full" onClick={() => setShowLogin(false)}>
-								{language === 'zh' ? '取消' : 'Cancel'}
-							</Button>
-						</CardContent>
-					</Card>
-				</div>
-			)}
+			{/* Auth Modal */}
+			<AuthModal
+				isOpen={showAuthModal}
+				onClose={() => setShowAuthModal(false)}
+			/>
 		</div>
 	);
 }

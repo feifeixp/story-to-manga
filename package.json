@@ -37,6 +37,7 @@
 		"@google/genai": "1.19.0",
 		"@next/third-parties": "15.5.3",
 		"@radix-ui/react-slot": "^1.2.3",
+		"@supabase/supabase-js": "^2.57.4",
 		"@types/crypto-js": "^4.2.2",
 		"@volcengine/openapi": "^1.32.0",
 		"class-variance-authority": "^0.7.1",
