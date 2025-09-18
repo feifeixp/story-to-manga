@@ -5,116 +5,29 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthModal } from "@/components/AuthModal";
-import { ComicCard, ComicCardSkeleton } from "@/components/ComicCard";
-import { ComicReader } from "@/components/ComicReader";
-import { ComicService } from "@/lib/services/comicService";
-import type { Comic } from "@/lib/types/comic";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
 	BookOpen,
 	Palette,
 	Zap,
 	Globe,
-	ArrowRight,
 	Play,
-	Share2,
-	Heart,
 	Eye
 } from "lucide-react";
 
-interface SharedWork {
-	id: string;
-	title: string;
-	author: string;
-	authorAvatar?: string;
-	thumbnail: string;
-	description: string;
-	style: string;
-	panels: number;
-	likes: number;
-	views: number;
-	createdAt: string;
-	tags: string[];
-}
+
 
 export default function HomePage() {
 	const router = useRouter();
 	const { language } = useI18n();
 	const { user, signOut, loading } = useAuth();
 	const [showAuthModal, setShowAuthModal] = useState(false);
-	const [featuredWorks, setFeaturedWorks] = useState<SharedWork[]>([]);
-	const [featuredComics, setFeaturedComics] = useState<Comic[]>([]);
-	const [comicsLoading, setComicsLoading] = useState(true);
-	const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
 
-	// 加载推荐漫画
-	useEffect(() => {
-		const loadFeaturedComics = async () => {
-			setComicsLoading(true);
-			try {
-				const result = await ComicService.getFeaturedComics(6);
-				if (result.success && result.data) {
-					setFeaturedComics(result.data);
-				}
-			} catch (error) {
-				console.error('Failed to load featured comics:', error);
-			} finally {
-				setComicsLoading(false);
-			}
-		};
 
-		loadFeaturedComics();
-	}, []);
 
-	// 模拟用户数据和作品数据
-	useEffect(() => {
-		// 模拟获取精选作品
-		const mockWorks: SharedWork[] = [
-			{
-				id: "1",
-				title: language === 'zh' ? "修仙传说" : "Cultivation Legend",
-				author: "张三",
-				thumbnail: "https://via.placeholder.com/300x200/8B5CF6/FFFFFF?text=Wuxia+Comic",
-				description: language === 'zh' ? "一个关于修仙者的史诗故事" : "An epic story about cultivators",
-				style: "wuxia",
-				panels: 12,
-				likes: 156,
-				views: 1240,
-				createdAt: "2024-12-15",
-				tags: ["武侠", "修仙", "冒险"]
-			},
-			{
-				id: "2",
-				title: language === 'zh' ? "都市英雄" : "Urban Hero",
-				author: "李四",
-				thumbnail: "https://via.placeholder.com/300x200/3B82F6/FFFFFF?text=Comic+Hero",
-				description: language === 'zh' ? "现代都市中的超级英雄故事" : "A superhero story in modern city",
-				style: "comic",
-				panels: 8,
-				likes: 89,
-				views: 567,
-				createdAt: "2024-12-14",
-				tags: ["超级英雄", "都市", "动作"]
-			},
-			{
-				id: "3",
-				title: language === 'zh' ? "治愈小屋" : "Healing Cottage",
-				author: "王五",
-				thumbnail: "https://via.placeholder.com/300x200/10B981/FFFFFF?text=Healing+Story",
-				description: language === 'zh' ? "温暖治愈的日常生活故事" : "A warm and healing daily life story",
-				style: "healing",
-				panels: 6,
-				likes: 234,
-				views: 890,
-				createdAt: "2024-12-13",
-				tags: ["治愈", "日常", "温馨"]
-			}
-		];
-		setFeaturedWorks(mockWorks);
-	}, [language]);
+
 
 	const handleLogin = () => {
 		setShowAuthModal(true);
@@ -264,111 +177,7 @@ export default function HomePage() {
 				</div>
 			</section>
 
-			{/* Featured Comics Section */}
-			<section className="py-16 px-4 bg-gray-50">
-				<div className="container mx-auto">
-					<div className="flex items-center justify-between mb-12">
-						<h3 className="text-3xl font-bold">
-							{language === 'zh' ? '热门漫画' : 'Popular Comics'}
-						</h3>
-						<Button
-							variant="outline"
-							onClick={() => router.push('/comics')}
-						>
-							{language === 'zh' ? '查看更多' : 'View More'}
-							<ArrowRight className="ml-2 h-4 w-4" />
-						</Button>
-					</div>
 
-					{/* 漫画网格 */}
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-						{comicsLoading ? (
-							Array.from({ length: 6 }).map((_, index) => (
-								<ComicCardSkeleton key={index} />
-							))
-						) : (
-							featuredComics.map((comic) => (
-								<ComicCard
-									key={comic.id}
-									comic={comic}
-									onClick={setSelectedComic}
-								/>
-							))
-						)}
-					</div>
-				</div>
-			</section>
-
-			{/* Featured Works Section */}
-			<section className="py-16 px-4">
-				<div className="container mx-auto">
-					<div className="flex items-center justify-between mb-12">
-						<h3 className="text-3xl font-bold">
-							{language === 'zh' ? '精选作品' : 'Featured Works'}
-						</h3>
-						<Button variant="outline">
-							{language === 'zh' ? '查看更多' : 'View More'}
-							<ArrowRight className="ml-2 h-4 w-4" />
-						</Button>
-					</div>
-					<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-						{featuredWorks.map((work) => (
-							<Card key={work.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-								<div className="aspect-video bg-gray-200 relative">
-									<img
-										src={work.thumbnail}
-										alt={work.title}
-										className="w-full h-full object-cover"
-									/>
-									<Badge className="absolute top-2 right-2 bg-purple-600">
-										{work.style}
-									</Badge>
-								</div>
-								<CardHeader>
-									<div className="flex items-center space-x-2 mb-2">
-										<img
-											src={work.authorAvatar || "https://via.placeholder.com/24x24/6366F1/FFFFFF?text=A"}
-											alt={work.author}
-											className="w-6 h-6 rounded-full"
-										/>
-										<span className="text-sm text-gray-600">{work.author}</span>
-									</div>
-									<CardTitle className="text-lg">{work.title}</CardTitle>
-									<CardDescription>{work.description}</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-										<span>{work.panels} {language === 'zh' ? '个面板' : 'panels'}</span>
-										<span>{work.createdAt}</span>
-									</div>
-									<div className="flex items-center justify-between">
-										<div className="flex items-center space-x-4 text-sm text-gray-500">
-											<div className="flex items-center space-x-1">
-												<Heart className="h-4 w-4" />
-												<span>{work.likes}</span>
-											</div>
-											<div className="flex items-center space-x-1">
-												<Eye className="h-4 w-4" />
-												<span>{work.views}</span>
-											</div>
-										</div>
-										<Button size="sm" variant="ghost">
-											<Share2 className="h-4 w-4" />
-										</Button>
-									</div>
-									<div className="flex flex-wrap gap-1 mt-3">
-										{work.tags.map((tag, index) => (
-											<Badge key={index} variant="secondary" className="text-xs">
-												{tag}
-											</Badge>
-										))}
-									</div>
-								</CardContent>
-							</Card>
-						))}
-					</div>
-				</div>
-			</section>
 
 			{/* CTA Section */}
 			<section className="py-16 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white">
@@ -428,13 +237,7 @@ export default function HomePage() {
 				onClose={() => setShowAuthModal(false)}
 			/>
 
-			{/* Comic Reader */}
-			{selectedComic && (
-				<ComicReader
-					comic={selectedComic}
-					onClose={() => setSelectedComic(null)}
-				/>
-			)}
+
 		</div>
 	);
 }
