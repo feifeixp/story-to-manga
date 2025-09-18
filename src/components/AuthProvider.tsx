@@ -40,14 +40,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const result = await AuthService.getCurrentUser();
         if (result.success && result.user) {
-          setUser({
+          const userData: User = {
             id: result.user.id,
             email: result.user.email || '',
-            name: result.user.user_metadata?.name || result.user.email?.split('@')[0],
-            avatar: result.user.user_metadata?.avatar || `https://via.placeholder.com/40x40/6366F1/FFFFFF?text=${(result.user.user_metadata?.name || result.user.email?.split('@')[0] || 'U')[0].toUpperCase()}`,
-            created_at: result.user.created_at,
-            updated_at: result.user.updated_at
-          });
+            name: result.user.user_metadata?.['name'] || result.user.email?.split('@')[0],
+            avatar: result.user.user_metadata?.['avatar'] || `https://via.placeholder.com/40x40/6366F1/FFFFFF?text=${(result.user.user_metadata?.['name'] || result.user.email?.split('@')[0] || 'U')[0].toUpperCase()}`,
+            created_at: result.user.created_at
+          };
+          if (result.user.updated_at) {
+            userData.updated_at = result.user.updated_at;
+          }
+          setUser(userData);
         }
       } catch (error) {
         console.error('Error getting initial user:', error);
@@ -65,14 +68,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setSession(session);
       
       if (session?.user) {
-        setUser({
+        const userData: User = {
           id: session.user.id,
           email: session.user.email || '',
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-          avatar: session.user.user_metadata?.avatar || `https://via.placeholder.com/40x40/6366F1/FFFFFF?text=${(session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'U')[0].toUpperCase()}`,
-          created_at: session.user.created_at,
-          updated_at: session.user.updated_at
-        });
+          name: session.user.user_metadata?.['name'] || session.user.email?.split('@')[0],
+          avatar: session.user.user_metadata?.['avatar'] || `https://via.placeholder.com/40x40/6366F1/FFFFFF?text=${(session.user.user_metadata?.['name'] || session.user.email?.split('@')[0] || 'U')[0].toUpperCase()}`,
+          created_at: session.user.created_at
+        };
+        if (session.user.updated_at) {
+          userData.updated_at = session.user.updated_at;
+        }
+        setUser(userData);
       } else {
         setUser(null);
       }
@@ -128,8 +134,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (result.success && result.user) {
       setUser(prev => prev ? {
         ...prev,
-        name: result.user.user_metadata?.name || prev.name,
-        avatar: result.user.user_metadata?.avatar || prev.avatar
+        name: result.user.user_metadata?.['name'] || prev.name,
+        avatar: result.user.user_metadata?.['avatar'] || prev.avatar
       } : null);
     }
     return result;
