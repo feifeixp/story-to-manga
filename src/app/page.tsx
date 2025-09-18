@@ -99,7 +99,13 @@ export default function HomePage() {
 	};
 
 	const handleStartCreating = () => {
-		router.push('/app');
+		if (!user) {
+			// 如果用户未登录，显示登录模态框
+			setShowAuthModal(true);
+		} else {
+			// 如果用户已登录，跳转到创作页面
+			router.push('/app');
+		}
 	};
 
 	const features = [
@@ -172,10 +178,23 @@ export default function HomePage() {
 							: 'Use AI technology to easily convert text stories into professional comics. Support 10 styles, complete bilingual experience, making creation simple and fun.'
 						}
 					</p>
+					{!user && (
+						<div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+							<p className="text-blue-800 text-sm text-center">
+								{language === 'zh'
+									? '🔐 请先登录以开始创作您的漫画作品'
+									: '🔐 Please login first to start creating your comic works'
+								}
+							</p>
+						</div>
+					)}
 					<div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
 						<Button size="lg" onClick={handleStartCreating} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
 							<Play className="mr-2 h-5 w-5" />
-							{language === 'zh' ? '开始创作' : 'Start Creating'}
+							{user
+								? (language === 'zh' ? '开始创作' : 'Start Creating')
+								: (language === 'zh' ? '登录并开始创作' : 'Login & Start Creating')
+							}
 						</Button>
 						<Button size="lg" variant="outline">
 							<Eye className="mr-2 h-5 w-5" />
@@ -294,7 +313,10 @@ export default function HomePage() {
 					</p>
 					<Button size="lg" variant="secondary" onClick={handleStartCreating}>
 						<Play className="mr-2 h-5 w-5" />
-						{language === 'zh' ? '立即开始' : 'Get Started Now'}
+						{user
+							? (language === 'zh' ? '立即开始' : 'Get Started Now')
+							: (language === 'zh' ? '登录开始' : 'Login to Start')
+						}
 					</Button>
 				</div>
 			</section>
