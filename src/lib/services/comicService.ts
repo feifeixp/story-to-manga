@@ -26,8 +26,7 @@ export class ComicService {
         .from('comics')
         .select(`
           *,
-          author:profiles(name, avatar_url),
-          panels:comic_panels(count)
+          author:profiles(name, avatar_url)
         `)
         .eq('is_published', true);
 

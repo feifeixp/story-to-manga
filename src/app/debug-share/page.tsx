@@ -115,6 +115,36 @@ Updated: ${profile.updated_at}`);
     }
   };
 
+  const testViewComics = async () => {
+    setLoading(true);
+    setResult('Testing comic viewing...');
+
+    try {
+      const result = await ComicService.getComics({
+        page: 1,
+        limit: 5
+      });
+
+      if (result.success) {
+        const comics = result.data;
+        setResult(`✅ Comic viewing successful!
+Found ${comics.length} comics:
+${comics.map((comic, index) =>
+  `${index + 1}. "${comic.title}" by ${comic.author_name} (${comic.style})`
+).join('\n')}
+
+Total pages: ${result.pagination?.totalPages || 0}
+Total comics: ${result.pagination?.total || 0}`);
+      } else {
+        setResult(`❌ Failed to load comics: ${result.error}`);
+      }
+    } catch (error) {
+      setResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const testCreateComic = async () => {
     setLoading(true);
     setResult('Testing comic creation...');
@@ -260,7 +290,7 @@ Profile: ${profile?.name || 'Created automatically'}`);
         
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">调试测试</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <button
               onClick={testBasicConnection}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
@@ -281,6 +311,13 @@ Profile: ${profile?.name || 'Created automatically'}`);
               disabled={loading}
             >
               Profile设置
+            </button>
+            <button
+              onClick={testViewComics}
+              className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50"
+              disabled={loading}
+            >
+              查看漫画
             </button>
             <button
               onClick={testDirectInsert}
@@ -319,8 +356,9 @@ Profile: ${profile?.name || 'Created automatically'}`);
             <li>1. <strong>基础连接</strong>: 测试 Supabase 数据库连接</li>
             <li>2. <strong>用户认证</strong>: 检查当前用户登录状态</li>
             <li>3. <strong>Profile设置</strong>: 检查/创建用户 Profile 记录</li>
-            <li>4. <strong>直接插入</strong>: 直接向 comics 表插入数据</li>
-            <li>5. <strong>完整测试</strong>: 使用 ComicService 创建漫画</li>
+            <li>4. <strong>查看漫画</strong>: 测试漫画列表查询功能</li>
+            <li>5. <strong>直接插入</strong>: 直接向 comics 表插入数据</li>
+            <li>6. <strong>完整测试</strong>: 使用 ComicService 创建漫画</li>
           </ul>
         </div>
 
