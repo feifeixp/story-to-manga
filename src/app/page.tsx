@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthModal } from "@/components/AuthModal";
+import { ComicCard, ComicCardSkeleton } from "@/components/ComicCard";
+import { ComicReader } from "@/components/ComicReader";
+import { ComicService } from "@/lib/services/comicService";
+import type { Comic } from "@/lib/types/comic";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +18,8 @@ import {
 	Zap,
 	Globe,
 	Play,
-	Eye
+	Eye,
+	ArrowRight
 } from "lucide-react";
 
 
@@ -24,6 +29,49 @@ export default function HomePage() {
 	const { language } = useI18n();
 	const { user, signOut, loading } = useAuth();
 	const [showAuthModal, setShowAuthModal] = useState(false);
+	const [featuredComics, setFeaturedComics] = useState<Comic[]>([]);
+	const [comicsLoading, setComicsLoading] = useState(true);
+	const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
+	const [loadingComic, setLoadingComic] = useState(false);
+
+	// 加载推荐漫画
+	useEffect(() => {
+		const loadFeaturedComics = async () => {
+			setComicsLoading(true);
+			try {
+				const result = await ComicService.getFeaturedComics(6);
+				if (result.success && result.data) {
+					setFeaturedComics(result.data);
+				}
+			} catch (error) {
+				console.error('Failed to load featured comics:', error);
+			} finally {
+				setComicsLoading(false);
+			}
+		};
+
+		loadFeaturedComics();
+	}, []);
+	// 打开漫画阅读器
+	const openComicReader = async (comic: Comic) => {
+		setLoadingComic(true);
+		try {
+			// 获取完整的漫画数据（包括面板）
+			const result = await ComicService.getComic(comic.id);
+			if (result.success && result.data) {
+				setSelectedComic(result.data);
+			} else {
+				// 失败时提供基本结构，避免错误
+				setSelectedComic({ ...comic, panels: [] });
+			}
+		} catch (error) {
+			console.error('Failed to load comic details:', error);
+			// 错误时也提供基本结构
+			setSelectedComic({ ...comic, panels: [] });
+		} finally {
+			setLoadingComic(false);
+		}
+	};
 
 
 
@@ -153,6 +201,40 @@ export default function HomePage() {
 				</div>
 			</section>
 
+				{/* Featured Comics Section */}
+				<section className="py-16 px-4 bg-gray-50">
+					<div className="container mx-auto">
+						<div className="flex items-center justify-between mb-12">
+							<h3 className="text-3xl font-bold">
+								{language === 'zh' ? '热门漫画' : 'Popular Comics'}
+							</h3>
+							<Button
+								variant="outline"
+								onClick={() => router.push('/comics')}
+							>
+								{language === 'zh' ? '查看更多' : 'View More'}
+								<ArrowRight className="ml-2 h-4 w-4" />
+							</Button>
+						</div>
+
+						{/* 漫画网格 */}
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+							{comicsLoading ? (
+								Array.from({ length: 6 }).map((_, index) => (
+									<ComicCardSkeleton key={index} />
+								))
+							) : (
+								featuredComics.map((comic) => (
+									<ComicCard
+										key={comic.id}
+										comic={comic}
+										onClick={openComicReader}
+									/>
+								))
+							)}
+						</div>
+					</div>
+				</section>
 			{/* Features Section */}
 			<section className="py-16 px-4 bg-white/50">
 				<div className="container mx-auto">
@@ -230,6 +312,26 @@ export default function HomePage() {
 					</div>
 				</div>
 			</footer>
+
+			{/* Comic Reader */}
+			{selectedComic && (
+				<ComicReader
+					comic={selectedComic}
+					onClose={() => setSelectedComic(null)}
+				/>
+			)}
+
+			{/* Loading Indicator */}
+			{loadingComic && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+					<div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+						<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+						<span className="text-gray-700">
+							{language === 'zh' ? '加载漫画中...' : 'Loading comic...'}
+						</span>
+					</div>
+				</div>
+			)}
 
 			{/* Auth Modal */}
 			<AuthModal
