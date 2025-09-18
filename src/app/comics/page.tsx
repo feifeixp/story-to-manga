@@ -27,6 +27,7 @@ export default function ComicsPage() {
   const [comics, setComics] = useState<Comic[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
+  const [loadingComic, setLoadingComic] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'most_liked' | 'most_viewed'>('latest');
@@ -89,6 +90,34 @@ export default function ComicsPage() {
       style: undefined,
       search: undefined
     });
+  };
+
+  // 打开漫画阅读器
+  const openComicReader = async (comic: Comic) => {
+    setLoadingComic(true);
+    try {
+      // 获取完整的漫画数据（包括面板）
+      const result = await ComicService.getComic(comic.id);
+      if (result.success && result.data) {
+        setSelectedComic(result.data);
+      } else {
+        console.error('Failed to load comic details:', result.error);
+        // 如果获取详细数据失败，至少确保有基本的面板数据结构
+        setSelectedComic({
+          ...comic,
+          panels: []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading comic:', error);
+      // 错误时也设置基本结构
+      setSelectedComic({
+        ...comic,
+        panels: []
+      });
+    } finally {
+      setLoadingComic(false);
+    }
   };
 
   const getSortLabel = (sort: string) => {
@@ -250,15 +279,15 @@ export default function ComicsPage() {
         ) : comics.length > 0 ? (
           <>
             <div className={`grid gap-6 ${
-              viewMode === 'grid' 
-                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+              viewMode === 'grid'
+                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
                 : 'grid-cols-1'
             }`}>
               {comics.map((comic) => (
                 <ComicCard
                   key={comic.id}
                   comic={comic}
-                  onClick={setSelectedComic}
+                  onClick={openComicReader}
                   className={viewMode === 'list' ? 'flex-row' : ''}
                 />
               ))}
@@ -309,8 +338,20 @@ export default function ComicsPage() {
         )}
       </div>
 
+      {/* 加载漫画详情 */}
+      {loadingComic && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+            <span className="text-gray-700">
+              {language === 'zh' ? '加载漫画中...' : 'Loading comic...'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 漫画阅读器 */}
-      {selectedComic && (
+      {selectedComic && !loadingComic && (
         <ComicReader
           comic={selectedComic}
           onClose={() => setSelectedComic(null)}

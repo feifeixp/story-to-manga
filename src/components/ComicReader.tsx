@@ -55,10 +55,11 @@ export function ComicReader({ comic, onClose }: ComicReaderProps) {
 
   // 自动播放逻辑
   useEffect(() => {
-    if (isAutoPlay && comic.panels.length > 1) {
+    const panelsLength = comic.panels?.length || 0;
+    if (isAutoPlay && panelsLength > 1) {
       const interval = setInterval(() => {
         setCurrentPage(prev => {
-          if (prev >= comic.panels.length - 1) {
+          if (prev >= panelsLength - 1) {
             setIsAutoPlay(false);
             return prev;
           }
@@ -71,7 +72,7 @@ export function ComicReader({ comic, onClose }: ComicReaderProps) {
       clearInterval(autoPlayInterval);
       setAutoPlayInterval(null);
     }
-  }, [isAutoPlay, comic.panels.length, autoPlayInterval]);
+  }, [isAutoPlay, comic.panels?.length || 0, autoPlayInterval]);
 
   // 键盘导航
   useEffect(() => {
@@ -106,8 +107,9 @@ export function ComicReader({ comic, onClose }: ComicReaderProps) {
   }, []);
 
   const handleNextPage = useCallback(() => {
-    setCurrentPage(prev => Math.min(comic.panels.length - 1, prev + 1));
-  }, [comic.panels.length]);
+    const panelsLength = comic.panels?.length || 0;
+    setCurrentPage(prev => Math.min(panelsLength - 1, prev + 1));
+  }, [comic.panels?.length]);
 
   const handleLike = async () => {
     if (!user) {
@@ -160,7 +162,28 @@ export function ComicReader({ comic, onClose }: ComicReaderProps) {
     }
   };
 
-  const currentPanel = comic.panels[currentPage];
+  const currentPanel = comic.panels?.[currentPage];
+
+  // 如果没有面板数据，显示错误信息
+  if (!comic.panels || comic.panels.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">
+            {language === 'zh' ? '无法加载漫画' : 'Unable to Load Comic'}
+          </h3>
+          <p className="text-gray-600 mb-6">
+            {language === 'zh'
+              ? '这个漫画暂时无法显示，可能是数据加载出现了问题。'
+              : 'This comic cannot be displayed right now. There might be an issue with data loading.'}
+          </p>
+          <Button onClick={onClose} className="w-full">
+            {language === 'zh' ? '关闭' : 'Close'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`fixed inset-0 bg-black z-50 ${isFullscreen ? '' : 'p-4'}`}>
@@ -279,7 +302,7 @@ export function ComicReader({ comic, onClose }: ComicReaderProps) {
           variant="ghost"
           size="lg"
           onClick={handleNextPage}
-          disabled={currentPage === comic.panels.length - 1}
+          disabled={currentPage === (comic.panels?.length || 1) - 1}
           className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-10"
         >
           <ChevronRight className="h-8 w-8" />
@@ -314,19 +337,19 @@ export function ComicReader({ comic, onClose }: ComicReaderProps) {
               {/* 页面指示器 */}
               <div className="flex items-center space-x-2">
                 <span className="text-white text-sm">
-                  {currentPage + 1} / {comic.panels.length}
+                  {currentPage + 1} / {comic.panels?.length || 0}
                 </span>
                 <div className="w-32 bg-gray-600 rounded-full h-2">
                   <div
                     className="bg-white rounded-full h-2 transition-all duration-300"
-                    style={{ width: `${((currentPage + 1) / comic.panels.length) * 100}%` }}
+                    style={{ width: `${((currentPage + 1) / (comic.panels?.length || 1)) * 100}%` }}
                   />
                 </div>
               </div>
 
               {/* 页面缩略图 */}
               <div className="flex space-x-1 max-w-xs overflow-x-auto">
-                {comic.panels.map((panel, index) => (
+                {(comic.panels || []).map((panel, index) => (
                   <button
                     key={panel.id}
                     onClick={() => setCurrentPage(index)}
