@@ -61,20 +61,26 @@ export class R2StorageClient {
     options: UploadOptions = {}
   ): Promise<string> {
     try {
+      // 准备元数据，确保所有值都是字符串
+      const metadata: Record<string, string> = {};
+      if (options.metadata) {
+        for (const [key, value] of Object.entries(options.metadata)) {
+          metadata[key] = String(value);
+        }
+      }
+
+      // 如果是公开文件，添加public标记
+      if (options.isPublic) {
+        metadata['public'] = 'true';
+      }
+
       const command = new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
         Body: data,
         ContentType: options.contentType || 'application/octet-stream',
-        Metadata: options.metadata,
+        Metadata: metadata,
         CacheControl: options.cacheControl || 'public, max-age=3600',
-        // R2不支持ACL，使用自定义元数据标记公开状态
-        ...(options.isPublic && {
-          Metadata: {
-            ...options.metadata,
-            'public': 'true'
-          }
-        })
       });
 
       await this.s3Client.send(command);

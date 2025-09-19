@@ -8,6 +8,7 @@ import {
 	logError,
 	panelLogger,
 } from "@/lib/logger";
+import { cloudFirstStorage } from "@/lib/cloudFirst";
 
 // 清理对话内容，移除角色名字以避免在图片中显示文字
 function cleanDialogue(dialogue: string): string {
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
 			aiModel = "auto",
 			imageSize,
 			batchSize = 3, // 默认批次大小
+			projectId, // 添加项目ID参数
 		} = requestData;
 
 		panelLogger.debug(
@@ -303,10 +305,35 @@ Generate a single comic panel image with proper framing and composition.
 						);
 					}
 
+					// 保存到云端（如果提供了项目ID）
+					let cloudUrl: string | null = null;
+					if (result.imageData && projectId) {
+						try {
+							await cloudFirstStorage.initialize();
+							cloudUrl = await cloudFirstStorage.saveGeneratedPanel(
+								projectId,
+								panel.panelNumber,
+								result.imageData,
+								{
+									modelUsed: result.modelUsed,
+									style,
+									generatedAt: new Date().toISOString(),
+									panelDescription,
+									characters: panel.characters,
+								}
+							);
+							panelLogger.info(`Panel ${panel.panelNumber} saved to cloud in batch: ${cloudUrl}`);
+						} catch (cloudError) {
+							panelLogger.warn(`Failed to save panel ${panel.panelNumber} to cloud in batch:`, cloudError);
+							// 不影响主流程，继续处理
+						}
+					}
+
 					panelLogger.info(
 						{
 							panel_number: panel.panelNumber,
 							model_used: result.modelUsed,
+							cloud_url: cloudUrl,
 						},
 						"Successfully generated panel in batch",
 					);
@@ -317,6 +344,7 @@ Generate a single comic panel image with proper framing and composition.
 						image: result.imageData,
 						modelUsed: result.modelUsed,
 						cached: false,
+						cloudUrl, // 包含云端URL
 					};
 
 				} catch (error) {

@@ -28,6 +28,8 @@ import {
 	createProject,
 } from "@/lib/hybridStorage";
 import ProjectManager from "@/components/ProjectManager";
+import { useAuth } from "@/components/AuthProvider";
+import { AuthModal } from "@/components/AuthModal";
 import { ShareComicModal } from "@/components/ShareComicModal";
 import { ImageEditModal } from "@/components/ImageEditModal";
 import type {
@@ -887,6 +889,9 @@ export default function Home() {
 	// Initialize i18n hooks
 	const { t, i18n } = useI18n();
 
+	// Initialize auth hooks
+	const { user, session, signOut } = useAuth();
+
 	// Generate unique IDs for form elements
 	const mangaRadioId = useId();
 	const comicRadioId = useId();
@@ -969,6 +974,7 @@ export default function Home() {
 	const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
 	const [errorModalMessage, setErrorModalMessage] = useState<string>("");
 	const [showShareModal, setShowShareModal] = useState<boolean>(false);
+	const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 
 	// Download state
 	const [isDownloadingCharacters, setIsDownloadingCharacters] = useState(false);
@@ -3863,8 +3869,32 @@ export default function Home() {
 					</button>
 				</div>
 
-				{/* Language switcher in top right */}
-				<LanguageSwitcher />
+				{/* Auth status and language switcher in top right */}
+				<div className="flex items-center gap-3">
+					{user ? (
+						<div className="flex items-center gap-2">
+							<span className="text-sm text-gray-600">
+								👤 {user.email}
+							</span>
+							<button
+								onClick={() => signOut()}
+								className="btn-manga-outline text-sm px-2 py-1"
+								title="退出登录"
+							>
+								退出
+							</button>
+						</div>
+					) : (
+						<button
+							onClick={() => setShowAuthModal(true)}
+							className="btn-manga-primary text-sm px-3 py-1"
+							title="登录以启用云存储"
+						>
+							🔐 登录
+						</button>
+					)}
+					<LanguageSwitcher />
+				</div>
 			</div>
 			<div className="flex flex-col lg:flex-row gap-4 h-full">
 				{/* Left Panel - Input */}
