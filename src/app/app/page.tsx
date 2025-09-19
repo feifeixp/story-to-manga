@@ -813,8 +813,9 @@ function ShareableComicLayout({
 	);
 }
 
-// This should be a compelling story under 500 words that showcases the app's capabilities
-const SAMPLE_STORY_TEXT = `One Hour Left
+// Sample stories for different languages
+const SAMPLE_STORIES = {
+	en: `One Hour Left
 
 Victor eyed the timer: 01:00:00. “Plenty of time.”
 Kingston sighed. “That sentence always ages badly. We need to move.”
@@ -846,6 +847,41 @@ One panel stalled.
 The timer flipped to 00:01:00.
 “Plenty of time,” Victor said.
 “Submit before you jinx it,” Kingston said.`;
+,
+
+	zh: `最后一小时
+
+小明看着倒计时：01:00:00。"时间还很充裕。"
+小李叹了口气："这句话总是很快就被打脸。我们得抓紧了。"
+
+他们盯着白板。"视频、演示、文档，"小李说。
+"也就是说...全部，"小明说。"全部，"小李说。"而且要快。"
+
+他们打开了应用。小明粘贴了这个故事。"开始元叙事。点击生成。"
+"好，如果这个对我们有效，那对任何人都有效，"小李说。
+
+角色参考图出现了：小明穿着连帽衫，小李戴着眼镜。
+"嘿，这真的是我们，"小明说。"每个面板都锁定这些，"小李说。"不要让脸部漂移。"
+
+"选什么风格？"小明问。
+"漫画，"小李说。"决定一次，保持一致。"
+
+布局开始运转。面板计划和对话框起草完成。
+"可读性不错，"小明说。"让它运行。"
+
+面板开始流式生成。
+"脸部保持稳定。头发表现正常，"小明说。"终于，"小李说。
+
+一个面板卡住了。
+"第六个面板有问题。重新运行，"小李说。"正在处理，"小明说。"现在干净了。"
+
+"下载全部，"小明说。"海报呢？"
+"创建可分享图片，"小李点击。面板整齐地排列成网格。
+
+计时器跳到了00:01:00。
+"时间还很充裕，"小明说。
+"在你说出不吉利的话之前赶紧提交，"小李说。`
+}
 
 export default function Home() {
 	// Initialize i18n hooks
@@ -1689,10 +1725,13 @@ export default function Home() {
 
 	// Handler to populate story with sample text
 	const loadSampleText = () => {
-		setStory(SAMPLE_STORY_TEXT);
+		const currentLanguage = i18n?.language || 'en';
+		const sampleText = SAMPLE_STORIES[currentLanguage as keyof typeof SAMPLE_STORIES] || SAMPLE_STORIES.en;
+		setStory(sampleText);
 		trackEvent({
 			action: "load_sample_story",
 			category: "user_interaction",
+			label: currentLanguage,
 		});
 	};
 
@@ -2839,7 +2878,7 @@ export default function Home() {
 			characterReferencesCount: characterReferences.length,
 			currentLanguage: i18n?.language
 		});
-		
+
 		if (!storyAnalysis || !storyBreakdown || characterReferences.length === 0) {
 			console.error('❌ Missing required data for rerunPanels:', {
 				storyAnalysis: !!storyAnalysis,
@@ -3190,7 +3229,7 @@ export default function Home() {
 		return new Promise((resolve) => {
 			let loadedCount = 0;
 			const totalImages = imageUrls.length;
-			
+
 			if (totalImages === 0) {
 				resolve();
 				return;
@@ -3243,7 +3282,7 @@ export default function Home() {
 		try {
 			// Show initial loading message
 			console.log('Starting composite generation...');
-			
+
 			// Debug: Log all panel data to understand what we're working with
 			console.log('=== DEBUGGING COMPOSITE GENERATION ===');
 			console.log('Total generatedPanels:', generatedPanels.length);
@@ -3258,7 +3297,7 @@ export default function Home() {
 					isHttpUrl: panel.image?.startsWith('http')
 				});
 			});
-			
+
 			// Extract all image URLs from generated panels
 			const imageUrls = generatedPanels
 				.map(panel => panel.image)
@@ -3266,22 +3305,22 @@ export default function Home() {
 
 			console.log(`Found ${imageUrls.length} images to preload:`, imageUrls);
 			console.log('Image URLs:', imageUrls);
-			
+
 			// Validate that we have actual images to work with
 			if (imageUrls.length === 0) {
 				throw new Error('No valid images found in generated panels. Please ensure panels are properly generated before creating composite.');
 			}
 
 			// Check if all panels have valid images
-			const panelsWithoutImages = generatedPanels.filter(panel => 
+			const panelsWithoutImages = generatedPanels.filter(panel =>
 				!panel.image || panel.image.includes('placeholder') || panel.image.startsWith('data:image/svg')
 			);
-			
+
 			if (panelsWithoutImages.length > 0) {
 				console.warn(`Found ${panelsWithoutImages.length} panels with placeholder images`);
 				showError(`Warning: ${panelsWithoutImages.length} panels still have placeholder images. The composite may not include all panels.`);
 			}
-			
+
 			// Preload all images before capturing
 			try {
 				await preloadImages(imageUrls);
@@ -3290,16 +3329,16 @@ export default function Home() {
 				console.error('Error preloading images:', error);
 				throw new Error('Failed to preload images. Please check your internet connection and try again.');
 			}
-			
+
 			// Wait a bit more to ensure DOM is updated
 			await new Promise(resolve => setTimeout(resolve, 500));
 
 			// Final validation: check if images are actually loaded in the DOM
 			const domImages = compositorRef.current.querySelectorAll('img');
-			const unloadedImages = Array.from(domImages).filter(img => 
+			const unloadedImages = Array.from(domImages).filter(img =>
 				!img.complete || img.naturalWidth === 0
 			);
-			
+
 			if (unloadedImages.length > 0) {
 				console.warn(`Found ${unloadedImages.length} unloaded images in DOM`);
 				// Try to wait a bit more for these images
@@ -3330,7 +3369,7 @@ export default function Home() {
 				ignoreElements: (element) => {
 					// Skip elements that might cause issues
 					const classList = element.classList;
-					return classList?.contains('loading-indicator') || 
+					return classList?.contains('loading-indicator') ||
 						   classList?.contains('error-message') ||
 						   element.tagName === 'SCRIPT' ||
 						   element.tagName === 'NOSCRIPT' || false;
@@ -3368,7 +3407,7 @@ export default function Home() {
 			});
 		} catch (error) {
 			console.error("Failed to generate composite:", error);
-			
+
 			// Provide specific error messages based on the error type
 			let errorMessage = "Failed to generate composite image";
 			if (error instanceof Error) {
@@ -3382,7 +3421,7 @@ export default function Home() {
 					errorMessage = `Composite generation failed: ${error.message}`;
 				}
 			}
-			
+
 			showError(errorMessage);
 			trackError(
 				"composite_generation_failed",
