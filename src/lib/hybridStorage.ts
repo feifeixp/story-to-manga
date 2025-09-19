@@ -237,11 +237,11 @@ export class HybridStorageService {
   }
 
   // 创建新项目
-  async createProject(params: CreateProjectParams): Promise<string> {
+  async createProject(params: CreateProjectParams): Promise<ProjectMetadata> {
     await this.waitForInit();
 
     const { createProject } = await import('./projectStorage');
-    const projectId = await createProject(params);
+    const metadata = createProject(params);
 
     // 如果用户已认证，同步项目元数据到云端
     if (this.useCloudStorage) {
@@ -253,7 +253,7 @@ export class HybridStorageService {
       }
     }
 
-    return projectId;
+    return metadata;
   }
 
   // 更新项目元数据

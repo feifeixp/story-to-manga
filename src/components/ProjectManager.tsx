@@ -44,9 +44,14 @@ export default function ProjectManager({
 		}
 	}, [isOpen]);
 
-	const loadProjects = () => {
-		const projectList = getProjectList();
-		setProjects(projectList);
+	const loadProjects = async () => {
+		try {
+			const projectList = await getProjectList();
+			setProjects(projectList);
+		} catch (error) {
+			console.error('Failed to load projects:', error);
+			setProjects([]);
+		}
 	};
 
 	const handleCreateProject = async () => {
@@ -63,10 +68,10 @@ export default function ProjectManager({
 				...(selectedImageSize && { imageSize: selectedImageSize }),
 			};
 
-			const metadata = createProject(params);
-			
+			const metadata = await createProject(params);
+
 			// 刷新项目列表
-			loadProjects();
+			await loadProjects();
 			
 			// 重置表单
 			setNewProjectName("");
@@ -93,7 +98,7 @@ export default function ProjectManager({
 
 		try {
 			await deleteProject(projectId);
-			loadProjects();
+			await loadProjects();
 			
 			// 如果删除的是当前项目，通知父组件
 			if (projectId === currentProjectId) {

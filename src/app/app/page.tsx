@@ -1750,7 +1750,7 @@ export default function Home() {
 		let projectId = currentProjectId;
 		if (!projectId) {
 			const projectName = story.slice(0, 50) + (story.length > 50 ? "..." : "");
-			const metadata = createProject({
+			const metadata = await createProject({
 				name: projectName,
 				description: `Created from story: ${story.slice(0, 100)}${story.length > 100 ? "..." : ""}`,
 				style: style,
