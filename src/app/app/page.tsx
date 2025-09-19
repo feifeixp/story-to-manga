@@ -26,7 +26,7 @@ import {
 	saveProjectData,
 	loadProjectData,
 	createProject,
-} from "@/lib/projectStorage";
+} from "@/lib/hybridStorage";
 import ProjectManager from "@/components/ProjectManager";
 import { ShareComicModal } from "@/components/ShareComicModal";
 import { ImageEditModal } from "@/components/ImageEditModal";

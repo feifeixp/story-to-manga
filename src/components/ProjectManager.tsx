@@ -8,7 +8,7 @@ import {
 	deleteProject,
 	getCurrentProjectId,
 	setCurrentProject,
-} from "@/lib/projectStorage";
+} from "@/lib/hybridStorage";
 import type { ProjectListItem, CreateProjectParams, ImageSizeConfig } from "@/types/project";
 import { IMAGE_SIZE_PRESETS } from "@/types/project";
 import type { ComicStyle } from "@/types";
