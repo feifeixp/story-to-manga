@@ -33,6 +33,11 @@ NEXT_PUBLIC_SUPABASE_URL=https://tairvnwvltidxcscsusl.supabase.co
 # 匿名公钥 - 你提供的 API Key
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaXJ2bnd2bHRpZHhjc2NzdXNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNjY3MDIsImV4cCI6MjA3Mzc0MjcwMn0.9YU03FVkvHFzhxOiJfrIACiOcK460cN9kT-or641g94
 
+# Cloudflare R2 存储配置 (用于云端数据存储)
+# 从 Cloudflare R2 控制台获取
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+
 # 应用程序配置
 NEXT_PUBLIC_APP_URL=http://localhost:8000
 ```
@@ -48,6 +53,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:8000
 ### 🗄️ Supabase 数据库配置
 - **NEXT_PUBLIC_SUPABASE_URL**: Supabase 项目 URL
 - **NEXT_PUBLIC_SUPABASE_ANON_KEY**: Supabase 匿名公钥，用于客户端访问
+
+### ☁️ Cloudflare R2 存储配置
+- **R2_ACCESS_KEY_ID**: Cloudflare R2 访问密钥 ID
+- **R2_SECRET_ACCESS_KEY**: Cloudflare R2 秘密访问密钥
 
 ### 📊 其他配置
 - **NEXT_PUBLIC_GA_MEASUREMENT_ID**: Google Analytics 跟踪 ID

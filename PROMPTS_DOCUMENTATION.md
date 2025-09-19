@@ -195,6 +195,7 @@ Provide all content in English and ensure character descriptions are detailed an
 每种风格都有专门的面板布局指导：
 
 #### Manga 风格
+
 - 动态面板形状和尺寸
 - 戏剧性时刻的垂直强调
 - 运动的动作线和运动模糊
@@ -203,6 +204,7 @@ Provide all content in English and ensure character descriptions are detailed an
 - 戏剧性角度和透视
 
 #### Comic 风格
+
 - 一致边框的矩形面板
 - 宽建立镜头
 - 对话的中景
@@ -211,6 +213,7 @@ Provide all content in English and ensure character descriptions are detailed an
 - 大胆、清晰的视觉叙事
 
 #### Wuxia 风格
+
 - 跟随自然元素的流动、有机面板形状
 - 飞行和上升场景的垂直面板
 - 冥想和精神时刻的圆形或弯曲面板
@@ -220,6 +223,7 @@ Provide all content in English and ensure character descriptions are detailed an
 - 强调运动和能量流动
 
 #### 其他风格
+
 - **Healing**: 柔和圆润的面板边框，温馨舒适的构图
 - **Manhwa**: 现代矩形面板，垂直滚动友好的布局
 - **Cinematic**: 电影般的宽高比（16:9, 2.35:1），专业摄影角度
@@ -577,11 +581,13 @@ Cinematic photorealistic style, realistic character modeling, professional light
 ### 关键特性
 
 #### 风格一致性保护
+
 - 使用 `promptPrefix` 而不是 `panelPrompt` 确保风格准确性
 - 避免"创建一个漫画面板"导致的黑白色偏见
 - 改用"创建一个图像"保持风格中性
 
 #### 对话清理机制
+
 - 自动清理提示词中的角色名字，防止文字出现在图像中
 - 支持多种对话格式的清理：
   - `角色名: "对话内容"` → `"对话内容"`
@@ -589,6 +595,7 @@ Cinematic photorealistic style, realistic character modeling, professional light
   - 中文冒号格式：`角色名：'对话内容'` → `"对话内容"`
 
 #### 动态角色匹配
+
 - 根据面板内容自动选择正确的角色参考图片
 - 支持用户手动选择角色参考
 - 前端自动预选相关角色参考
@@ -777,6 +784,7 @@ Cinematic visual style, photorealism, cinematographic composition, using English
 ### 支持的10种风格
 
 #### 1. Manga (日式漫画)
+
 ```typescript
 manga: {
   name: "日式漫画",
@@ -789,6 +797,7 @@ manga: {
 ```
 
 #### 2. Comic (美式漫画)
+
 ```typescript
 comic: {
   name: "美式漫画",
@@ -801,6 +810,7 @@ comic: {
 ```
 
 #### 3. Wuxia (武侠修仙)
+
 ```typescript
 wuxia: {
   name: "武侠修仙",
@@ -813,6 +823,7 @@ wuxia: {
 ```
 
 #### 4. Healing (治愈系日漫)
+
 ```typescript
 healing: {
   name: "治愈系日漫",
@@ -825,6 +836,7 @@ healing: {
 ```
 
 #### 5. Manhwa (韩漫风格)
+
 ```typescript
 manhwa: {
   name: "韩漫风格",
@@ -837,6 +849,7 @@ manhwa: {
 ```
 
 #### 6. Cinematic (电影风格)
+
 ```typescript
 cinematic: {
   name: "电影风格",
@@ -849,6 +862,7 @@ cinematic: {
 ```
 
 #### 7. Shojo (少女漫画)
+
 ```typescript
 shojo: {
   name: "少女漫画",
@@ -861,6 +875,7 @@ shojo: {
 ```
 
 #### 8. Seinen (青年漫画)
+
 ```typescript
 seinen: {
   name: "青年漫画",
@@ -873,6 +888,7 @@ seinen: {
 ```
 
 #### 9. Chibi (Q版漫画)
+
 ```typescript
 chibi: {
   name: "Q版漫画",
@@ -885,6 +901,7 @@ chibi: {
 ```
 
 #### 10. Fantasy (奇幻史诗)
+
 ```typescript
 fantasy: {
   name: "奇幻史诗",
@@ -917,11 +934,13 @@ export function getStylePrompt(style: ComicStyle, type: 'prefix' | 'character' |
 ### 关键改进
 
 #### 风格一致性
+
 - 统一的 `promptPrefix` 配置，避免风格冲突
 - 重绘时使用 `prefix` 而不是 `panel` 类型，防止黑白色偏见
 - 所有风格都有完整的中英文配置
 
 #### 语言本地化
+
 - 每种风格都有中文和英文版本的提示词
 - 根据用户语言自动选择对应的风格描述
 - 保持风格特色的同时适应不同语言的表达习惯
@@ -1025,6 +1044,7 @@ Comic book style illustration: ${prompt}. Style requirements: Consistent America
 ### 语言检测和切换
 
 #### 自动语言检测
+
 ```javascript
 // 基于浏览器语言自动检测
 const detectLanguage = () => {
@@ -1034,6 +1054,7 @@ const detectLanguage = () => {
 ```
 
 #### 手动语言切换
+
 - 界面右上角的语言切换器
 - 实时切换界面语言
 - 保存用户语言偏好到 localStorage
@@ -1041,6 +1062,7 @@ const detectLanguage = () => {
 ### 提示词本地化
 
 #### 故事分析提示词
+
 ```javascript
 const prompt = language === 'zh' ? `
 分析这个故事并提取主要角色、设定和具体场景：
@@ -1058,6 +1080,7 @@ Provide all content in English.
 ```
 
 #### 面板生成提示词
+
 ```javascript
 const promptStart = language === 'zh'
   ? `创建一个图像，风格：${stylePrefix}。
@@ -1067,6 +1090,7 @@ Global Setting: ${setting.location}, ${setting.timePeriod}, mood: ${setting.mood
 ```
 
 #### 角色生成提示词
+
 ```javascript
 const prompt = `Character reference sheet: ${stylePrefix}. Create a character design for ${character.name}. Focus on: ${character.physicalDescription}. Character personality: ${character.personality}. Role: ${character.role}. ${settingDescription} Full body character reference sheet with multiple angles and expressions.`;
 ```
@@ -1090,11 +1114,13 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 ### AI 生成内容本地化
 
 #### 结构化输出语言控制
+
 - 使用 JSON Schema 确保输出结构一致
 - 通过提示词指定输出语言
 - 自动验证生成内容的语言正确性
 
 #### 对话和文本处理
+
 - 根据用户语言生成对应语言的对话
 - 自动清理对话中的角色名字
 - 支持中英文标点符号的正确处理
@@ -1102,6 +1128,7 @@ export const STYLE_CONFIGS: Record<ComicStyle, StyleConfig> = {
 ### 界面本地化
 
 #### React i18next 集成
+
 ```javascript
 import { useTranslation } from 'react-i18next';
 
@@ -1115,6 +1142,7 @@ i18n.changeLanguage(newLanguage);
 ```
 
 #### 动态内容本地化
+
 - 错误消息本地化
 - 状态提示本地化
 - 用户反馈本地化
@@ -1122,6 +1150,7 @@ i18n.changeLanguage(newLanguage);
 ### 技术实现
 
 #### 语言参数传递
+
 ```javascript
 // API 调用时传递语言参数
 const response = await fetch('/api/generate-panel', {
@@ -1135,6 +1164,7 @@ const response = await fetch('/api/generate-panel', {
 ```
 
 #### 提示词动态构建
+
 ```javascript
 // 根据语言动态选择提示词模板
 const getPromptTemplate = (language: 'zh' | 'en', type: string) => {
@@ -1145,11 +1175,13 @@ const getPromptTemplate = (language: 'zh' | 'en', type: string) => {
 ### 质量保证
 
 #### 语言一致性检查
+
 - 确保所有 API 端点都支持语言参数
 - 验证生成内容与请求语言匹配
 - 自动测试不同语言的提示词效果
 
 #### 文化适应性
+
 - 中文用户获得符合中文表达习惯的内容
 - 英文用户获得地道的英文表达
 - 风格描述适应不同文化背景
@@ -1431,31 +1463,3 @@ logger.debug({
   ai_model: aiModel
 }, "Processing panel generation");
 ```
-
----
-
-## 7. 优化建议
-
-### 提高面板数量限制
-
-1. **修改故事分解提示词**：将"2-15"改为"2-50"或更高
-2. **实现分批处理**：将长故事分成多个段落处理
-3. **添加进度跟踪**：显示生成进度给用户
-
-### 实现继续生成功能
-
-1. **保存生成状态**：记录最后生成的面板和角色状态
-2. **上下文传递**：在新的生成请求中包含之前的故事上下文
-3. **角色状态更新**：根据故事发展更新角色的外观和状态
-
-### 提升角色一致性
-
-1. **增加参考图片数量**：支持更多角色参考图片
-2. **角色特征提取**：从生成的面板中提取角色特征用于后续生成
-3. **风格一致性检查**：实现生成后的质量检查机制
-
-### 性能优化
-
-1. **并行生成**：同时生成多个面板
-2. **缓存机制**：缓存角色参考图片和常用设定
-3. **压缩优化**：优化图像大小和传输效率

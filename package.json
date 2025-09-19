@@ -34,6 +34,8 @@
 		"check": "npm run typecheck && npm run lint && npm run knip"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.892.0",
+		"@aws-sdk/s3-request-presigner": "^3.892.0",
 		"@google/genai": "1.19.0",
 		"@next/third-parties": "15.5.3",
 		"@radix-ui/react-slot": "^1.2.3",
@@ -56,6 +58,7 @@
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"react-i18next": "^15.7.3",
+		"sharp": "^0.34.4",
 		"tailwind-merge": "^3.3.1"
 	},
 	"devDependencies": {
