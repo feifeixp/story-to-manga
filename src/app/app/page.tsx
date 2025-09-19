@@ -846,7 +846,7 @@ One panel stalled.
 
 The timer flipped to 00:01:00.
 “Plenty of time,” Victor said.
-“Submit before you jinx it,” Kingston said.`;
+“Submit before you jinx it,” Kingston said.`
 ,
 
 	zh: `最后一小时
@@ -2309,7 +2309,7 @@ export default function Home() {
 				setUploadedSettingReferences(projectData.uploadedSettingReferences);
 
 				// 设置当前项目
-				setCurrentProject(projectId);
+				await setCurrentProject(projectId);
 				setCurrentProjectId(projectId);
 
 				// Auto-expand sections with content
@@ -3624,7 +3624,7 @@ export default function Home() {
 		const initializeApp = async () => {
 			try {
 				// 首先检查是否有当前项目
-				const projectId = getCurrentProjectId();
+				const projectId = await getCurrentProjectId();
 				setCurrentProjectId(projectId);
 
 				if (projectId) {

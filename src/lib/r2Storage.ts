@@ -142,6 +142,24 @@ export class R2StorageClient {
   }
 
   /**
+   * 测试连接
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: this.bucket,
+        MaxKeys: 1,
+      });
+
+      await this.s3Client.send(command);
+      return true;
+    } catch (error) {
+      console.error('R2 connection test failed:', error);
+      return false;
+    }
+  }
+
+  /**
    * 检查文件是否存在
    */
   async fileExists(key: string): Promise<boolean> {

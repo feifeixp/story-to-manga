@@ -326,3 +326,14 @@ export const getProjectList = hybridStorage.getProjectList.bind(hybridStorage);
 export const createProject = hybridStorage.createProject.bind(hybridStorage);
 export const updateProject = hybridStorage.updateProject.bind(hybridStorage);
 export const deleteProject = hybridStorage.deleteProject.bind(hybridStorage);
+
+// 导出项目管理相关的函数
+export async function getCurrentProjectId(): Promise<string | null> {
+  const { getCurrentProjectId } = await import('./projectStorage');
+  return getCurrentProjectId();
+}
+
+export async function setCurrentProject(projectId: string): Promise<void> {
+  const { setCurrentProject } = await import('./projectStorage');
+  return setCurrentProject(projectId);
+}
