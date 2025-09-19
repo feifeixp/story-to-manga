@@ -102,63 +102,33 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// 根据语言构建提示词
+		// 简化的提示词 - 平衡性能和质量
 		const prompt = language === 'zh' ? `
-分析这个故事并提取主要角色、设定和具体场景：
+分析故事并提取关键信息：
 
 故事："${story}"
-
 风格：${style}
 
-请提供：
-1. 这个故事的标题（如果没有明确提到，请创建一个吸引人的、合适的标题）
+请返回JSON格式的分析结果，包含：
+1. 标题（简洁有吸引力）
+2. 主要角色（1-4个）：姓名、外貌、性格、角色
+3. 设定：时代、地点、氛围
+4. 场景（2-6个）：ID、名称、描述、位置、时间、氛围、视觉元素
 
-2. 主要角色列表（最多1-4个，根据故事复杂性选择）包含：
-   - 姓名
-   - 外貌描述（年龄、体型、头发、服装、显著特征）
-   - 性格特征
-   - 在故事中的角色
-
-3. 全局设定描述（时代背景、大致地点、整体氛围）
-
-4. 具体场景列表（2-8个场景，根据故事需要）每个场景包含：
-   - 场景名称
-   - 具体位置
-   - 场景描述
-   - 一天中的时间
-   - 场景氛围
-   - 关键视觉元素
-
-请用中文回答所有内容。确保角色描述详细且适合${style}风格的视觉表现。
+确保描述适合${style}风格的视觉表现。
 ` : `
-Analyze this story and extract the main characters, setting, and specific scenes:
+Analyze the story and extract key information:
 
 Story: "${story}"
-
 Style: ${style}
 
-Please provide:
-1. A title for this story (create a catchy, appropriate title if one isn't explicitly mentioned)
+Return JSON analysis with:
+1. Title (concise and catchy)
+2. Main characters (1-4): name, appearance, personality, role
+3. Setting: time period, location, mood
+4. Scenes (2-6): ID, name, description, location, time, mood, visual elements
 
-2. A list of main characters (1-4 maximum, choose based on story complexity) with:
-   - Name
-   - Physical description (age, build, hair, clothing, distinctive features)
-   - Personality traits
-   - Role in the story
-
-3. Global setting description (time period, general location, overall mood)
-
-4. Specific scenes that occur in the story (2-8 scenes maximum, based on story complexity) with:
-   - Unique ID (scene1, scene2, etc.)
-   - Scene name (brief descriptive name)
-   - Detailed description of the location/environment
-   - Specific location within the global setting
-   - Time of day (if relevant: morning, afternoon, evening, night)
-   - Mood/atmosphere of this specific scene
-   - Key visual elements that should be consistent (architecture, furniture, landscape features, etc.)
-
-Focus on identifying distinct locations where story events occur to ensure visual consistency across panels.
-Provide all content in English and ensure character descriptions are detailed and suitable for ${style} style visual representation.
+Ensure descriptions suit ${style} style visual representation.
 `;
 
 		storyAnalysisLogger.info(
@@ -190,12 +160,12 @@ Provide all content in English and ensure character descriptions are detailed an
 					`🔄 Attempting Gemini API call (attempt ${attempt}/${maxRetries})`
 				);
 
-				// 设置超时控制 (延长到120秒)
+				// 设置超时控制 (缩短到30秒)
 				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Request timeout after 120 seconds')), 120000);
+					setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
 				});
 
-				// 使用完整的JSON schema确保结构化输出
+				// 使用优化的JSON schema - 保持结构化输出但简化复杂度
 				const apiCallPromise = genAI.models.generateContent({
 					model: model,
 					contents: prompt,
@@ -215,6 +185,7 @@ Provide all content in English and ensure character descriptions are detailed an
 											personality: { type: Type.STRING },
 											role: { type: Type.STRING },
 										},
+										required: ["name"], // 只要求name字段
 									},
 								},
 								setting: {
@@ -224,6 +195,7 @@ Provide all content in English and ensure character descriptions are detailed an
 										location: { type: Type.STRING },
 										mood: { type: Type.STRING },
 									},
+									// 不要求任何字段为必需
 								},
 								scenes: {
 									type: Type.ARRAY,
@@ -241,9 +213,11 @@ Provide all content in English and ensure character descriptions are detailed an
 												items: { type: Type.STRING },
 											},
 										},
+										required: ["name"], // 只要求name字段
 									},
 								},
 							},
+							required: ["title"], // 只要求title字段
 						},
 					},
 				});

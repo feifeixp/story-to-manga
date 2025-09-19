@@ -119,6 +119,27 @@ export class HybridStorageService {
         console.warn('Failed to save to cloud, using local storage only:', error);
       }
     }
+
+    // 额外保存到云优先存储（支持匿名用户）
+    try {
+      const { cloudFirstStorage } = await import('./cloudFirst');
+      await cloudFirstStorage.initialize();
+      await cloudFirstStorage.saveProjectData(projectId, {
+        story,
+        style,
+        storyAnalysis,
+        storyBreakdown,
+        characterReferences,
+        generatedPanels,
+        uploadedCharacterReferences,
+        uploadedSettingReferences,
+        imageSize,
+        generationState,
+      });
+      console.log('✅ Project data also saved to cloud-first storage');
+    } catch (error) {
+      console.warn('⚠️ Failed to save to cloud-first storage:', error);
+    }
   }
 
   // 加载项目数据

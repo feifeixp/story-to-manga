@@ -41,26 +41,33 @@ interface LoadProjectRequest {
 // 保存项目数据
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // 获取用户认证信息
+    // 获取用户认证信息（支持匿名用户）
+    let userId: string;
     const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: 'Authorization required' },
-        { status: 401 }
-      );
-    }
 
-    const token = authHeader.substring(7);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid authorization token' },
-        { status: 401 }
-      );
-    }
+    if (authHeader?.startsWith('Bearer ')) {
+      // 认证用户
+      const token = authHeader.substring(7);
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    const userId = user.id;
+      if (authError || !user) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid authorization token' },
+          { status: 401 }
+        );
+      }
+
+      userId = user.id;
+    } else {
+      // 匿名用户
+      const deviceId = request.headers.get('x-device-id');
+      if (!deviceId) {
+        const { getDeviceId } = await import('@/lib/deviceFingerprint');
+        userId = await getDeviceId();
+      } else {
+        userId = deviceId;
+      }
+    }
     const requestData: SaveProjectRequest = await request.json();
     const { projectId } = requestData;
 
@@ -261,26 +268,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 获取用户认证信息
+    // 获取用户认证信息（支持匿名用户）
+    let userId: string;
     const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: 'Authorization required' },
-        { status: 401 }
-      );
-    }
 
-    const token = authHeader.substring(7);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid authorization token' },
-        { status: 401 }
-      );
-    }
+    if (authHeader?.startsWith('Bearer ')) {
+      // 认证用户
+      const token = authHeader.substring(7);
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    const userId = user.id;
+      if (authError || !user) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid authorization token' },
+          { status: 401 }
+        );
+      }
+
+      userId = user.id;
+    } else {
+      // 匿名用户
+      const deviceId = request.headers.get('x-device-id');
+      if (!deviceId) {
+        const { getDeviceId } = await import('@/lib/deviceFingerprint');
+        userId = await getDeviceId();
+      } else {
+        userId = deviceId;
+      }
+    }
     const r2Client = getR2Client();
 
     // 加载项目元数据

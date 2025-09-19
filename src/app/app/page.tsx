@@ -975,6 +975,8 @@ export default function Home() {
 	const [errorModalMessage, setErrorModalMessage] = useState<string>("");
 	const [showShareModal, setShowShareModal] = useState<boolean>(false);
 	const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+	const [isPreparingShare, setIsPreparingShare] = useState<boolean>(false);
+	const [sharePanels, setSharePanels] = useState<Array<{image_url: string; text_content?: string}>>([]);
 
 	// Download state
 	const [isDownloadingCharacters, setIsDownloadingCharacters] = useState(false);
@@ -1016,9 +1018,110 @@ export default function Home() {
 	const [isLoadingState, setIsLoadingState] = useState(true);
 	const [isSavingState, setIsSavingState] = useState(false);
 
-	// Project management state
+	// Project management state - 移到这里，在useCallback之前定义
 	const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 	const [showProjectManager, setShowProjectManager] = useState(false);
+
+	// 获取认证头
+	const getAuthHeaders = useCallback(async () => {
+		const { supabase } = await import('@/lib/supabase');
+		const { data: { session } } = await supabase.auth.getSession();
+
+		if (session?.access_token) {
+			return {
+				'Authorization': `Bearer ${session.access_token}`
+			};
+		}
+
+		// 匿名用户使用设备指纹
+		const { getDeviceId } = await import('@/lib/deviceFingerprint');
+		const deviceId = await getDeviceId();
+		return {
+			'X-Device-ID': deviceId
+		};
+	}, []);
+
+	// 准备分享数据 - 获取云端图片URL
+	const prepareShareData = useCallback(async () => {
+		if (!currentProjectId || !generatedPanels.length) {
+			console.warn('No project ID or panels to share');
+			return;
+		}
+
+		setIsPreparingShare(true);
+		try {
+			console.log('🔄 Preparing share data for', generatedPanels.length, 'panels');
+
+			// 首先确保所有面板都保存到云端
+			const { cloudFirstStorage } = await import('@/lib/cloudFirst');
+			await cloudFirstStorage.initialize();
+
+			// 保存所有面板到云端（如果还没有保存）
+			const panelsToSave = generatedPanels.map(panel => ({
+				panelNumber: panel.panelNumber,
+				imageData: panel.image,
+				metadata: {
+					description: panel.description,
+					text: panel.text,
+					characters: panel.characters,
+					dialogue: panel.dialogue
+				}
+			}));
+
+			await cloudFirstStorage.saveGeneratedPanels(currentProjectId, panelsToSave);
+
+			// 获取云端URL
+			const panelsWithUrls = await Promise.all(
+				generatedPanels.map(async (panel) => {
+					try {
+						const response = await fetch(`/api/storage/panel-url?projectId=${encodeURIComponent(currentProjectId)}&panelNumber=${panel.panelNumber}`, {
+							method: 'GET',
+							headers: {
+								'Content-Type': 'application/json',
+								// 添加认证头或设备ID
+								...(await getAuthHeaders())
+							}
+						});
+
+						if (response.ok) {
+							const result = await response.json();
+							return {
+								image_url: result.url,
+								text_content: panel.text || panel.description
+							};
+						} else {
+							console.warn(`Failed to get cloud URL for panel ${panel.panelNumber}, using fallback`);
+							// 如果获取云端URL失败，使用本地图片作为fallback
+							return {
+								image_url: panel.image,
+								text_content: panel.text || panel.description
+							};
+						}
+					} catch (error) {
+						console.error(`Error getting URL for panel ${panel.panelNumber}:`, error);
+						return {
+							image_url: panel.image,
+							text_content: panel.text || panel.description
+						};
+					}
+				})
+			);
+
+			setSharePanels(panelsWithUrls);
+			console.log('✅ Share data prepared with', panelsWithUrls.length, 'panels');
+
+		} catch (error) {
+			console.error('❌ Failed to prepare share data:', error);
+			// Fallback: 使用本地图片
+			const fallbackPanels = generatedPanels.map(panel => ({
+				image_url: panel.image,
+				text_content: panel.text || panel.description
+			}));
+			setSharePanels(fallbackPanels);
+		} finally {
+			setIsPreparingShare(false);
+		}
+	}, [currentProjectId, generatedPanels, getAuthHeaders]);
 
 	// Image editing state
 	const [showImageEditModal, setShowImageEditModal] = useState(false);
@@ -1192,6 +1295,7 @@ export default function Home() {
 					language: i18n?.language || 'en',
 					aiModel: aiModel,
 					imageSize: imageSize,
+					projectId: currentProjectId, // 添加项目ID以启用云端保存
 				}),
 				signal: controller.signal,
 			});
@@ -1935,6 +2039,7 @@ export default function Home() {
 							aiModel,
 							imageSize,
 							batchSize: batchPanels.length,
+							projectId: projectId, // 添加项目ID以启用云端保存
 						}),
 					});
 
@@ -1964,6 +2069,7 @@ export default function Home() {
 										language: i18n?.language || "en",
 										aiModel,
 										imageSize,
+										projectId: projectId, // 添加项目ID以启用云端保存
 									}),
 								});
 
@@ -2469,6 +2575,7 @@ export default function Home() {
 						language: i18n?.language || 'en',
 						aiModel,
 						imageSize,
+						projectId: currentProjectId, // 添加项目ID以启用云端保存
 					}),
 				});
 
@@ -2674,6 +2781,7 @@ export default function Home() {
 					uploadedSettingReferences,
 					language: i18n?.language || "en",
 					aiModel, // 添加AI模型选择
+					projectId: currentProjectId, // 添加项目ID以启用云端保存
 				}),
 			});
 
@@ -3116,6 +3224,7 @@ export default function Home() {
 					language: i18n?.language || "en",
 					aiModel, // 添加AI模型选择
 					imageSize, // 添加图片尺寸配置
+					projectId: currentProjectId, // 添加项目ID以启用云端保存
 				}),
 			});
 
@@ -3171,6 +3280,7 @@ export default function Home() {
 							language: i18n?.language || "en",
 							aiModel, // 添加AI模型选择
 							imageSize, // 添加图片尺寸配置
+							projectId: currentProjectId, // 添加项目ID以启用云端保存
 						}),
 					});
 
@@ -5231,10 +5341,17 @@ export default function Home() {
 												<button
 													type="button"
 													className="btn-manga-primary text-sm"
-													onClick={() => setShowShareModal(true)}
-													disabled={!generatedPanels.length}
+													onClick={async () => {
+														await prepareShareData();
+														setShowShareModal(true);
+													}}
+													disabled={!generatedPanels.length || isPreparingShare}
 												>
-													🚀 {t("shareWork") || (i18n.language === 'zh' ? '分享作品' : 'Share Work')}
+													{isPreparingShare ? (
+														<>⏳ {i18n.language === 'zh' ? '准备中...' : 'Preparing...'}</>
+													) : (
+														<>🚀 {t("shareWork") || (i18n.language === 'zh' ? '分享作品' : 'Share Work')}</>
+													)}
 												</button>
 
 												{/* 下载当前页面 */}
@@ -5513,11 +5630,14 @@ export default function Home() {
 			{/* 分享漫画模态框 */}
 			<ShareComicModal
 				isOpen={showShareModal}
-				onClose={() => setShowShareModal(false)}
+				onClose={() => {
+					setShowShareModal(false);
+					setSharePanels([]); // 清理分享数据
+				}}
 				storyTitle={storyAnalysis?.title || ''}
 				storyDescription={storyAnalysis?.summary || ''}
 				style={style}
-				panels={generatedPanels.map(panel => ({
+				panels={sharePanels.length > 0 ? sharePanels : generatedPanels.map(panel => ({
 					image_url: panel.image,
 					text_content: panel.text
 				}))}

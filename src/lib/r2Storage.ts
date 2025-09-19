@@ -61,11 +61,31 @@ export class R2StorageClient {
     options: UploadOptions = {}
   ): Promise<string> {
     try {
-      // 准备元数据，确保所有值都是字符串
+      // 准备元数据，确保所有值都是字符串且符合HTTP头部规范
       const metadata: Record<string, string> = {};
       if (options.metadata) {
         for (const [key, value] of Object.entries(options.metadata)) {
-          metadata[key] = String(value);
+          // 清理键名：只保留字母数字和连字符
+          const cleanKey = key.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+          if (cleanKey) {
+            // 清理值：移除非ASCII字符，转换为base64如果包含特殊字符
+            const stringValue = String(value);
+            let cleanValue: string;
+
+            // 检查是否包含非ASCII字符或控制字符
+            if (/[^\x20-\x7E]/.test(stringValue)) {
+              // 包含非ASCII字符，使用base64编码
+              cleanValue = Buffer.from(stringValue, 'utf8').toString('base64');
+              metadata[cleanKey + '-encoded'] = 'base64';
+            } else {
+              // 只包含ASCII字符，直接使用
+              cleanValue = stringValue.replace(/[\x00-\x1F\x7F]/g, ''); // 移除控制字符
+            }
+
+            if (cleanValue) {
+              metadata[cleanKey] = cleanValue;
+            }
+          }
         }
       }
 
@@ -293,8 +313,8 @@ let r2Client: R2StorageClient | null = null;
 export function getR2Client(): R2StorageClient {
   if (!r2Client) {
     const config: R2Config = {
-      endpoint: 'https://fac7207421271dd5183fcab70164cad1.r2.cloudflarestorage.com',
-      bucket: 'mangashare',
+      endpoint: process.env.R2_ENDPOINT || 'https://fac7207421271dd5183fcab70164cad1.r2.cloudflarestorage.com',
+      bucket: process.env.R2_BUCKET_NAME || 'mangashare',
       accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
       region: 'auto',
@@ -304,6 +324,12 @@ export function getR2Client(): R2StorageClient {
     if (!config.accessKeyId || !config.secretAccessKey) {
       throw new Error('R2 credentials not found. Please check R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY environment variables.');
     }
+
+    console.log('R2 Client initialized with:', {
+      endpoint: config.endpoint,
+      bucket: config.bucket,
+      accessKeyId: config.accessKeyId.substring(0, 8) + '...',
+    });
 
     r2Client = new R2StorageClient(config);
   }

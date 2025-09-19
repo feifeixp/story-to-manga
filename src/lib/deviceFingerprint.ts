@@ -34,17 +34,24 @@ class DeviceFingerprint {
       return this.fingerprint;
     }
 
-    // 尝试从localStorage获取已存储的指纹
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    if (stored) {
-      this.fingerprint = stored;
-      return stored;
+    // 检查是否在浏览器环境中
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      // 尝试从localStorage获取已存储的指纹
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        this.fingerprint = stored;
+        return stored;
+      }
     }
 
     // 生成新的指纹
     this.fingerprint = await this.generateFingerprint();
-    localStorage.setItem(this.STORAGE_KEY, this.fingerprint);
-    
+
+    // 只在浏览器环境中保存到localStorage
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem(this.STORAGE_KEY, this.fingerprint);
+    }
+
     return this.fingerprint;
   }
 
@@ -75,6 +82,20 @@ class DeviceFingerprint {
    * 收集设备基本信息
    */
   private collectDeviceInfo(): DeviceInfo {
+    // 检查是否在浏览器环境中
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      // 服务器端环境，返回默认值
+      return {
+        userAgent: 'server-side',
+        language: 'en',
+        timezone: 'UTC',
+        screen: '1920x1080x24',
+        platform: 'server',
+        cookieEnabled: false,
+        doNotTrack: null,
+      };
+    }
+
     return {
       userAgent: navigator.userAgent,
       language: navigator.language,
@@ -90,6 +111,11 @@ class DeviceFingerprint {
    * 获取Canvas指纹
    */
   private async getCanvasFingerprint(): Promise<string> {
+    // 检查是否在浏览器环境中
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return 'server-side-canvas';
+    }
+
     try {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -118,6 +144,11 @@ class DeviceFingerprint {
    * 获取WebGL指纹
    */
   private getWebGLFingerprint(): string {
+    // 检查是否在浏览器环境中
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return 'server-side-webgl';
+    }
+
     try {
       const canvas = document.createElement('canvas');
       const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
@@ -125,7 +156,7 @@ class DeviceFingerprint {
 
       const renderer = gl.getParameter(gl.RENDERER);
       const vendor = gl.getParameter(gl.VENDOR);
-      
+
       return `${vendor}|${renderer}`;
     } catch (error) {
       return 'webgl-error';
@@ -191,7 +222,13 @@ export const deviceFingerprint = DeviceFingerprint.getInstance();
 export type { DeviceInfo };
 
 // 工具函数
-export const getDeviceId = () => deviceFingerprint.getFingerprint();
+export const getDeviceId = async (): Promise<string> => {
+  // 在服务器端，生成一个临时的匿名ID
+  if (typeof window === 'undefined') {
+    return `anon_server_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+  return deviceFingerprint.getFingerprint();
+};
 export const isAnonymousUser = (userId: string) => deviceFingerprint.isAnonymous(userId);
-export const getAnonymousStoragePath = (projectId: string, filename: string) => 
+export const getAnonymousStoragePath = (projectId: string, filename: string) =>
   deviceFingerprint.getAnonymousPath(projectId, filename);
