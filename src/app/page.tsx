@@ -90,8 +90,8 @@ export default function HomePage() {
 			// 如果用户未登录，显示登录模态框
 			setShowAuthModal(true);
 		} else {
-			// 如果用户已登录，跳转到创作页面
-			router.push('/app');
+			// 如果用户已登录，跳转到项目管理页面
+			router.push('/projects');
 		}
 	};
 
@@ -144,12 +144,22 @@ export default function HomePage() {
 						<LanguageSwitcher />
 						{user ? (
 							<div className="flex items-center space-x-3">
-								<img
-									src={user.avatar || "https://via.placeholder.com/40x40/6366F1/FFFFFF?text=U"}
-									alt={user.name}
-									className="w-8 h-8 rounded-full"
-								/>
-								<span className="text-sm font-medium">{user.name}</span>
+								<button
+									onClick={() => router.push('/profile')}
+									className="flex items-center space-x-2 hover:bg-gray-100 rounded-lg p-1 transition-colors"
+									title={language === 'zh' ? '个人设置' : 'Profile Settings'}
+								>
+									<img
+										src={user.avatar || `https://via.placeholder.com/40x40/6366F1/FFFFFF?text=${((user.name || 'U')[0] || 'U').toUpperCase()}`}
+										alt={user.name || 'User'}
+										className="w-8 h-8 rounded-full border border-gray-200"
+										onError={(e) => {
+											const target = e.target as HTMLImageElement;
+											target.src = `https://via.placeholder.com/40x40/6366F1/FFFFFF?text=${((user.name || 'U')[0] || 'U').toUpperCase()}`;
+										}}
+									/>
+									<span className="text-sm font-medium">{user.name}</span>
+								</button>
 								<Button variant="outline" size="sm" onClick={handleLogout}>
 									{language === 'zh' ? '退出' : 'Logout'}
 								</Button>

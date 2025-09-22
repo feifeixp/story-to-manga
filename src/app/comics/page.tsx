@@ -18,7 +18,9 @@ import {
   Clock,
   Heart,
   Eye,
-  ChevronDown
+  ChevronDown,
+  Home,
+  PlusCircle
 } from 'lucide-react';
 
 export default function ComicsPage() {
@@ -30,7 +32,7 @@ export default function ComicsPage() {
   const [loadingComic, setLoadingComic] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'most_liked' | 'most_viewed'>('latest');
+  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'most_liked' | 'most_viewed' | 'most_favorited'>('latest');
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -130,6 +132,8 @@ export default function ComicsPage() {
         return language === 'zh' ? '最多点赞' : 'Most Liked';
       case 'most_viewed':
         return language === 'zh' ? '最多浏览' : 'Most Viewed';
+      case 'most_favorited':
+        return language === 'zh' ? '最多收藏' : 'Most Favorited';
       default:
         return sort;
     }
@@ -137,20 +141,27 @@ export default function ComicsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 头部 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {language === 'zh' ? '漫画作品' : 'Comic Works'}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {language === 'zh' 
-                  ? '发现和阅读社区创作的精彩漫画作品' 
-                  : 'Discover and read amazing comic works created by the community'
-                }
-              </p>
+      {/* 导航栏 */}
+      <div className="bg-white border-b border-gray-200 py-4">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between">
+            {/* 导航按钮 */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/'}
+                className="flex items-center space-x-2"
+              >
+                <Home className="h-4 w-4" />
+                <span>{language === 'zh' ? '返回首页' : 'Home'}</span>
+              </Button>
+              <Button
+                onClick={() => window.location.href = '/app'}
+                className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>{language === 'zh' ? '开始创作' : 'Start Creating'}</span>
+              </Button>
             </div>
 
             {/* 视图切换 */}
@@ -170,6 +181,23 @@ export default function ComicsPage() {
                 <List className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 头部 */}
+      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold mb-2">
+              {language === 'zh' ? '漫画作品' : 'Comic Gallery'}
+            </h1>
+            <p className="text-purple-100 mt-1">
+              {language === 'zh'
+                ? '发现和阅读社区创作的精彩漫画作品'
+                : 'Discover and read amazing comic works created by the community'
+              }
+            </p>
           </div>
         </div>
       </div>
@@ -205,6 +233,7 @@ export default function ComicsPage() {
                   <option value="popular">{getSortLabel('popular')}</option>
                   <option value="most_liked">{getSortLabel('most_liked')}</option>
                   <option value="most_viewed">{getSortLabel('most_viewed')}</option>
+                  <option value="most_favorited">{getSortLabel('most_favorited')}</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               </div>

@@ -166,14 +166,54 @@ export async function POST(request: NextRequest) {
 							model_used: result.modelUsed,
 						}, "Character generation blocked by content filter");
 
-						// Return a generic error for sensitive content
-						return NextResponse.json(
-							{
-								error: `⚠️ Content Safety Issue: The character description for "${character.name}" contains content that cannot be processed by the AI safety system.\n\nTip: Try modifying the character description to remove potentially sensitive content, violence references, or mature themes.`,
-								errorType: "PROHIBITED_CONTENT"
-							},
-							{ status: 400 }
+						// Try to generate a sanitized version
+						const sanitizedPrompt = prompt
+							.replace(/囹圄|监狱|牢房|狱卒|囚服/g, '困境')
+							.replace(/绝望|愧疚|无助/g, '担忧')
+							.replace(/残忍|嚣张|猥琐|邪恶/g, '严厉')
+							.replace(/贪婪好色/g, '贪心')
+							.replace(/助纣为虐/g, '帮助他人')
+							.replace(/老奸巨猾/g, '经验丰富');
+
+						characterGenLogger.info({
+							character_name: character.name,
+							original_prompt_length: prompt.length,
+							sanitized_prompt_length: sanitizedPrompt.length,
+						}, "Retrying with sanitized prompt");
+
+						// Retry with sanitized prompt
+						const retryResult = await aiRouter.generateComicPanel(
+							sanitizedPrompt,
+							referenceImages,
+							language as "en" | "zh",
+							selectedModel,
+							undefined,
+							style as ComicStyle
 						);
+
+						if (retryResult.success && retryResult.imageData) {
+							characterReferences.push({
+								name: character.name,
+								image: retryResult.imageData,
+								description: character.physicalDescription,
+							});
+
+							characterGenLogger.info({
+								character_name: character.name,
+								model_used: retryResult.modelUsed,
+								retry_success: true,
+							}, "Successfully generated character with sanitized prompt");
+							continue; // 继续下一个角色
+						} else {
+							// 如果重试也失败，返回友好的错误信息
+							return NextResponse.json(
+								{
+									error: `⚠️ Content Safety Issue: The character description for "${character.name}" contains content that cannot be processed by the AI safety system.\n\nTip: Try modifying the character description to remove potentially sensitive content, violence references, or mature themes.`,
+									errorType: "PROHIBITED_CONTENT"
+								},
+								{ status: 400 }
+							);
+						}
 					}
 
 					characterGenLogger.error({

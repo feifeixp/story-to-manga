@@ -22,17 +22,20 @@ export class ComicService {
         search
       } = params;
 
+      console.log('🔍 ComicService.getComics called with params:', params);
+
       let query = supabase
-        .from('comics')
+        .from('published_works')
         .select(`
           *,
-          author:profiles(name, avatar_url)
+          author:profiles!published_works_author_id_fkey(name, avatar_url)
         `)
-        .eq('is_published', true);
+        .eq('is_published', true)
+        .eq('visibility', 'public');
 
       // 添加筛选条件
       if (style) {
-        query = query.eq('style', style);
+        query = query.eq('tags', `{${style}}`); // 假设style存储在tags数组中
       }
 
       if (author_id) {
@@ -46,16 +49,18 @@ export class ComicService {
       // 添加排序
       switch (sort) {
         case 'popular':
-          query = query.order('views_count', { ascending: false });
+        case 'most_viewed':
+          query = query.order('view_count', { ascending: false });
           break;
         case 'most_liked':
-          query = query.order('likes_count', { ascending: false });
+          query = query.order('like_count', { ascending: false });
           break;
-        case 'most_viewed':
-          query = query.order('views_count', { ascending: false });
+        case 'most_favorited':
+          query = query.order('favorite_count', { ascending: false });
           break;
+        case 'latest':
         default:
-          query = query.order('published_at', { ascending: false });
+          query = query.order('created_at', { ascending: false });
       }
 
       // 添加分页
@@ -63,15 +68,42 @@ export class ComicService {
       const to = from + limit - 1;
       query = query.range(from, to);
 
+      console.log('📊 Executing query for published works...');
       const { data, error, count } = await query;
 
       if (error) {
+        console.error('❌ Error fetching published works:', error);
         throw new Error(error.message);
       }
 
+      console.log(`✅ Found ${data?.length || 0} published works`);
+
+      // 转换数据格式以匹配Comic接口
+      const comics = (data || []).map(work => ({
+        id: work.id,
+        title: work.title,
+        description: work.description,
+        style: work.tags?.[0] || 'manga', // 使用第一个tag作为style
+        author_id: work.author_id,
+        author: work.author,
+        thumbnail_url: work.thumbnail_url,
+        total_panels: 0, // 这个需要从项目数据中获取
+        is_published: work.is_published,
+        visibility: work.visibility,
+        tags: work.tags || [],
+        view_count: work.view_count || 0,
+        like_count: work.like_count || 0,
+        favorite_count: work.favorite_count || 0,
+        created_at: work.created_at,
+        updated_at: work.updated_at,
+        published_at: work.created_at, // 使用created_at作为published_at
+        project_id: work.project_id,
+        panels: [] // 面板数据需要单独加载
+      }));
+
       return {
         success: true,
-        data: data || [],
+        data: comics,
         pagination: {
           page,
           limit,
@@ -120,24 +152,59 @@ export class ComicService {
   // 获取热门漫画（首页推荐）
   static async getFeaturedComics(limit: number = 6) {
     try {
-      const { data, error } = await supabase
-        .from('comics')
-        .select(`
-          *,
-          author:profiles(name, avatar_url)
-        `)
-        .eq('is_published', true)
-        .order('likes_count', { ascending: false })
-        .order('views_count', { ascending: false })
-        .limit(limit);
+      // 获取混合排序的推荐漫画：最新、最多点赞、最多收藏
+      const [latestResult, mostLikedResult, mostFavoritedResult] = await Promise.all([
+        // 最新发布的漫画 (2个)
+        supabase
+          .from('comics')
+          .select(`
+            *,
+            author:profiles(name, avatar_url)
+          `)
+          .eq('is_published', true)
+          .order('published_at', { ascending: false })
+          .limit(Math.ceil(limit / 3)),
 
-      if (error) {
-        throw new Error(error.message);
-      }
+        // 最多点赞的漫画 (2个)
+        supabase
+          .from('comics')
+          .select(`
+            *,
+            author:profiles(name, avatar_url)
+          `)
+          .eq('is_published', true)
+          .order('likes_count', { ascending: false })
+          .limit(Math.ceil(limit / 3)),
+
+        // 最多收藏的漫画 (2个)
+        supabase
+          .from('comics')
+          .select(`
+            *,
+            author:profiles(name, avatar_url)
+          `)
+          .eq('is_published', true)
+          .order('favorites_count', { ascending: false })
+          .limit(Math.ceil(limit / 3))
+      ]);
+
+      // 合并结果并去重
+      const allComics = [
+        ...(latestResult.data || []),
+        ...(mostLikedResult.data || []),
+        ...(mostFavoritedResult.data || [])
+      ];
+
+      // 去重（基于ID）并限制数量
+      const uniqueComics = allComics
+        .filter((comic, index, self) =>
+          index === self.findIndex(c => c.id === comic.id)
+        )
+        .slice(0, limit);
 
       return {
         success: true,
-        data: data || []
+        data: uniqueComics
       };
     } catch (error) {
       return {
@@ -362,68 +429,162 @@ export class ComicService {
     }
   }
 
-  // 创建新漫画作品
+  // 创建新漫画作品 - 使用统一API客户端
   static async createComic(data: CreateComicData, userId: string, userName: string, userAvatar?: string) {
     try {
       console.log('🔧 ComicService.createComic called with:', { data, userId, userName, userAvatar });
 
-      // 创建漫画主记录
-      const comicInsertData = {
-        title: data.title,
+      // 使用统一API客户端创建项目和发布作品
+      const { UnifiedAPIClient } = await import('@/lib/unifiedApiClient');
+      const apiClient = new UnifiedAPIClient();
+
+      // 1. 首先创建一个项目
+      console.log('📝 Step 1: Creating project for comic...');
+
+      const projectData = {
+        name: data.title,
         description: data.description,
-        author_id: userId,
-        author_name: userName,
-        author_avatar: userAvatar,
-        cover_image: data.panels[0]?.image_url, // 使用第一个面板作为封面
-        style: data.style,
-        tags: data.tags,
-        total_panels: data.panels.length,
-        is_published: data.is_published || false,
-        published_at: data.is_published ? new Date().toISOString() : null
+        story: `漫画作品：${data.title}\n\n${data.description}\n\n面板内容：\n${data.panels.map((panel, index) => `面板 ${index + 1}: ${panel.text_content}`).join('\n')}`,
+        style: data.style
       };
 
-      console.log('📝 Inserting comic data:', comicInsertData);
+      const project = await apiClient.createProject(projectData);
+      console.log('✅ Project created:', project.id);
 
-      const { data: comic, error: comicError } = await supabase
-        .from('comics')
-        .insert(comicInsertData)
-        .select()
-        .single();
+      // 2. 保存漫画面板数据到项目存储
+      console.log('📝 Step 2: Saving comic panels data...');
 
-      console.log('📊 Comic insert result:', { comic, comicError });
+      const comicMetadata = {
+        type: 'comic',
+        title: data.title,
+        description: data.description,
+        style: data.style,
+        totalPanels: data.panels.length,
+        authorName: userName,
+        authorAvatar: userAvatar,
+        panels: data.panels.map((panel, index) => ({
+          panelNumber: panel.panel_number || index + 1,
+          imageUrl: panel.image_url,
+          textContent: panel.text_content
+        })),
+        createdAt: new Date().toISOString()
+      };
 
-      if (comicError) {
-        console.error('❌ Comic insert error:', comicError);
-        throw new Error(comicError.message);
+      // 保存到项目存储 - 使用统一存储适配器
+      try {
+        console.log('💾 Attempting to save comic data to unified storage...');
+        console.log('📊 Request data:', {
+          projectId: project.id,
+          story: projectData.story?.substring(0, 100) + '...',
+          metadataKeys: Object.keys(comicMetadata)
+        });
+
+        // 使用统一存储适配器保存数据
+        const { storageAdapter } = await import('@/lib/storageAdapter');
+
+        await storageAdapter.saveProjectData(
+          project.id,
+          projectData.story || `漫画作品：${data.title}`, // 确保story不为空
+          projectData.style || 'manga',
+          null, // storyAnalysis
+          null, // storyBreakdown
+          [], // characterReferences
+          data.panels.map((panel, index) => ({
+            panelNumber: panel.panel_number || (index + 1),
+            image: panel.image_url,
+            description: panel.text_content || `面板 ${index + 1}`,
+            characters: [],
+            setting: '',
+            dialogue: panel.text_content || '',
+            action: '',
+            mood: '',
+            prompt: `漫画面板 ${index + 1}: ${panel.text_content}`
+          })),
+          [], // uploadedCharacterReferences
+          [], // uploadedSettingReferences
+          { width: 512, height: 768, aspectRatio: '2:3' }, // imageSize
+          { isGenerating: false, currentStep: 'completed', progress: 100 }, // generationState
+          'manual', // aiModel - 手动创建的漫画
+          {
+            type: 'shared-comic',
+            title: data.title,
+            description: data.description,
+            authorId: userId,
+            authorName: userName,
+            createdAt: new Date().toISOString()
+          }, // setting
+          [] // scenes
+        );
+
+        console.log('✅ Comic data saved to unified storage');
+      } catch (storageError) {
+        console.warn('⚠️ Failed to save comic data to unified storage, but continuing...', storageError);
+        // 如果统一存储失败，尝试直接本地保存作为备份
+        try {
+          const { saveProjectData } = await import('@/lib/projectStorage');
+          await saveProjectData(
+            project.id,
+            projectData.story,
+            projectData.style,
+            null, // storyAnalysis
+            null, // storyBreakdown
+            [], // characterReferences
+            [], // generatedPanels
+            [], // uploadedCharacterReferences
+            [], // uploadedSettingReferences
+            { width: 512, height: 768 }, // imageSize
+            null // generationState
+          );
+          console.log('✅ Comic data saved to local storage as backup');
+        } catch (localError) {
+          console.warn('⚠️ Local backup also failed:', localError);
+        }
       }
 
-      console.log('✅ Comic created successfully:', comic);
+      // 3. 如果需要发布，则发布作品
+      if (data.is_published) {
+        console.log('📝 Step 3: Publishing work...');
 
-      // 创建漫画面板
-      const panelsData = data.panels.map((panel, index) => ({
-        comic_id: comic.id,
-        panel_number: panel.panel_number || index + 1,
-        image_url: panel.image_url,
-        text_content: panel.text_content
-      }));
+        const publishData = {
+          projectId: project.id,
+          title: data.title,
+          description: data.description,
+          tags: data.tags || [],
+          visibility: 'public',
+          thumbnailUrl: data.panels[0]?.image_url
+        };
 
-      console.log('📝 Inserting panels data:', panelsData);
+        try {
+          const publishResponse = await apiClient.request('/sharing/publish', {
+            method: 'POST',
+            body: JSON.stringify(publishData)
+          });
 
-      const { error: panelsError } = await supabase
-        .from('comic_panels')
-        .insert(panelsData);
+          if (!publishResponse.success) {
+            console.error('❌ Failed to publish work:', publishResponse.error);
+            throw new Error(`Failed to publish work: ${publishResponse.error || 'Unknown error'}`);
+          }
 
-      console.log('📊 Panels insert result:', { panelsError });
-
-      if (panelsError) {
-        throw new Error(panelsError.message);
+          console.log('✅ Work published successfully:', publishResponse.data);
+        } catch (publishError) {
+          console.error('❌ Publish request failed:', publishError);
+          // 发布失败不应该影响整个创建流程，只是记录错误
+          console.warn('⚠️ Work created but publishing failed, continuing...');
+        }
       }
 
       return {
         success: true,
-        data: comic
+        data: {
+          id: project.id,
+          title: data.title,
+          description: data.description,
+          isPublished: data.is_published,
+          projectId: project.id
+        }
       };
     } catch (error) {
+      console.error('❌ ComicService.createComic error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create comic'

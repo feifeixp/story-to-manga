@@ -31,7 +31,9 @@
 		"format": "biome format . --write",
 		"typecheck": "tsc --noEmit",
 		"knip": "knip",
-		"check": "npm run typecheck && npm run lint && npm run knip"
+		"check": "npm run typecheck && npm run lint && npm run knip",
+		"deploy:edge": "chmod +x deploy-edge-functions.sh && ./deploy-edge-functions.sh",
+		"test:edge": "node test-edge-functions.js"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.892.0",

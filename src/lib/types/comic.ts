@@ -56,7 +56,7 @@ export interface ComicView {
 export interface ComicListParams {
   page?: number;
   limit?: number;
-  sort?: 'latest' | 'popular' | 'most_liked' | 'most_viewed';
+  sort?: 'latest' | 'popular' | 'most_liked' | 'most_viewed' | 'most_favorited';
   style?: string;
   author_id?: string;
   search?: string;

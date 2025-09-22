@@ -12,14 +12,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate that the URL is from VolcEngine domain for security
+    // Validate that the URL is from allowed domains for security
     const allowedDomains = [
       'ark-content-generation-v2-cn-beijing.tos-cn-beijing.volces.com',
-      'tos-cn-beijing.volces.com'
+      'tos-cn-beijing.volces.com',
+      'pub-23959c61a0814f2a91a19cc37b24a893.r2.dev', // R2 public domain
+      'manga.neodomain.ai' // Production R2 domain
     ];
-    
+
     const urlObj = new URL(imageUrl);
-    const isAllowedDomain = allowedDomains.some(domain => 
+    const isAllowedDomain = allowedDomains.some(domain =>
       urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
     );
 

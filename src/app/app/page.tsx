@@ -3,6 +3,7 @@
 import html2canvas from "html2canvas";
 import JSZip from "jszip";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
 import { useTranslation } from "react-i18next";
 import ImageUpload from "@/components/ImageUpload";
@@ -21,17 +22,18 @@ import {
 	saveState,
 } from "@/lib/storage";
 import {
-	getCurrentProjectId,
-	setCurrentProject,
-	saveProjectData,
-	loadProjectData,
-	createProject,
-} from "@/lib/hybridStorage";
+	analyzeStory,
+	getJobStatus,
+	createProject as createProjectEdge,
+} from "@/lib/edgeFunctionStorage";
+// 统一使用云端DataService
+import type { UnifiedProjectData } from "@/lib/dataService";
 import ProjectManager from "@/components/ProjectManager";
 import { useAuth } from "@/components/AuthProvider";
 import { AuthModal } from "@/components/AuthModal";
 import { ShareComicModal } from "@/components/ShareComicModal";
 import { ImageEditModal } from "@/components/ImageEditModal";
+import { StorageCleanupTool } from "@/components/StorageCleanupTool";
 import type {
 	CharacterReference,
 	ComicStyle,
@@ -47,6 +49,7 @@ import type {
 import { DEFAULT_IMAGE_SIZE } from "@/types/project";
 import { imageOptimizer, OPTIMIZATION_PRESETS } from "@/lib/imageOptimizer";
 import { cacheManager } from "@/lib/cacheManager";
+import { StorageManager } from "@/lib/storageManager";
 
 type FailedStep = "analysis" | "characters" | "layout" | "panels" | null;
 type FailedPanel = { step: "panel"; panelNumber: number } | null;
@@ -299,14 +302,19 @@ function CharacterCard({
 	onImageClick,
 	onDownload,
 	onEdit,
-}: CharacterCardProps) {
+	getProxyImageUrl,
+}: CharacterCardProps & { getProxyImageUrl?: (url: string) => string }) {
 	const { t } = useTranslation();
 	return (
 		<div className={showImage ? "text-center" : "card-manga"}>
 			{showImage && character.image ? (
 				<>
 					<img
-						src={character.image && typeof character.image === 'string' && character.image.trim() ? character.image : '/placeholder-character.svg'}
+						src={(() => {
+							const imageUrl = character.image && typeof character.image === 'string' && character.image.trim() ? character.image : '/placeholder-character.svg';
+							// 使用图片代理处理CORS问题
+							return getProxyImageUrl ? getProxyImageUrl(imageUrl) : imageUrl;
+						})()}
 						alt={character.name}
 						className="w-full h-48 object-cover rounded mb-2 border-2 border-manga-black shadow-comic transition-transform hover:scale-105 cursor-pointer"
 						onClick={() => character.image && typeof character.image === 'string' && character.image.trim() && onImageClick?.(character.image, character.name)}
@@ -395,7 +403,8 @@ function PanelCard({
 	onDownload,
 	onEdit,
 	scenes = [],
-}: PanelCardProps) {
+	getProxyImageUrl,
+}: PanelCardProps & { getProxyImageUrl?: (url: string) => string }) {
 	const { t } = useTranslation();
 
 	// 查找面板对应的场景信息
@@ -406,7 +415,11 @@ function PanelCard({
 			{showImage && panel.image ? (
 				<>
 					<img
-						src={panel.image && typeof panel.image === 'string' && panel.image.trim() ? panel.image : '/placeholder-panel.svg'}
+						src={(() => {
+							const imageUrl = panel.image && typeof panel.image === 'string' && panel.image.trim() ? panel.image : '/placeholder-panel.svg';
+							// 使用图片代理处理CORS问题
+							return getProxyImageUrl ? getProxyImageUrl(imageUrl) : imageUrl;
+						})()}
 						alt={`Comic Panel ${panel.panelNumber}`}
 						className="w-full rounded mb-2 comic-panel cursor-pointer transition-transform hover:scale-[1.02]"
 						onClick={() => {
@@ -539,7 +552,11 @@ function ShareableComicLayout({
 									className="bg-gray-200 rounded aspect-square"
 								>
 									<img
-										src={panel.image && typeof panel.image === 'string' && panel.image.trim() ? (getProxyImageUrl ? getProxyImageUrl(panel.image) : panel.image) : '/placeholder-panel.svg'}
+										src={(() => {
+											const imageUrl = panel.image && typeof panel.image === 'string' && panel.image.trim() ? panel.image : '/placeholder-panel.svg';
+											// 使用图片代理处理CORS问题
+											return getProxyImageUrl(imageUrl);
+										})()}
 										alt={`Panel ${panel.panelNumber}`}
 										className="w-full h-full object-cover rounded"
 										onError={(e) => {
@@ -887,10 +904,24 @@ The timer flipped to 00:01:00.
 
 export default function Home() {
 	// Initialize i18n hooks
-	const { t, i18n } = useI18n();
+	const { t, i18n, language } = useI18n();
 
 	// Initialize auth hooks
 	const { user, session, signOut } = useAuth();
+
+	// 🔧 修复：使用useSearchParams监听URL参数变化
+	const searchParams = useSearchParams();
+
+	// Check for project ID in URL parameters
+	useEffect(() => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const projectIdFromUrl = urlParams.get('projectId');
+
+		if (projectIdFromUrl) {
+			console.log('📂 Project ID from URL:', projectIdFromUrl);
+			setCurrentProjectId(projectIdFromUrl);
+		}
+	}, []);
 
 	// Generate unique IDs for form elements
 	const mangaRadioId = useId();
@@ -977,6 +1008,8 @@ export default function Home() {
 	const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 	const [isPreparingShare, setIsPreparingShare] = useState<boolean>(false);
 	const [sharePanels, setSharePanels] = useState<Array<{image_url: string; text_content?: string}>>([]);
+	const [showStorageCleanup, setShowStorageCleanup] = useState<boolean>(false);
+	const [storageQuotaExceeded, setStorageQuotaExceeded] = useState<boolean>(false);
 
 	// Download state
 	const [isDownloadingCharacters, setIsDownloadingCharacters] = useState(false);
@@ -1022,6 +1055,89 @@ export default function Home() {
 	const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 	const [showProjectManager, setShowProjectManager] = useState(false);
 
+	// 🔧 统一的云端项目数据管理函数
+	const saveProjectData = useCallback(async (
+		projectId: string,
+		story: string,
+		style: ComicStyle,
+		storyAnalysis: any,
+		storyBreakdown: any,
+		characterReferences: any[],
+		generatedPanels: any[],
+		uploadedCharacterReferences: any[],
+		uploadedSettingReferences: any[],
+		imageSize?: any,
+		tags?: string[]
+	) => {
+		try {
+			console.log('💾 Saving project data to cloud:', projectId);
+
+			const { dataService } = await import('@/lib/dataService');
+
+			const projectData: UnifiedProjectData = {
+				metadata: {
+					id: projectId,
+					name: story.split('\n')[0]?.replace(/^#\s*/, '') || 'Untitled Project',
+					description: story.substring(0, 200) + (story.length > 200 ? '...' : ''),
+					style,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					tags: tags || [],
+					panelCount: generatedPanels.length,
+					characterCount: characterReferences.length
+				},
+				story,
+				style,
+				imageSize: imageSize || { width: 1024, height: 576, aspectRatio: '16:9' },
+				storyAnalysis,
+				storyBreakdown,
+				characterReferences,
+				generatedPanels,
+				uploadedCharacterReferences,
+				uploadedSettingReferences,
+				generationState: {
+					isGenerating: false,
+					isPaused: false,
+					currentPanel: 0,
+					totalPanels: generatedPanels.length,
+					completedPanels: generatedPanels.filter(p => p.imageUrl).length,
+					failedPanels: []
+				}
+			};
+
+			const result = await dataService.saveProject(projectData);
+
+			if (!result.success) {
+				throw new Error(result.error?.message || 'Failed to save project');
+			}
+
+			console.log('✅ Project data saved successfully');
+			return result.data;
+		} catch (error) {
+			console.error('❌ Failed to save project data:', error);
+			throw error;
+		}
+	}, []);
+
+	const loadProjectData = useCallback(async (projectId: string) => {
+		try {
+			console.log('📂 Loading project data from cloud:', projectId);
+
+			const { dataService } = await import('@/lib/dataService');
+			const result = await dataService.getProject(projectId);
+
+			if (!result.success || !result.data) {
+				throw new Error(result.error?.message || 'Failed to load project');
+			}
+
+			console.log('✅ Project data loaded successfully');
+			return result.data;
+		} catch (error) {
+			console.error('❌ Failed to load project data:', error);
+			throw error;
+		}
+	}, []);
+
 	// 获取认证头
 	const getAuthHeaders = useCallback(async () => {
 		const { supabase } = await import('@/lib/supabase');
@@ -1052,11 +1168,11 @@ export default function Home() {
 		try {
 			console.log('🔄 Preparing share data for', generatedPanels.length, 'panels');
 
-			// 首先确保所有面板都保存到云端
+			// 准备公开的分享URL
 			const { cloudFirstStorage } = await import('@/lib/cloudFirst');
 			await cloudFirstStorage.initialize();
 
-			// 保存所有面板到云端（如果还没有保存）
+			// 准备面板数据
 			const panelsToSave = generatedPanels.map(panel => ({
 				panelNumber: panel.panelNumber,
 				imageData: panel.image,
@@ -1068,44 +1184,17 @@ export default function Home() {
 				}
 			}));
 
-			await cloudFirstStorage.saveGeneratedPanels(currentProjectId, panelsToSave);
+			// 生成公开的分享URL
+			const publicUrls = await cloudFirstStorage.preparePublicShareUrls(currentProjectId, panelsToSave);
 
-			// 获取云端URL
-			const panelsWithUrls = await Promise.all(
-				generatedPanels.map(async (panel) => {
-					try {
-						const response = await fetch(`/api/storage/panel-url?projectId=${encodeURIComponent(currentProjectId)}&panelNumber=${panel.panelNumber}`, {
-							method: 'GET',
-							headers: {
-								'Content-Type': 'application/json',
-								// 添加认证头或设备ID
-								...(await getAuthHeaders())
-							}
-						});
-
-						if (response.ok) {
-							const result = await response.json();
-							return {
-								image_url: result.url,
-								text_content: panel.text || panel.description
-							};
-						} else {
-							console.warn(`Failed to get cloud URL for panel ${panel.panelNumber}, using fallback`);
-							// 如果获取云端URL失败，使用本地图片作为fallback
-							return {
-								image_url: panel.image,
-								text_content: panel.text || panel.description
-							};
-						}
-					} catch (error) {
-						console.error(`Error getting URL for panel ${panel.panelNumber}:`, error);
-						return {
-							image_url: panel.image,
-							text_content: panel.text || panel.description
-						};
-					}
-				})
-			);
+			// 转换为分享格式
+			const panelsWithUrls = publicUrls.map(({ panelNumber, url }) => {
+				const panel = generatedPanels.find(p => p.panelNumber === panelNumber);
+				return {
+					image_url: url,
+					text_content: panel?.text || panel?.description || ''
+				};
+			});
 
 			setSharePanels(panelsWithUrls);
 			console.log('✅ Share data prepared with', panelsWithUrls.length, 'panels');
@@ -1203,11 +1292,7 @@ export default function Home() {
 		}
 	}, [currentPage, isLazyLoadingEnabled]);
 
-	// 清除缓存的辅助函数（用于调试）
-	const clearCache = () => {
-		cacheManager.clear();
-		console.log('🗑️ 缓存已清除');
-	};
+
 
 	// 🎯 Debug: Monitor character references state changes
 	useEffect(() => {
@@ -1366,7 +1451,10 @@ export default function Home() {
 						uploadedCharacterReferences,
 						uploadedSettingReferences,
 						imageSize,
-						generationState
+						generationState,
+						aiModel,
+						storyAnalysis?.setting,
+						storyAnalysis?.scenes
 					).catch(error => {
 						console.error('Failed to save project data:', error);
 					});
@@ -1549,6 +1637,31 @@ export default function Home() {
 				currentPanel: 0,
 			}));
 
+			// 保存完整的项目数据
+			if (currentProjectId) {
+				try {
+					await saveProjectData(
+						currentProjectId,
+						story,
+						style,
+						storyAnalysis,
+						storyBreakdown,
+						characterReferences,
+						generatedPanels,
+						uploadedCharacterReferences,
+						uploadedSettingReferences,
+						imageSize,
+						generationState,
+						aiModel,
+						storyAnalysis?.setting,
+						storyAnalysis?.scenes
+					);
+					console.log('✅ Project data saved successfully after continue generation');
+				} catch (saveError) {
+					console.error('❌ Failed to save project data after continue generation:', saveError);
+				}
+			}
+
 			alert("继续生成完成！");
 		} catch (error) {
 			console.error("Continue generation error:", error);
@@ -1716,7 +1829,10 @@ export default function Home() {
 					uploadedCharacterReferences,
 					uploadedSettingReferences,
 					imageSize,
-					generationState
+					generationState,
+					aiModel,
+					storyAnalysis?.setting,
+					storyAnalysis?.scenes
 				);
 			}
 
@@ -1803,7 +1919,10 @@ export default function Home() {
 					uploadedCharacterReferences,
 					uploadedSettingReferences,
 					imageSize,
-					generationState
+					generationState,
+					aiModel,
+					storyAnalysis?.setting,
+					storyAnalysis?.scenes
 				);
 			}
 
@@ -1863,6 +1982,7 @@ export default function Home() {
 			const metadata = await createProject({
 				name: projectName,
 				description: `Created from story: ${story.slice(0, 100)}${story.length > 100 ? "..." : ""}`,
+				story: story, // 添加必需的story参数
 				style: style,
 			});
 			projectId = metadata.id;
@@ -2146,6 +2266,31 @@ export default function Home() {
 			setCurrentStepText("Complete! 🎉");
 			setIsGenerating(false);
 
+			// 保存完整的项目数据
+			if (projectId) {
+				try {
+					await saveProjectData(
+						projectId,
+						story,
+						style,
+						storyAnalysis,
+						storyBreakdown,
+						characterReferences,
+						generatedPanels,
+						uploadedCharacterReferences,
+						uploadedSettingReferences,
+						imageSize,
+						generationState,
+						aiModel,
+						storyAnalysis?.setting,
+						storyAnalysis?.scenes
+					);
+					console.log('✅ Project data saved successfully after generation completion');
+				} catch (saveError) {
+					console.error('❌ Failed to save project data after generation:', saveError);
+				}
+			}
+
 			// Track successful generation
 			const generationTime = Date.now() - generationStartTime;
 			trackMangaGeneration(wordCount, panels.length);
@@ -2402,41 +2547,93 @@ export default function Home() {
 	const handleProjectSelect = async (projectId: string) => {
 		try {
 			setIsLoadingState(true);
+			console.log(`🔄 Selecting project: ${projectId}`);
+			console.log(`🔍 项目选择调试信息:`, {
+				projectId,
+				user: user?.email || 'anonymous',
+				session: !!session,
+				currentProjectId,
+				timestamp: new Date().toISOString()
+			});
 
-			// 加载项目数据
-			const projectData = await loadProjectData(projectId);
+			// 🔧 使用统一数据服务加载项目数据
+			let projectData = null;
+
+			try {
+				console.log('📂 Loading project data using DataService:', projectId);
+
+				const { dataService } = await import('@/lib/dataService');
+				const result = await dataService.getProject(projectId);
+
+				if (result.success && result.data) {
+					projectData = result.data;
+					console.log('✅ Project data loaded successfully:', {
+						id: projectData.metadata.id,
+						name: projectData.metadata.name,
+						story: projectData.story?.length || 0,
+						style: projectData.style,
+						panelCount: projectData.metadata.panelCount,
+						characterCount: projectData.metadata.characterCount
+					});
+				} else {
+					console.error('❌ Failed to load project data:', result.error?.message);
+					projectData = null;
+				}
+			} catch (error) {
+				console.error('❌ DataService failed to load project:', error);
+				projectData = null;
+			}
+
 			if (projectData) {
+				console.log('✅ Project data loaded for selection:', {
+					story: projectData.story?.length || 0,
+					storyAnalysis: !!projectData.storyAnalysis,
+					characterReferences: projectData.characterReferences?.length || 0,
+					generatedPanels: projectData.generatedPanels?.length || 0,
+					storyBreakdown: !!projectData.storyBreakdown,
+					uploadedCharacterReferences: projectData.uploadedCharacterReferences?.length || 0,
+					uploadedSettingReferences: projectData.uploadedSettingReferences?.length || 0,
+				});
+
 				// 清除当前数据
 				clearResults();
 
 				// 设置新的项目数据
-				setStory(projectData.story);
-				setStyle(projectData.style);
+				setStory(projectData.story || '');
+				setStyle(projectData.style || 'manga');
 				setImageSize(projectData.imageSize || DEFAULT_IMAGE_SIZE);
-				setStoryAnalysis(projectData.storyAnalysis);
-				setCharacterReferences(projectData.characterReferences);
-				setStoryBreakdown(projectData.storyBreakdown);
-				setGeneratedPanels(projectData.generatedPanels);
-				setUploadedCharacterReferences(projectData.uploadedCharacterReferences);
-				setUploadedSettingReferences(projectData.uploadedSettingReferences);
+				setAiModel(projectData.aiModel || 'auto');
+				setStoryAnalysis(projectData.storyAnalysis || null);
+				setCharacterReferences(projectData.characterReferences || []);
+				setStoryBreakdown(projectData.storyBreakdown || null);
+				setGeneratedPanels(projectData.generatedPanels || []);
+				setUploadedCharacterReferences(projectData.uploadedCharacterReferences || []);
+				setUploadedSettingReferences(projectData.uploadedSettingReferences || []);
 
-				// 设置当前项目
-				await setCurrentProject(projectId);
+				// 设置当前项目ID
 				setCurrentProjectId(projectId);
+
+				console.log('✅ Project selection completed successfully');
 
 				// Auto-expand sections with content
 				const sectionsToExpand: string[] = [];
 				if (projectData.storyAnalysis) sectionsToExpand.push("analysis");
-				if (projectData.characterReferences.length > 0) sectionsToExpand.push("characters");
+				if (projectData.characterReferences && projectData.characterReferences.length > 0) sectionsToExpand.push("characters");
 				if (projectData.storyBreakdown) sectionsToExpand.push("layout");
-				if (projectData.generatedPanels.length > 0) sectionsToExpand.push("panels");
-				if (projectData.generatedPanels.length > 0 && projectData.characterReferences.length > 0) {
+				if (projectData.generatedPanels && projectData.generatedPanels.length > 0) sectionsToExpand.push("panels");
+				if (projectData.generatedPanels && projectData.generatedPanels.length > 0 && projectData.characterReferences && projectData.characterReferences.length > 0) {
 					sectionsToExpand.push("compositor");
 				}
 				setOpenAccordions(new Set(sectionsToExpand));
+			} else {
+				console.warn('❌ No project data found for project:', projectId);
+				// 如果找不到项目数据，清除当前项目ID
+				setCurrentProjectId(null);
 			}
 		} catch (error) {
-			console.error("Failed to load project:", error);
+			console.error("❌ Failed to select project:", error);
+			// 出错时也清除当前项目ID
+			setCurrentProjectId(null);
 		} finally {
 			setIsLoadingState(false);
 		}
@@ -2635,6 +2832,31 @@ export default function Home() {
 
 			setCurrentStepText("Complete! 🎉");
 			setIsGenerating(false);
+
+			// 保存完整的项目数据
+			if (currentProjectId) {
+				try {
+					await saveProjectData(
+						currentProjectId,
+						story,
+						style,
+						storyAnalysis,
+						storyBreakdown,
+						characterReferences,
+						generatedPanels,
+						uploadedCharacterReferences,
+						uploadedSettingReferences,
+						imageSize,
+						generationState,
+						aiModel,
+						storyAnalysis?.setting,
+						storyAnalysis?.scenes
+					);
+					console.log('✅ Project data saved successfully after retry completion');
+				} catch (saveError) {
+					console.error('❌ Failed to save project data after retry:', saveError);
+				}
+			}
 		} catch (error) {
 			console.error("Retry error:", error);
 			showError(error instanceof Error ? error.message : "Retry failed");
@@ -3309,21 +3531,23 @@ export default function Home() {
 		}
 	};
 
-	// Helper function to convert VolcEngine URLs to proxy URLs
+	// Helper function to convert URLs to proxy URLs (支持VolcEngine和R2)
 	const getProxyImageUrl = (originalUrl: string): string => {
 		if (!originalUrl || originalUrl.includes('placeholder') || originalUrl.startsWith('data:')) {
 			return originalUrl;
 		}
 
-		// Check if it's a VolcEngine URL that needs proxying
-		const volcEngineDomains = [
+		// Check if it's a URL that needs proxying
+		const proxyDomains = [
 			'ark-content-generation-v2-cn-beijing.tos-cn-beijing.volces.com',
-			'tos-cn-beijing.volces.com'
+			'tos-cn-beijing.volces.com',
+			'pub-23959c61a0814f2a91a19cc37b24a893.r2.dev', // R2开发域名
+			'manga.neodomain.ai' // R2生产域名
 		];
 
 		try {
 			const urlObj = new URL(originalUrl);
-			const needsProxy = volcEngineDomains.some(domain =>
+			const needsProxy = proxyDomains.some(domain =>
 				urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
 			);
 
@@ -3413,6 +3637,20 @@ export default function Home() {
 					isHttpUrl: panel.image?.startsWith('http')
 				});
 			});
+
+			// 验证所有图片都有效
+			const validPanels = generatedPanels.filter(panel =>
+				panel.image &&
+				typeof panel.image === 'string' &&
+				panel.image.trim() &&
+				!panel.image.includes('placeholder')
+			);
+
+			if (validPanels.length === 0) {
+				throw new Error('No valid images found. Please ensure all panels are properly generated before creating the composite.');
+			}
+
+			console.log(`Found ${validPanels.length} valid panels out of ${generatedPanels.length} total panels`);
 
 			// Extract all image URLs from generated panels
 			const imageUrls = generatedPanels
@@ -3735,74 +3973,258 @@ export default function Home() {
 		URL.revokeObjectURL(url);
 	};
 
+	// 自动保存功能 - 使用统一存储系统
+	useEffect(() => {
+		if (!currentProjectId) return;
+
+		const autoSave = async () => {
+			try {
+				console.log('🔄 Auto-saving project data with unified storage...');
+				// 使用统一存储适配器
+				await saveProjectData(
+					currentProjectId,
+					story,
+					style,
+					storyAnalysis,
+					storyBreakdown,
+					characterReferences,
+					generatedPanels,
+					uploadedCharacterReferences,
+					uploadedSettingReferences,
+					imageSize,
+					generationState,
+					aiModel
+				);
+				console.log('✅ Unified storage auto-save completed successfully');
+			} catch (error) {
+				console.error('❌ Unified storage auto-save failed:', error);
+				// 备用方案：使用原始storage
+				try {
+					const { saveState } = await import('@/lib/storage');
+					await saveState(
+						story,
+						style,
+						storyAnalysis,
+						storyBreakdown,
+						characterReferences,
+						generatedPanels,
+						uploadedCharacterReferences,
+						uploadedSettingReferences
+					);
+					console.log('✅ Legacy storage backup completed');
+				} catch (backupError) {
+					console.error('❌ Even legacy backup failed:', backupError);
+				}
+			}
+		};
+
+		// 设置自动保存定时器（每30秒保存一次）
+		const autoSaveInterval = setInterval(autoSave, 30000);
+
+		// 组件卸载时清理定时器
+		return () => {
+			clearInterval(autoSaveInterval);
+		};
+	}, [currentProjectId, story, style, storyAnalysis, storyBreakdown, characterReferences, generatedPanels, uploadedCharacterReferences, uploadedSettingReferences, imageSize, generationState]);
+
 	// Load state on component mount
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// 首先检查是否有当前项目
-				const projectId = await getCurrentProjectId();
+				console.log('🚀 Initializing unified storage system...');
+
+				// 首次运行时进行数据迁移
+				try {
+					const migrationResult = await storageAdapter.migrateFromLegacyStorage();
+					if (migrationResult.migratedProjects > 0) {
+						console.log(`✅ Migrated ${migrationResult.migratedProjects} projects from legacy storage`);
+					}
+					if (migrationResult.errors.length > 0) {
+						console.warn('⚠️ Migration errors:', migrationResult.errors);
+					}
+				} catch (migrationError) {
+					console.warn('⚠️ Migration failed:', migrationError);
+				}
+
+				// 🔧 修复：首先检查URL参数中的项目ID
+				const urlParams = new URLSearchParams(window.location.search);
+				const urlProjectId = urlParams.get('projectId');
+
+				let projectId: string | null = null;
+
+				if (urlProjectId) {
+					console.log(`🔗 Found project ID in URL: ${urlProjectId}`);
+					// 设置URL中的项目为当前项目
+					projectId = urlProjectId;
+				} else {
+					// 如果URL中没有项目ID，使用当前项目ID状态
+					projectId = currentProjectId;
+				}
+
 				setCurrentProjectId(projectId);
 
 				if (projectId) {
-					// 加载项目数据
-					const projectData = await loadProjectData(projectId);
-					if (projectData) {
-						setStory(projectData.story);
-						setStyle(projectData.style);
-						setImageSize(projectData.imageSize || DEFAULT_IMAGE_SIZE);
-						setStoryAnalysis(projectData.storyAnalysis);
-						setCharacterReferences(projectData.characterReferences);
-						setStoryBreakdown(projectData.storyBreakdown);
-						setGeneratedPanels(projectData.generatedPanels);
-						setUploadedCharacterReferences(projectData.uploadedCharacterReferences);
-						setUploadedSettingReferences(projectData.uploadedSettingReferences);
+					console.log(`🔄 Loading project data for ID: ${projectId}`);
+					// 加载项目数据 - 使用可靠的projectStorage
+					try {
+						console.log('📂 Loading project data from projectStorage...');
+						let projectData = await loadProjectData(projectId);
 
-						// 加载生成状态
-						if (projectData.generationState) {
-							setGenerationState(projectData.generationState);
+						// 如果projectStorage没有数据，尝试从原始storage加载
+						if (!projectData) {
+							console.log('⚠️ No data in projectStorage, trying legacy storage...');
+							const { loadState } = await import('@/lib/storage');
+							const legacyData = await loadState();
+							if (legacyData) {
+								console.log('✅ Found legacy data, migrating...');
+								// 将legacy数据保存到projectStorage
+								await saveProjectData(
+									projectId,
+									legacyData.story,
+									legacyData.style,
+									legacyData.storyAnalysis,
+									legacyData.storyBreakdown,
+									legacyData.characterReferences,
+									legacyData.generatedPanels,
+									legacyData.uploadedCharacterReferences,
+									legacyData.uploadedSettingReferences
+								);
+								projectData = legacyData;
+							}
 						}
-					} else {
-						// 项目数据加载失败，尝试加载旧的存储格式
-						const savedState = await loadState();
-						if (savedState) {
-							setStory(savedState.story);
-							setStyle(savedState.style);
-							setStoryAnalysis(savedState.storyAnalysis);
-							setCharacterReferences(savedState.characterReferences);
-							setStoryBreakdown(savedState.storyBreakdown);
-							setGeneratedPanels(savedState.generatedPanels);
-							setUploadedCharacterReferences(savedState.uploadedCharacterReferences);
-							setUploadedSettingReferences(savedState.uploadedSettingReferences);
+
+						if (projectData) {
+							console.log('✅ Project data loaded successfully:', {
+								story: projectData.story?.length || 0,
+								storyAnalysis: !!projectData.storyAnalysis,
+								characterReferences: projectData.characterReferences?.length || 0,
+								generatedPanels: projectData.generatedPanels?.length || 0,
+								storyBreakdown: !!projectData.storyBreakdown,
+								uploadedCharacterReferences: projectData.uploadedCharacterReferences?.length || 0,
+								uploadedSettingReferences: projectData.uploadedSettingReferences?.length || 0,
+							});
+
+							// 🔧 调试：详细记录状态设置过程
+							console.log('🔄 Setting React state with loaded data...');
+							console.log('📝 Story data:', projectData.story?.substring(0, 100) + '...');
+							console.log('🎨 Style:', projectData.style);
+							console.log('📊 Story analysis:', !!projectData.storyAnalysis);
+							console.log('👥 Character references:', projectData.characterReferences?.length);
+							console.log('🖼️ Generated panels:', projectData.generatedPanels?.length);
+
+							// 🔧 调试：显示完整的项目数据结构
+							console.log('🔍 Complete project data structure:', {
+								...projectData,
+								story: `${projectData.story?.length || 0} characters`,
+								storyAnalysis: projectData.storyAnalysis ? 'exists' : 'null',
+								storyBreakdown: projectData.storyBreakdown ? 'exists' : 'null'
+							});
+
+							setStory(projectData.story || '');
+							setStyle(projectData.style || 'manga');
+							setImageSize(projectData.imageSize || DEFAULT_IMAGE_SIZE);
+							setStoryAnalysis(projectData.storyAnalysis || null);
+							setCharacterReferences(projectData.characterReferences || []);
+							setStoryBreakdown(projectData.storyBreakdown || null);
+							setGeneratedPanels(projectData.generatedPanels || []);
+							setUploadedCharacterReferences(projectData.uploadedCharacterReferences || []);
+							setUploadedSettingReferences(projectData.uploadedSettingReferences || []);
+
+							// 加载生成状态
+							if (projectData.generationState) {
+								setGenerationState(projectData.generationState);
+							}
+
+							console.log('✅ All project data set in state successfully');
+
+							// 🔧 调试：验证状态是否正确设置
+							setTimeout(() => {
+								console.log('🔍 Verifying state after 1 second...');
+								console.log('📝 Current story state length:', story.length);
+								console.log('🖼️ Current panels state length:', generatedPanels.length);
+								console.log('👥 Current characters state length:', characterReferences.length);
+							}, 1000);
+						} else {
+							console.warn('❌ Project data is null, project may not exist');
+							// 🔧 修复：如果URL中有项目ID，不要清除它，而是显示错误信息
+							if (urlProjectId) {
+								console.warn(`⚠️ URL project ${urlProjectId} not found, but keeping ID for user awareness`);
+								// 保持项目ID，让用户知道他们试图访问的项目
+								// 不清除项目ID，避免创建新项目
+							} else {
+								// 只有在没有URL项目ID时才清除
+								setCurrentProjectId(null);
+							}
+						}
+					} catch (error) {
+						console.error('❌ Failed to load project data:', error);
+						// 🔧 修复：如果URL中有项目ID，不要清除它
+						if (urlProjectId) {
+							console.warn(`⚠️ Failed to load URL project ${urlProjectId}, but keeping ID for user awareness`);
+							// 保持项目ID，让用户知道他们试图访问的项目
+						} else {
+							// 只有在没有URL项目ID时才清除
+							setCurrentProjectId(null);
 						}
 					}
-				} else {
-					// 没有当前项目，尝试加载旧的存储格式
-					const savedState = await loadState();
-					if (savedState) {
-						setStory(savedState.story);
-						setStyle(savedState.style);
-						setStoryAnalysis(savedState.storyAnalysis);
-						setCharacterReferences(savedState.characterReferences);
-						setStoryBreakdown(savedState.storyBreakdown);
-						setGeneratedPanels(savedState.generatedPanels);
-						setUploadedCharacterReferences(savedState.uploadedCharacterReferences);
-						setUploadedSettingReferences(savedState.uploadedSettingReferences);
+				} else if (!urlProjectId) {
+					// 🔧 修复：只有在没有URL项目ID时才创建默认项目
+					console.log('📝 No current project found and no URL project ID, creating default project...');
 
-						// Auto-expand sections with content
-						const sectionsToExpand: string[] = [];
-						if (savedState.storyAnalysis) sectionsToExpand.push("analysis");
-						if (savedState.characterReferences.length > 0)
-							sectionsToExpand.push("characters");
-						if (savedState.storyBreakdown) sectionsToExpand.push("layout");
-						if (savedState.generatedPanels.length > 0)
-							sectionsToExpand.push("panels");
-						if (
-							savedState.generatedPanels.length > 0 &&
-							savedState.characterReferences.length > 0
-						) {
-							sectionsToExpand.push("compositor");
+					// 自动创建一个默认项目
+					try {
+						const { dataService } = await import('@/lib/dataService');
+						const result = await dataService.createProject({
+							name: `创作项目 ${new Date().toLocaleDateString()}`,
+							description: '自动创建的创作项目',
+							story: '',
+							style: 'manga'
+						});
+
+						if (result.success && result.data) {
+							console.log('✅ Default project created:', result.data.id);
+							setCurrentProjectId(result.data.id);
+						} else {
+							console.error('❌ Failed to create default project:', result.error?.message);
 						}
-						setOpenAccordions(new Set(sectionsToExpand));
+
+					} catch (error) {
+						console.error('❌ Failed to create default project:', error);
+
+						// 如果创建项目失败，尝试加载本地存储的状态
+						console.log('📂 Falling back to local storage...');
+						try {
+							const savedState = await loadState();
+							if (savedState) {
+								console.log('✅ Loaded state from local storage as fallback');
+								setStory(savedState.story || '');
+								setStyle(savedState.style || 'manga');
+								setStoryAnalysis(savedState.storyAnalysis || null);
+								setCharacterReferences(savedState.characterReferences || []);
+								setStoryBreakdown(savedState.storyBreakdown || null);
+								setGeneratedPanels(savedState.generatedPanels || []);
+								setUploadedCharacterReferences(savedState.uploadedCharacterReferences || []);
+								setUploadedSettingReferences(savedState.uploadedSettingReferences || []);
+
+								// Auto-expand sections with content
+								const sectionsToExpand: string[] = [];
+								if (savedState.storyAnalysis) sectionsToExpand.push("analysis");
+								if (savedState.characterReferences?.length > 0)
+									sectionsToExpand.push("characters");
+								if (savedState.storyBreakdown) sectionsToExpand.push("layout");
+								if (savedState.generatedPanels?.length > 0)
+									sectionsToExpand.push("panels");
+								if (
+									savedState.generatedPanels?.length > 0 &&
+									savedState.characterReferences?.length > 0
+								) {
+									sectionsToExpand.push("compositor");
+								}
+								setOpenAccordions(new Set(sectionsToExpand));
+							}
+						} catch (localError) {
+							console.error('❌ Failed to load local state:', localError);
+						}
 					}
 				}
 
@@ -3821,10 +4243,46 @@ export default function Home() {
 			} finally {
 				setIsLoadingState(false);
 			}
+
+			// 检查存储配额状态
+			if (typeof window !== 'undefined') {
+				try {
+					const storageInfo = StorageManager.getStorageInfo();
+					if (storageInfo.percentage > 90) {
+						console.warn('⚠️ Storage quota nearly exceeded:', storageInfo.percentage.toFixed(1) + '%');
+						setStorageQuotaExceeded(true);
+					}
+				} catch (error) {
+					console.warn('Failed to check storage quota:', error);
+				}
+			}
 		};
 
 		initializeApp();
-	}, []);
+	}, [user, session]); // 🔧 修复：添加user和session作为依赖，确保认证状态变化时重新初始化
+
+	// 🔧 修复：监听URL参数变化，处理项目管理页面跳转
+	useEffect(() => {
+		const urlProjectId = searchParams.get('projectId');
+
+		console.log('🔍 URL参数检查:', {
+			urlProjectId,
+			currentProjectId,
+			searchParamsString: searchParams.toString(),
+			windowLocation: typeof window !== 'undefined' ? window.location.href : 'N/A'
+		});
+
+		// 如果URL中有项目ID，且与当前项目ID不同，则加载该项目
+		if (urlProjectId && urlProjectId !== currentProjectId) {
+			console.log(`🔗 URL参数变化，加载项目: ${urlProjectId}`);
+			console.log(`📊 当前项目ID: ${currentProjectId} -> 新项目ID: ${urlProjectId}`);
+			handleProjectSelect(urlProjectId);
+		} else if (urlProjectId) {
+			console.log(`ℹ️ URL项目ID与当前项目ID相同，跳过加载: ${urlProjectId}`);
+		} else {
+			console.log('ℹ️ URL中没有项目ID参数');
+		}
+	}, [searchParams, currentProjectId, handleProjectSelect]); // 依赖searchParams、当前项目ID和项目选择函数
 
 	// Save state whenever important data changes
 	useEffect(() => {
@@ -3848,6 +4306,9 @@ export default function Home() {
 						uploadedSettingReferences,
 						imageSize,
 						generationState,
+						aiModel,
+						storyAnalysis?.setting,
+						storyAnalysis?.scenes
 					);
 				} else {
 					// 否则使用旧的存储方式（向后兼容）
@@ -3949,6 +4410,19 @@ export default function Home() {
 
 	return (
 		<div className="min-h-screen py-4 px-4 style-comic">
+			{/* 🔧 调试：状态显示 */}
+			{process.env.NODE_ENV === 'development' && (
+				<div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs">
+					<div className="font-semibold mb-2">🔍 调试信息:</div>
+					<div>项目ID: {currentProjectId || '无'}</div>
+					<div>故事长度: {story.length} 字符</div>
+					<div>面板数量: {generatedPanels.length}</div>
+					<div>角色数量: {characterReferences.length}</div>
+					<div>故事分析: {storyAnalysis ? '存在' : '无'}</div>
+					<div>故事分解: {storyBreakdown ? '存在' : '无'}</div>
+				</div>
+			)}
+
 			{/* Top navigation with logo and language switcher */}
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center gap-3">
@@ -3970,22 +4444,30 @@ export default function Home() {
 					>
 						📁 {t("myProjects", "我的项目")}
 					</button>
-					<button
-						onClick={clearCache}
-						className="btn-manga-outline text-sm px-3 py-1"
-						title={t("clearCache", "清除缓存（调试用）")}
-					>
-						🗑️ {t("clearCache", "清除缓存")}
-					</button>
 				</div>
 
 				{/* Auth status and language switcher in top right */}
 				<div className="flex items-center gap-3">
 					{user ? (
 						<div className="flex items-center gap-2">
-							<span className="text-sm text-gray-600">
-								👤 {user.email}
-							</span>
+							<button
+								onClick={() => window.location.href = '/profile'}
+								className="flex items-center gap-2 hover:bg-gray-100 rounded-lg p-1 transition-colors"
+								title={language === 'zh' ? '个人设置' : 'Profile Settings'}
+							>
+								<img
+									src={user.avatar || `https://via.placeholder.com/32x32/6366F1/FFFFFF?text=${((user.name || user.email || 'U')[0] || 'U').toUpperCase()}`}
+									alt={user.name || user.email || 'User'}
+									className="w-6 h-6 rounded-full border border-gray-200"
+									onError={(e) => {
+										const target = e.target as HTMLImageElement;
+										target.src = `https://via.placeholder.com/32x32/6366F1/FFFFFF?text=${((user.name || user.email || 'U')[0] || 'U').toUpperCase()}`;
+									}}
+								/>
+								<span className="text-sm text-gray-600">
+									{user.name || user.email}
+								</span>
+							</button>
 							<button
 								onClick={() => signOut()}
 								className="btn-manga-outline text-sm px-2 py-1"
@@ -4006,6 +4488,38 @@ export default function Home() {
 					<LanguageSwitcher />
 				</div>
 			</div>
+
+			{/* Storage Quota Warning */}
+			{storageQuotaExceeded && (
+				<div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+						</svg>
+						<span className="text-sm text-yellow-800">
+							存储空间即将用完，可能影响登录和数据保存功能
+						</span>
+					</div>
+					<div className="flex items-center gap-2">
+						<button
+							onClick={() => setShowStorageCleanup(true)}
+							className="text-sm bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700 transition-colors"
+						>
+							清理空间
+						</button>
+						<button
+							onClick={() => setStorageQuotaExceeded(false)}
+							className="text-yellow-600 hover:text-yellow-800 p-1"
+							title="关闭警告"
+						>
+							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					</div>
+				</div>
+			)}
+
 			<div className="flex flex-col lg:flex-row gap-4 h-full">
 				{/* Left Panel - Input */}
 				<div className="w-full lg:w-1/3 mb-4 lg:mb-0">
@@ -4506,33 +5020,7 @@ export default function Home() {
 							)}
 						</button>
 
-						{/* Clear Results Button */}
-						{(storyAnalysis ||
-							characterReferences.length > 0 ||
-							storyBreakdown ||
-							generatedPanels.length > 0) && (
-							<button
-								type="button"
-								className="btn-manga-outline w-full mb-2"
-								onClick={clearResults}
-								disabled={isGenerating}
-							>
-								{t("clearPreviousResults")}
-							</button>
-						)}
 
-						{/* Clear All Data Button */}
-						{hasAnyContent && (
-							<button
-								type="button"
-								className="btn-manga-outline w-full text-xs"
-								onClick={handleClearAllData}
-								disabled={isGenerating}
-								style={{ fontSize: "12px", padding: "8px 12px" }}
-							>
-								🗑️ {t("clearAllSavedData")}
-							</button>
-						)}
 
 						{/* Storage Info */}
 						{storageInfo.hasData && (
@@ -4798,6 +5286,7 @@ export default function Home() {
 													showImage={true}
 													onImageClick={openImageModal}
 													onDownload={() => downloadCharacter(char)}
+													getProxyImageUrl={getProxyImageUrl}
 													onEdit={() => {
 														// Create a prompt for the character
 														const characterPrompt = `Character: ${char.name}\nDescription: ${char.description || 'No description'}`;
@@ -5154,6 +5643,7 @@ export default function Home() {
 															showImage={true}
 															onImageClick={openImageModal}
 															onDownload={() => downloadPanel(generatedPanel)}
+															getProxyImageUrl={getProxyImageUrl}
 															onEdit={() => {
 																// Create a prompt for the panel based on its properties
 																// Clean dialogue to remove character names that might appear in images
@@ -5532,6 +6022,41 @@ export default function Home() {
 								onClick={closeErrorModal}
 							>
 								{t("ok")}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Storage Cleanup Modal */}
+			{showStorageCleanup && (
+				<div
+					className="confirmation-modal-overlay"
+					onClick={() => setShowStorageCleanup(false)}
+					onKeyDown={(e) => {
+						if (e.key === "Escape") {
+							setShowStorageCleanup(false);
+						}
+					}}
+					role="dialog"
+					aria-modal="true"
+					aria-label="存储空间管理"
+					tabIndex={-1}
+				>
+					<div
+						className="confirmation-modal-content max-w-md"
+						onClick={(e) => e.stopPropagation()}
+						onKeyDown={(e) => e.stopPropagation()}
+						role="document"
+					>
+						<StorageCleanupTool />
+						<div className="mt-4 flex justify-end">
+							<button
+								type="button"
+								className="btn-manga-secondary"
+								onClick={() => setShowStorageCleanup(false)}
+							>
+								关闭
 							</button>
 						</div>
 					</div>

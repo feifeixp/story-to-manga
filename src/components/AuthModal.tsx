@@ -165,17 +165,17 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md mx-4 shadow-2xl">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-center text-2xl font-bold">{getTitle()}</CardTitle>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-md mx-4 shadow-2xl bg-white border border-gray-200">
+        <CardHeader className="space-y-1 bg-gradient-to-r from-purple-50 to-blue-50 border-b border-gray-100">
+          <CardTitle className="text-center text-2xl font-bold text-gray-900">{getTitle()}</CardTitle>
           <CardDescription className="text-center text-gray-600">{getDescription()}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-white p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 邮箱输入 */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-800">
                 {language === 'zh' ? '邮箱' : 'Email'}
               </label>
               <div className="relative">
@@ -215,7 +215,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {/* 密码输入（重置密码时不显示） */}
             {mode !== 'reset' && (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-800">
                   {language === 'zh' ? '密码' : 'Password'}
                 </label>
                 <div className="relative">

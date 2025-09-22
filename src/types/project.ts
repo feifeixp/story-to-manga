@@ -62,14 +62,25 @@ export interface ProjectData {
 }
 
 // 项目列表项（不包含完整数据，只有元数据）
+// 修改为与 Edge Functions 返回的扁平化数据结构匹配
 export interface ProjectListItem {
-	metadata: ProjectMetadata;
+	id: string;
+	name: string;
+	description?: string;
+	createdAt: number;
+	updatedAt: number;
+	thumbnail?: string;
+	panelCount: number;
+	characterCount: number;
+	style: ComicStyle;
+	imageSize?: ImageSizeConfig;
 }
 
 // 项目创建参数
 export interface CreateProjectParams {
 	name: string;
 	description?: string;
+	story?: string; // 添加 story 字段，Edge Functions 需要
 	style?: ComicStyle;
 	imageSize?: ImageSizeConfig;
 }

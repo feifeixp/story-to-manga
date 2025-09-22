@@ -307,6 +307,8 @@ Generate a single comic panel image with proper framing and composition.
 
 					// 保存到云端（如果提供了项目ID）
 					let cloudUrl: string | null = null;
+					let publicImageUrl: string = result.imageData; // 默认使用原始图片数据
+
 					if (result.imageData && projectId) {
 						try {
 							await cloudFirstStorage.initialize();
@@ -323,6 +325,17 @@ Generate a single comic panel image with proper framing and composition.
 								}
 							);
 							panelLogger.info(`Panel ${panel.panelNumber} saved to cloud in batch: ${cloudUrl}`);
+
+							// 如果成功保存到云端，获取公开URL用于前端显示
+							if (cloudUrl) {
+								try {
+									const { generatePublicUrl } = await import('@/lib/r2Config');
+									publicImageUrl = generatePublicUrl(cloudUrl);
+									panelLogger.info(`Panel ${panel.panelNumber} public URL in batch: ${publicImageUrl}`);
+								} catch (urlError) {
+									panelLogger.error(`Failed to generate public URL for panel ${panel.panelNumber} in batch:`, urlError);
+								}
+							}
 						} catch (cloudError) {
 							panelLogger.warn(`Failed to save panel ${panel.panelNumber} to cloud in batch:`, cloudError);
 							// 不影响主流程，继续处理
@@ -341,7 +354,7 @@ Generate a single comic panel image with proper framing and composition.
 					return {
 						success: true,
 						panelNumber: panel.panelNumber,
-						image: result.imageData,
+						image: publicImageUrl, // 使用公开URL而不是代理URL
 						modelUsed: result.modelUsed,
 						cached: false,
 						cloudUrl, // 包含云端URL

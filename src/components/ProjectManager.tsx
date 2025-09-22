@@ -2,33 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { useI18n } from "@/components/I18nProvider";
-import {
-	getProjectList,
-	createProject,
-	deleteProject,
-	getCurrentProjectId,
-	setCurrentProject,
-} from "@/lib/hybridStorage";
+import { useAuth } from "@/components/AuthProvider";
+import { apiClient } from "@/lib/apiClient";
 import type { ProjectListItem, CreateProjectParams, ImageSizeConfig } from "@/types/project";
 import { IMAGE_SIZE_PRESETS } from "@/types/project";
 import type { ComicStyle } from "@/types";
 
 interface ProjectManagerProps {
-	isOpen: boolean;
-	onClose: () => void;
-	onProjectSelect: (projectId: string) => void;
-	onNewProject: () => void;
+	isOpen?: boolean;
+	onClose?: () => void;
+	onProjectSelect?: (projectId: string) => void;
+	onNewProject?: () => void;
 	currentProjectId?: string | null;
+	showCreateButton?: boolean;
+	showSelectButton?: boolean;
 }
 
-export default function ProjectManager({
-	isOpen,
+function ProjectManager({
+	isOpen = true,
 	onClose,
 	onProjectSelect,
 	onNewProject,
 	currentProjectId,
+	showCreateButton = true,
+	showSelectButton = false,
 }: ProjectManagerProps) {
 	const { t } = useI18n();
+	const { user, session } = useAuth();
 	const [projects, setProjects] = useState<ProjectListItem[]>([]);
 	const [showCreateForm, setShowCreateForm] = useState(false);
 	const [newProjectName, setNewProjectName] = useState("");
@@ -36,6 +36,8 @@ export default function ProjectManager({
 	const [newProjectStyle, setNewProjectStyle] = useState<ComicStyle>("manga");
 	const [newProjectImageSize, setNewProjectImageSize] = useState<string>("landscape_16_9");
 	const [isCreating, setIsCreating] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [loadError, setLoadError] = useState<string | null>(null);
 
 	// 加载项目列表
 	useEffect(() => {
@@ -45,12 +47,56 @@ export default function ProjectManager({
 	}, [isOpen]);
 
 	const loadProjects = async () => {
+		setIsLoading(true);
+		setLoadError(null);
+
 		try {
-			const projectList = await getProjectList();
-			setProjects(projectList);
+			console.log('📋 ProjectManager: Loading projects...');
+
+			const result = await apiClient.getProjects();
+
+			if (result.success && result.projects) {
+				const projectList = result.projects.map(project => ({
+					id: project.id,
+					name: project.name,
+					description: project.description,
+					createdAt: new Date(project.createdAt).getTime(),
+					updatedAt: new Date(project.updatedAt).getTime(),
+					style: project.style,
+					panelCount: 0, // TODO: 从项目数据中获取
+					characterCount: 0, // TODO: 从项目数据中获取
+					imageSize: { width: 1920, height: 1080 }, // 默认尺寸
+				}));
+
+				console.log('📋 ProjectManager: Loaded projects:', projectList.length);
+				setProjects(projectList);
+
+				if (projectList.length === 0) {
+					console.log('⚠️ ProjectManager: No projects found');
+				}
+			} else {
+				throw new Error('Failed to load projects');
+			}
 		} catch (error) {
-			console.error('Failed to load projects:', error);
+			console.error('❌ ProjectManager: Failed to load projects:', error);
+
+			// 提供更友好的错误信息
+			let errorMessage = 'Failed to load projects';
+
+			if (error instanceof Error) {
+				if (error.message === 'Failed to fetch') {
+					errorMessage = '网络连接失败，请检查网络连接或刷新页面重试';
+				} else {
+					errorMessage = error.message;
+				}
+			}
+
+			setLoadError(errorMessage);
 			setProjects([]);
+
+			console.log('❌ ProjectManager: Project loading failed, no auto-retry to prevent infinite loop');
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
@@ -60,32 +106,37 @@ export default function ProjectManager({
 		setIsCreating(true);
 		try {
 			const trimmedDescription = newProjectDescription.trim();
-			const selectedImageSize = IMAGE_SIZE_PRESETS[newProjectImageSize];
-			const params: CreateProjectParams = {
+			const projectData = {
 				name: newProjectName.trim(),
-				...(trimmedDescription && { description: trimmedDescription }),
+				description: trimmedDescription || '',
 				style: newProjectStyle,
-				...(selectedImageSize && { imageSize: selectedImageSize }),
 			};
 
-			const metadata = await createProject(params);
+			const result = await apiClient.createProject(projectData);
+
+			if (!result.success || !result.project) {
+				throw new Error('Failed to create project');
+			}
+
+			const project = result.project;
 
 			// 刷新项目列表
 			await loadProjects();
-			
+
 			// 重置表单
 			setNewProjectName("");
 			setNewProjectDescription("");
 			setNewProjectStyle("manga");
 			setNewProjectImageSize("landscape_16_9");
 			setShowCreateForm(false);
-			
+
 			// 通知父组件新项目已创建
-			onNewProject();
-			onProjectSelect(metadata.id);
-			onClose();
+			onNewProject?.();
+			onProjectSelect?.(project.id);
+			onClose?.();
 		} catch (error) {
 			console.error("Failed to create project:", error);
+			alert('创建项目失败: ' + (error instanceof Error ? error.message : '未知错误'));
 		} finally {
 			setIsCreating(false);
 		}
@@ -97,15 +148,21 @@ export default function ProjectManager({
 		}
 
 		try {
-			await deleteProject(projectId);
+			const result = await apiClient.deleteProject(projectId);
+
+			if (!result.success) {
+				throw new Error('Failed to delete project');
+			}
+
 			await loadProjects();
-			
+
 			// 如果删除的是当前项目，通知父组件
 			if (projectId === currentProjectId) {
-				onNewProject(); // 创建新的空项目
+				onNewProject?.(); // 创建新的空项目
 			}
 		} catch (error) {
 			console.error("Failed to delete project:", error);
+			alert('删除项目失败: ' + (error instanceof Error ? error.message : '未知错误'));
 		}
 	};
 
@@ -117,7 +174,7 @@ export default function ProjectManager({
 		return new Date(timestamp).toLocaleString();
 	};
 
-	if (!isOpen) return null;
+	if (isOpen === false) return null;
 
 	return (
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -251,87 +308,167 @@ export default function ProjectManager({
 
 					{/* 项目列表 */}
 					<div className="space-y-4">
-						<h3 className="text-lg font-semibold">{t("existingProjects")}</h3>
-						
-						{projects.length === 0 ? (
+						<div className="flex items-center justify-between">
+							<h3 className="text-lg font-semibold">{t("existingProjects")}</h3>
+							<button
+								onClick={loadProjects}
+								disabled={isLoading}
+								className="btn-manga-outline text-sm px-3 py-1"
+								title="刷新项目列表"
+							>
+								{isLoading ? '🔄 刷新中...' : '🔄 刷新'}
+							</button>
+						</div>
+
+						{/* 加载状态 */}
+						{isLoading && (
+							<div className="text-center py-8 text-gray-500">
+								<div className="animate-spin inline-block w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full mb-2"></div>
+								<p>正在加载项目列表...</p>
+							</div>
+						)}
+
+						{/* 错误状态 */}
+						{loadError && !isLoading && (
+							<div className="text-center py-8">
+								<div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+									<p className="text-red-800 font-medium">加载项目失败</p>
+									<p className="text-red-600 text-sm mt-1">{loadError}</p>
+								</div>
+								<button
+									onClick={loadProjects}
+									className="btn-manga-primary"
+								>
+									重试
+								</button>
+							</div>
+						)}
+
+						{/* 空状态 */}
+						{!isLoading && !loadError && projects.length === 0 && (
 							<div className="text-center py-8 text-gray-500">
 								<p>{t("noProjectsFound")}</p>
 								<p className="text-sm mt-2">{t("createFirstProject")}</p>
+								<div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+									<p className="text-yellow-800 text-sm">
+										💡 如果你之前创建过项目但看不到，可能是数据同步问题。
+										请尝试点击上方的"刷新"按钮，或者重新创建项目。
+									</p>
+								</div>
 							</div>
-						) : (
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-								{projects.map((project) => (
-									<div
-										key={project.metadata.id}
-										className={`border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer ${
-											project.metadata.id === currentProjectId
-												? "border-blue-500 bg-blue-50"
-												: "border-gray-200"
-										}`}
-									>
-										{/* 项目缩略图 */}
-										{project.metadata.thumbnail && (
-											<div className="mb-3">
-												<img
-													src={project.metadata.thumbnail}
-													alt={project.metadata.name}
-													className="w-full h-32 object-cover rounded"
-												/>
-											</div>
-										)}
+						)}
 
-										{/* 项目信息 */}
-										<div className="space-y-2">
-											<h4 className="font-semibold text-gray-900 truncate">
-												{project.metadata.name}
-											</h4>
-											
-											{project.metadata.description && (
-												<p className="text-sm text-gray-600 line-clamp-2">
-													{project.metadata.description}
-												</p>
+						{/* 项目列表 */}
+						{!isLoading && !loadError && projects.length > 0 && (
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+								{projects.map((project, index) => {
+									// 🔧 调试：检查项目数据结构
+									console.log('🔍 ProjectManager: Project data structure:', {
+										project,
+										hasId: !!project.id,
+										hasMetadata: !!project.metadata,
+										actualId: project.id || project.metadata?.id,
+										projectKeys: Object.keys(project)
+									});
+
+									// 获取正确的项目ID和数据
+									const projectId = project.id || project.metadata?.id;
+									const projectName = project.name || project.metadata?.name;
+									const projectDescription = project.description || project.metadata?.description;
+									const projectCreatedAt = project.createdAt || project.metadata?.createdAt;
+									const projectUpdatedAt = project.updatedAt || project.metadata?.updatedAt;
+									const projectStyle = project.style || project.metadata?.style;
+									const projectPanelCount = project.panelCount || project.metadata?.panelCount || 0;
+									const projectCharacterCount = project.characterCount || project.metadata?.characterCount || 0;
+
+									return (
+										<div
+											key={projectId || `project-${index}`}
+											className={`border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer ${
+												projectId === currentProjectId
+													? "border-blue-500 bg-blue-50"
+													: "border-gray-200"
+											}`}
+										>
+											{/* 项目缩略图 */}
+											{project.thumbnail && (
+												<div className="mb-3">
+													<img
+														src={project.thumbnail}
+														alt={projectName}
+														className="w-full h-32 object-cover rounded"
+													/>
+												</div>
 											)}
 
-											<div className="text-xs text-gray-500 space-y-1">
-												<div className="flex justify-between">
-													<span>{t("style")}:</span>
-													<span>{t(project.metadata.style)}</span>
-												</div>
-												<div className="flex justify-between">
-													<span>{t("panels")}:</span>
-													<span>{project.metadata.panelCount}</span>
-												</div>
-												<div className="flex justify-between">
-													<span>{t("characters")}:</span>
-													<span>{project.metadata.characterCount}</span>
-												</div>
-												<div className="flex justify-between">
-													<span>{t("updated")}:</span>
-													<span>{formatDate(project.metadata.updatedAt)}</span>
-												</div>
-											</div>
+											{/* 项目信息 */}
+											<div className="space-y-2">
+												<h4 className="font-semibold text-gray-900 truncate">
+													{projectName}
+												</h4>
 
-											{/* 操作按钮 */}
-											<div className="flex space-x-2 pt-2">
-												<button
-													onClick={() => {
-														onProjectSelect(project.metadata.id);
-														onClose();
-													}}
-													className="flex-1 btn-manga-primary text-sm py-1"
-												>
-													{project.metadata.id === currentProjectId ? t("current") : t("open")}
-												</button>
-												<button
-													onClick={() => handleDeleteProject(project.metadata.id, project.metadata.name)}
-													className="btn-manga-outline text-sm py-1 px-3 text-red-600 border-red-300 hover:bg-red-50"
-												>
-													{t("delete")}
-												</button>
+												{projectDescription && (
+													<p className="text-sm text-gray-600 line-clamp-2">
+														{projectDescription}
+													</p>
+												)}
+
+												<div className="text-xs text-gray-500 space-y-1">
+													<div className="flex justify-between">
+														<span>{t("style")}:</span>
+														<span>{t(projectStyle)}</span>
+													</div>
+													<div className="flex justify-between">
+														<span>{t("panels")}:</span>
+														<span>{projectPanelCount}</span>
+													</div>
+													<div className="flex justify-between">
+														<span>{t("characters")}:</span>
+														<span>{projectCharacterCount}</span>
+													</div>
+													<div className="flex justify-between">
+														<span>{t("updated")}:</span>
+														<span>{formatDate(projectUpdatedAt)}</span>
+													</div>
+												</div>
+
+												{/* 操作按钮 */}
+												<div className="flex space-x-2 pt-2">
+													{showSelectButton ? (
+														// 项目管理页面：显示"开始创作"按钮
+														<button
+															onClick={() => {
+																console.log('🔗 ProjectManager: Selecting project:', projectId);
+																onProjectSelect?.(projectId);
+															}}
+															className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm py-2 px-4 rounded transition-colors"
+														>
+															开始创作
+														</button>
+													) : (
+														// 模态框：显示"打开"按钮
+														<button
+															onClick={() => {
+																console.log('🔗 ProjectManager: Opening project:', projectId);
+																onProjectSelect?.(projectId);
+																onClose?.();
+															}}
+															className="flex-1 btn-manga-primary text-sm py-1"
+														>
+															{projectId === currentProjectId ? t("current") : t("open")}
+														</button>
+													)}
+													<button
+														onClick={() => handleDeleteProject(projectId, projectName)}
+														className="btn-manga-outline text-sm py-1 px-3 text-red-600 border-red-300 hover:bg-red-50"
+													>
+														{t("delete")}
+													</button>
+												</div>
 											</div>
 										</div>
-									</div>
-								))}
+									);
+								})}
 							</div>
 						)}
 					</div>
@@ -340,3 +477,6 @@ export default function ProjectManager({
 		</div>
 	);
 }
+
+export default ProjectManager;
+export { ProjectManager };

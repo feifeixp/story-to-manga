@@ -172,11 +172,11 @@ export function ShareComicModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-xl font-bold">
-            {t('share.shareYourComic')}
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-gray-200 shadow-2xl">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-purple-50 to-blue-50 border-b border-gray-100">
+          <CardTitle className="text-xl font-bold text-gray-900">
+            {language === 'zh' ? '分享你的漫画作品' : 'Share Your Comic'}
           </CardTitle>
           <Button
             variant="ghost"
@@ -188,11 +188,29 @@ export function ShareComicModal({
           </Button>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 bg-white p-6">
+          {/* 分享结果显示 */}
+          {shareResult && (
+            <div className={`p-4 rounded-lg border ${
+              shareResult.success
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-center space-x-2">
+                {shareResult.success ? (
+                  <CheckCircle className="h-5 w-5" />
+                ) : (
+                  <AlertCircle className="h-5 w-5" />
+                )}
+                <span className="font-medium">{shareResult.message}</span>
+              </div>
+            </div>
+          )}
+
           {/* 作品预览 */}
           <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-gray-700">
-              {t('share.preview')}
+            <h3 className="font-semibold text-sm text-gray-800">
+              {language === 'zh' ? '作品预览' : 'Preview'}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {panels.slice(0, 8).map((panel, index) => (
@@ -221,7 +239,7 @@ export function ShareComicModal({
           {/* 作品信息 */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-800 mb-2">
                 {language === 'zh' ? '作品标题' : 'Title'} *
               </label>
               <input
@@ -229,20 +247,20 @@ export function ShareComicModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={language === 'zh' ? '为你的作品起个好听的名字...' : 'Give your work a great title...'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                 maxLength={100}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-800 mb-2">
                 {language === 'zh' ? '作品描述' : 'Description'}
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={language === 'zh' ? '简单介绍一下你的作品...' : 'Tell others about your work...'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none bg-white text-gray-900"
                 rows={3}
                 maxLength={500}
               />
@@ -250,7 +268,7 @@ export function ShareComicModal({
 
             {/* 风格显示 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-800 mb-2">
                 {language === 'zh' ? '漫画风格' : 'Comic Style'}
               </label>
               <Badge variant="secondary" className="text-sm">

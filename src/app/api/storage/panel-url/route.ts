@@ -41,48 +41,49 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 构建R2对象键
-    const objectKey = `${userId}/projects/${projectId}/panels/panel_${panelNumber}.jpg`;
-    
-    console.log(`🔍 Looking for panel at key: ${objectKey}`);
-
-    // 获取R2客户端
+    // 查找实际的文件路径（因为用户ID可能不匹配）
+    const { getR2Client } = await import('@/lib/r2Storage');
     const r2Client = getR2Client();
-    
-    // 检查对象是否存在
+
+    // 搜索模式：*/projects/{projectId}/panels/panel_{panelNumber}.jpg
+    const searchSuffix = `/projects/${projectId}/panels/panel_${panelNumber}.jpg`;
+
+    let actualObjectKey: string | null = null;
+
     try {
-      await r2Client.headObject({
-        Bucket: process.env.R2_BUCKET_NAME!,
-        Key: objectKey,
-      });
-    } catch (error: any) {
-      if (error.name === 'NotFound') {
-        return NextResponse.json(
-          { error: 'Panel not found in cloud storage' },
-          { status: 404 }
-        );
+      // 列出所有文件，查找匹配的面板
+      const files = await r2Client.listFiles('', 1000);
+
+      // 查找匹配的文件
+      const matchingFile = files.find(file =>
+        file.key.endsWith(searchSuffix)
+      );
+
+      if (matchingFile) {
+        actualObjectKey = matchingFile.key;
+        console.log(`✅ Found actual file at: ${actualObjectKey}`);
       }
-      throw error;
+    } catch (error) {
+      console.error('❌ Error searching for file:', error);
     }
 
-    // 生成预签名URL（有效期1小时）
-    const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-    
-    const command = new GetObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME!,
-      Key: objectKey,
-    });
+    if (!actualObjectKey) {
+      // 如果找不到文件，使用默认路径
+      actualObjectKey = `${userId}/projects/${projectId}/panels/panel_${panelNumber}.jpg`;
+      console.log(`⚠️ File not found, using default path: ${actualObjectKey}`);
+    }
 
-    const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+    // 生成公开URL（用于分享功能）
+    const { generatePublicUrl } = await import('@/lib/r2Config');
+    const publicUrl = generatePublicUrl(actualObjectKey);
 
-    console.log(`✅ Generated signed URL for panel ${panelNumber}`);
+    console.log(`🔗 Generated public URL for panel ${panelNumber}: ${publicUrl}`);
 
     return NextResponse.json({
       success: true,
-      url: signedUrl,
-      objectKey,
-      expiresIn: 3600
+      url: publicUrl,
+      objectKey: actualObjectKey,
+      isPublic: true
     });
 
   } catch (error) {
