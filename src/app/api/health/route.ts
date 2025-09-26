@@ -1,19 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getR2Client } from '@/lib/r2Storage';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    // 测试 R2 连接
-    const r2Client = getR2Client();
-    
-    // 简单的连接测试
-    const testResult = await r2Client.testConnection();
-    
+    // 测试 Supabase 连接
+    const { data, error } = await supabase
+      .from('projects')
+      .select('count')
+      .limit(1);
+
+    const supabaseHealthy = !error;
+
     return NextResponse.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       services: {
-        r2Storage: testResult ? 'connected' : 'disconnected',
+        supabase: supabaseHealthy ? 'connected' : 'disconnected',
+        api: 'running'
       }
     });
   } catch (error) {

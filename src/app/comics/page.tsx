@@ -51,12 +51,12 @@ export default function ComicsPage() {
         page: currentPage,
         limit: 12,
         sort: sortBy,
-        style: selectedStyle || undefined,
-        search: searchQuery || undefined,
+        ...(selectedStyle && { style: selectedStyle }),
+        ...(searchQuery && { search: searchQuery }),
         ...params
       });
 
-      if (result.success) {
+      if (result.success && result.data) {
         setComics(result.data);
         if (result.pagination) {
           setTotalPages(result.pagination.totalPages);
@@ -88,9 +88,7 @@ export default function ComicsPage() {
     setCurrentPage(1);
     loadComics({
       page: 1,
-      sort: 'latest',
-      style: undefined,
-      search: undefined
+      sort: 'latest'
     });
   };
 

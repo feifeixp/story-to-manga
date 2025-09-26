@@ -312,7 +312,7 @@ Generate a single comic panel image with proper framing and composition.
 					if (result.imageData && projectId) {
 						try {
 							await cloudFirstStorage.initialize();
-							cloudUrl = await cloudFirstStorage.saveGeneratedPanel(
+							const saveResult = await cloudFirstStorage.saveGeneratedPanel(
 								projectId,
 								panel.panelNumber,
 								result.imageData,
@@ -324,7 +324,13 @@ Generate a single comic panel image with proper framing and composition.
 									characters: panel.characters,
 								}
 							);
-							panelLogger.info(`Panel ${panel.panelNumber} saved to cloud in batch: ${cloudUrl}`);
+
+							if (saveResult.success && saveResult.url) {
+								cloudUrl = saveResult.url;
+								panelLogger.info(`Panel ${panel.panelNumber} saved to cloud in batch: ${cloudUrl}`);
+							} else {
+								panelLogger.error(`Failed to save panel ${panel.panelNumber} to cloud in batch: ${saveResult.error}`);
+							}
 
 							// 如果成功保存到云端，获取公开URL用于前端显示
 							if (cloudUrl) {
@@ -333,11 +339,11 @@ Generate a single comic panel image with proper framing and composition.
 									publicImageUrl = generatePublicUrl(cloudUrl);
 									panelLogger.info(`Panel ${panel.panelNumber} public URL in batch: ${publicImageUrl}`);
 								} catch (urlError) {
-									panelLogger.error(`Failed to generate public URL for panel ${panel.panelNumber} in batch:`, urlError);
+									panelLogger.error(`Failed to generate public URL for panel ${panel.panelNumber} in batch: ${urlError}`);
 								}
 							}
 						} catch (cloudError) {
-							panelLogger.warn(`Failed to save panel ${panel.panelNumber} to cloud in batch:`, cloudError);
+							panelLogger.warn(`Failed to save panel ${panel.panelNumber} to cloud in batch: ${cloudError}`);
 							// 不影响主流程，继续处理
 						}
 					}

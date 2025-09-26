@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AuthService, User } from '@/lib/supabase';
+import { AuthService, User, supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -215,11 +215,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const result = await AuthService.updateProfile(updates);
     if (result.success) {
       // 更新本地用户状态，头像从updates中获取而不是从JWT
-      setUser(prev => prev ? {
-        ...prev,
-        name: updates.name || prev.name,
-        avatar: updates.avatar || prev.avatar
-      } : null);
+      setUser(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          ...(updates.name !== undefined && { name: updates.name }),
+          ...(updates.avatar !== undefined && { avatar: updates.avatar })
+        };
+      });
     }
     return result;
   };

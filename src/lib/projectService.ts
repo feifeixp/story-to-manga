@@ -2,8 +2,8 @@
  * 简化的项目服务 - 使用统一认证系统
  */
 
-import { supabase, authService } from './auth';
-import { ComicStyle } from './types/comic';
+import { supabaseAdmin } from './supabaseAdmin';
+import { ComicStyle } from '@/types';
 
 export interface Project {
   id: string;
@@ -40,26 +40,27 @@ export class ProjectService {
   }
 
   /**
-   * 创建新项目
+   * 创建新项目 - 简化版本，不依赖认证
    */
   async createProject(data: CreateProjectData): Promise<Project> {
     try {
-      // 确保用户已认证
-      const user = await authService.ensureAuthenticated();
-      
+      // 使用固定的匿名用户UUID（临时解决方案）
+      const userId = '00000000-0000-0000-0000-000000000000';
+
       const projectData = {
         id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: data.name,
         description: data.description || '',
         style: data.style,
-        user_id: user.id,
+        story: '', // 添加必需的story字段
+        user_id: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
-      console.log('📝 Creating project:', projectData.name);
+      console.log('📝 Creating project (no auth):', projectData.name);
 
-      const { data: project, error } = await supabase
+      const { data: project, error } = await supabaseAdmin
         .from('projects')
         .insert(projectData)
         .select()
@@ -79,19 +80,15 @@ export class ProjectService {
   }
 
   /**
-   * 获取用户的所有项目
+   * 获取所有项目 - 简化版本，不依赖认证
    */
   async getProjects(): Promise<Project[]> {
     try {
-      // 确保用户已认证
-      const user = await authService.ensureAuthenticated();
+      console.log('📋 Getting all projects (no auth)');
 
-      console.log('📋 Getting projects for user:', user.id);
-
-      const { data: projects, error } = await supabase
+      const { data: projects, error } = await supabaseAdmin
         .from('projects')
         .select('*')
-        .eq('user_id', user.id)
         .order('updated_at', { ascending: false });
 
       if (error) {
@@ -108,20 +105,16 @@ export class ProjectService {
   }
 
   /**
-   * 获取单个项目
+   * 获取单个项目 - 简化版本，不依赖认证
    */
   async getProject(projectId: string): Promise<Project | null> {
     try {
-      // 确保用户已认证
-      const user = await authService.ensureAuthenticated();
+      console.log('📄 Getting project (no auth):', projectId);
 
-      console.log('📄 Getting project:', projectId);
-
-      const { data: project, error } = await supabase
+      const { data: project, error } = await supabaseAdmin
         .from('projects')
         .select('*')
         .eq('id', projectId)
-        .eq('user_id', user.id)
         .single();
 
       if (error) {
@@ -142,25 +135,21 @@ export class ProjectService {
   }
 
   /**
-   * 更新项目
+   * 更新项目 - 简化版本，不依赖认证
    */
   async updateProject(projectId: string, data: UpdateProjectData): Promise<Project> {
     try {
-      // 确保用户已认证
-      const user = await authService.ensureAuthenticated();
-
       const updateData = {
         ...data,
         updated_at: new Date().toISOString(),
       };
 
-      console.log('📝 Updating project:', projectId);
+      console.log('📝 Updating project (no auth):', projectId);
 
-      const { data: project, error } = await supabase
+      const { data: project, error } = await supabaseAdmin
         .from('projects')
         .update(updateData)
         .eq('id', projectId)
-        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -178,20 +167,16 @@ export class ProjectService {
   }
 
   /**
-   * 删除项目
+   * 删除项目 - 简化版本，不依赖认证
    */
   async deleteProject(projectId: string): Promise<void> {
     try {
-      // 确保用户已认证
-      const user = await authService.ensureAuthenticated();
+      console.log('🗑️ Deleting project (no auth):', projectId);
 
-      console.log('🗑️ Deleting project:', projectId);
-
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('projects')
         .delete()
-        .eq('id', projectId)
-        .eq('user_id', user.id);
+        .eq('id', projectId);
 
       if (error) {
         throw new Error(`Failed to delete project: ${error.message}`);

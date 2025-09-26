@@ -116,7 +116,7 @@ export function ShareComicModal({
         panels: panels.map((panel, index) => ({
           panel_number: index + 1,
           image_url: panel.image_url,
-          text_content: panel.text_content
+          ...(panel.text_content && { text_content: panel.text_content })
         })),
         is_published: isPublic
       };

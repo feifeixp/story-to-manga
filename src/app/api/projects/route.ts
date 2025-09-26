@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { projectService } from '@/lib/projectService';
-import { ComicStyle } from '@/lib/types/comic';
+import { ComicStyle } from '@/types';
 
 /**
  * 获取项目列表

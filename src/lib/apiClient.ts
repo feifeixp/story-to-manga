@@ -7,11 +7,14 @@ import { Project, CreateProjectData, UpdateProjectData } from './projectService'
 export class ApiClient {
   private static instance: ApiClient;
   private baseUrl: string;
+  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  private pendingRequests: Map<string, Promise<any>> = new Map();
+  private readonly CACHE_DURATION = 5000; // 5秒缓存
 
   private constructor() {
-    this.baseUrl = typeof window !== 'undefined' 
-      ? window.location.origin 
-      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    this.baseUrl = typeof window !== 'undefined'
+      ? window.location.origin
+      : process.env['NEXT_PUBLIC_BASE_URL'] || 'http://localhost:3000';
   }
 
   public static getInstance(): ApiClient {
@@ -22,14 +25,33 @@ export class ApiClient {
   }
 
   /**
-   * 通用请求方法
+   * 通用请求方法 - 带缓存和防重复请求
    */
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const method = options.method || 'GET';
+    const cacheKey = `${method}:${endpoint}`;
+
+    // 对于 GET 请求，检查缓存
+    if (method === 'GET') {
+      const cached = this.cache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        console.log(`📦 Cache hit: ${cacheKey}`);
+        return cached.data;
+      }
+
+      // 检查是否有相同的请求正在进行
+      const pending = this.pendingRequests.get(cacheKey);
+      if (pending) {
+        console.log(`⏳ Request pending: ${cacheKey}`);
+        return pending;
+      }
+    }
+
     const url = `${this.baseUrl}/api${endpoint}`;
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -38,24 +60,48 @@ export class ApiClient {
       ...options,
     };
 
-    console.log(`🌐 API Request: ${config.method || 'GET'} ${url}`);
+    console.log(`🌐 API Request: ${method} ${url}`);
 
+    const requestPromise = this.executeRequest<T>(url, config, cacheKey, method);
+
+    // 对于 GET 请求，缓存 Promise
+    if (method === 'GET') {
+      this.pendingRequests.set(cacheKey, requestPromise);
+    }
+
+    return requestPromise;
+  }
+
+  private async executeRequest<T>(url: string, config: RequestInit, cacheKey: string, method: string): Promise<T> {
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log(`✅ API Response: ${config.method || 'GET'} ${url}`, data);
-      
+      console.log(`✅ API Response: ${method} ${url}`, data);
+
+      // 对于 GET 请求，缓存结果
+      if (method === 'GET') {
+        this.cache.set(cacheKey, {
+          data,
+          timestamp: Date.now()
+        });
+      }
+
       return data;
 
     } catch (error) {
-      console.error(`❌ API Error: ${config.method || 'GET'} ${url}`, error);
+      console.error(`❌ API Error: ${method} ${url}`, error);
       throw error;
+    } finally {
+      // 清理待处理请求
+      if (method === 'GET') {
+        this.pendingRequests.delete(cacheKey);
+      }
     }
   }
 

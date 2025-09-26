@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { StorageManager } from './storageManager';
+import { StorageManager } from './simpleStorage';
 
 /**
  * 安全的 Supabase 客户端包装器
@@ -7,8 +7,8 @@ import { StorageManager } from './storageManager';
  */
 
 // 从环境变量获取 Supabase 配置
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL']!;
+const supabaseAnonKey = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!;
 
 // 验证环境变量是否存在
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -174,7 +174,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 
   // 记录存储使用情况
   if (typeof window !== 'undefined') {
-    console.log('Storage status:', StorageManager.getStorageStats());
+    console.log('Storage status:', StorageManager.getStorageInfo());
   }
 });
 
@@ -357,7 +357,7 @@ export class AuthService {
           .from('profiles')
           .upsert({
             id: user.id,
-            name: updates.name || user.user_metadata?.name || user.email?.split('@')[0],
+            name: updates.name || user.user_metadata?.['name'] || user.email?.split('@')[0],
             avatar_url: updates.avatar,
             updated_at: new Date().toISOString()
           });

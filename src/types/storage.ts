@@ -355,45 +355,4 @@ export interface StorageEvent {
   data?: any;
 }
 
-// ===== 导出所有类型 =====
-
-export type {
-  // 主要数据结构
-  ProjectData,
-  ProjectMetadata,
-  ProjectInput,
-  ProjectGeneration,
-  ProjectUserUploads,
-  ProjectGenerationState,
-  
-  // AI生成数据
-  StoryAnalysisData,
-  CharacterReferencesData,
-  StoryBreakdownData,
-  PanelsGenerationData,
-  
-  // 公开分享
-  PublicComicData,
-  PublicComicAuthor,
-  PublicComicPanel,
-  TemporaryShareData,
-  
-  // 操作相关
-  LoadOptions,
-  SaveOptions,
-  StorageResult,
-  BatchStorageResult,
-  
-  // 配置相关
-  StoragePathConfig,
-  FileStorageConfig,
-  CacheConfig,
-  
-  // 统计和验证
-  StorageStats,
-  UserStorageStats,
-  ValidationResult,
-  
-  // 事件
-  StorageEvent
-};
+// 所有类型都已经在定义时导出，无需重复导出

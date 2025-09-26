@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { apiClient } from "@/lib/apiClient";
 import type { ProjectListItem, CreateProjectParams, ImageSizeConfig } from "@/types/project";
-import { IMAGE_SIZE_PRESETS } from "@/types/project";
+import { IMAGE_SIZE_PRESETS, DEFAULT_IMAGE_SIZE } from "@/types/project";
 import type { ComicStyle } from "@/types";
 
 interface ProjectManagerProps {
@@ -40,13 +40,7 @@ function ProjectManager({
 	const [loadError, setLoadError] = useState<string | null>(null);
 
 	// 加载项目列表
-	useEffect(() => {
-		if (isOpen) {
-			loadProjects();
-		}
-	}, [isOpen]);
-
-	const loadProjects = async () => {
+	const loadProjects = useCallback(async () => {
 		setIsLoading(true);
 		setLoadError(null);
 
@@ -65,7 +59,7 @@ function ProjectManager({
 					style: project.style,
 					panelCount: 0, // TODO: 从项目数据中获取
 					characterCount: 0, // TODO: 从项目数据中获取
-					imageSize: { width: 1920, height: 1080 }, // 默认尺寸
+					imageSize: DEFAULT_IMAGE_SIZE, // 使用完整的默认尺寸配置
 				}));
 
 				console.log('📋 ProjectManager: Loaded projects:', projectList.length);
@@ -98,7 +92,14 @@ function ProjectManager({
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, []);
+
+	// 当对话框打开时加载项目
+	useEffect(() => {
+		if (isOpen) {
+			loadProjects();
+		}
+	}, [isOpen, loadProjects]);
 
 	const handleCreateProject = async () => {
 		if (!newProjectName.trim()) return;
@@ -366,20 +367,18 @@ function ProjectManager({
 									console.log('🔍 ProjectManager: Project data structure:', {
 										project,
 										hasId: !!project.id,
-										hasMetadata: !!project.metadata,
-										actualId: project.id || project.metadata?.id,
 										projectKeys: Object.keys(project)
 									});
 
-									// 获取正确的项目ID和数据
-									const projectId = project.id || project.metadata?.id;
-									const projectName = project.name || project.metadata?.name;
-									const projectDescription = project.description || project.metadata?.description;
-									const projectCreatedAt = project.createdAt || project.metadata?.createdAt;
-									const projectUpdatedAt = project.updatedAt || project.metadata?.updatedAt;
-									const projectStyle = project.style || project.metadata?.style;
-									const projectPanelCount = project.panelCount || project.metadata?.panelCount || 0;
-									const projectCharacterCount = project.characterCount || project.metadata?.characterCount || 0;
+									// 获取项目数据
+									const projectId = project.id;
+									const projectName = project.name;
+									const projectDescription = project.description;
+									const projectCreatedAt = project.createdAt;
+									const projectUpdatedAt = project.updatedAt;
+									const projectStyle = project.style;
+									const projectPanelCount = project.panelCount || 0;
+									const projectCharacterCount = project.characterCount || 0;
 
 									return (
 										<div

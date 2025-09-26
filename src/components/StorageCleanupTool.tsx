@@ -3,15 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { StorageManager } from '@/lib/storageManager';
+import { StorageManager } from '@/lib/simpleStorage';
 import { Trash2, HardDrive, AlertTriangle, CheckCircle, Database } from 'lucide-react';
 
-interface StorageInfo {
-  used: number;
-  available: number;
-  percentage: number;
-  items: Array<{ key: string; size: number }>;
-}
+import { StorageInfo } from '@/lib/simpleStorage';
 
 interface MemoryStorageStatus {
   usingMemoryStorage: boolean;
@@ -46,14 +41,14 @@ export function StorageCleanupTool() {
 
     try {
       const beforeInfo = StorageManager.getStorageInfo();
-      StorageManager.performCleanup();
-      
+      StorageManager.emergencyCleanup();
+
       // 等待一下让清理完成
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const afterInfo = StorageManager.getStorageInfo();
       const savedSpace = beforeInfo.used - afterInfo.used;
-      
+
       setCleanupResult(`清理完成！释放了 ${(savedSpace / 1024).toFixed(1)}KB 空间`);
       refreshStorageInfo();
     } catch (error) {
@@ -169,24 +164,15 @@ export function StorageCleanupTool() {
           </div>
         )}
 
-        {/* 存储项目列表 */}
+        {/* 存储信息 */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">存储项目 ({storageInfo.items.length})</h4>
-          <div className="max-h-32 overflow-y-auto space-y-1">
-            {storageInfo.items.slice(0, 5).map((item, index) => (
-              <div key={index} className="flex justify-between text-xs">
-                <span className="truncate flex-1 mr-2" title={item.key}>
-                  {item.key}
-                </span>
-                <span className="text-gray-500">
-                  {(item.size / 1024).toFixed(1)}KB
-                </span>
-              </div>
-            ))}
-            {storageInfo.items.length > 5 && (
-              <div className="text-xs text-gray-400 text-center">
-                还有 {storageInfo.items.length - 5} 个项目...
-              </div>
+          <h4 className="text-sm font-medium">存储详情</h4>
+          <div className="text-xs text-gray-600">
+            <div>已使用: {(storageInfo.used / 1024).toFixed(2)} KB</div>
+            <div>可用空间: {(storageInfo.available / 1024).toFixed(2)} KB</div>
+            <div>使用率: {storageInfo.percentage.toFixed(1)}%</div>
+            {storageInfo.hasData && storageInfo.timestamp && (
+              <div>最后保存: {new Date(storageInfo.timestamp).toLocaleString()}</div>
             )}
           </div>
         </div>

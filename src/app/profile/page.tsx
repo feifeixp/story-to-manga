@@ -105,27 +105,32 @@ export default function ProfilePage() {
         reader.readAsDataURL(file);
       });
 
-      // 使用云存储API上传头像
-      const { cloudStorage } = await import('@/lib/cloudStorage');
+      // 使用 Supabase 存储上传头像
+      const { supabase } = await import('@/lib/supabase');
 
-      const uploadResult = await cloudStorage.uploadFiles([{
-        data: base64Data,
-        name: `avatar_${Date.now()}.${file.type.split('/')[1]}`,
-        type: file.type,
-        category: 'avatar',
-        isPublic: false
-      }]);
+      const fileName = `avatar_${Date.now()}.${file.type.split('/')[1]}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: true
+        });
 
-      if (uploadResult.length > 0) {
-        // 返回云存储URL而不是base64数据
-        return uploadResult[0].url;
-      } else {
-        throw new Error('Upload failed');
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
+
+      // 获取公共URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // 返回上传成功的URL
+      return urlData.publicUrl;
     } catch (error) {
       console.error('Avatar upload failed:', error);
       // 如果上传失败，生成一个placeholder URL而不是base64
-      const firstLetter = (user?.name || user?.email || 'U')[0].toUpperCase();
+      const firstLetter = (user?.name || user?.email || 'U')[0]?.toUpperCase() || 'U';
       return `https://via.placeholder.com/120x120/6366F1/FFFFFF?text=${firstLetter}`;
     }
   };

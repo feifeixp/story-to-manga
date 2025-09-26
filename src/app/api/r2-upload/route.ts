@@ -4,10 +4,10 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 // R2客户端配置
 const r2Client = new S3Client({
   region: 'auto',
-  endpoint: process.env.R2_ENDPOINT,
+  endpoint: process.env['R2_ENDPOINT'] || 'https://your-account-id.r2.cloudflarestorage.com',
   credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env['R2_ACCESS_KEY_ID']!,
+    secretAccessKey: process.env['R2_SECRET_ACCESS_KEY']!,
   },
 });
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const jsonData = JSON.stringify(data, null, 2);
 
     const putJsonCommand = new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME!,
+      Bucket: process.env['R2_BUCKET_NAME']!,
       Key: jsonKey,
       Body: jsonData,
       ContentType: 'application/json',
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ JSON文件上传成功: ${jsonKey}`);
 
     // 2. 生成公开访问URL
-    const publicDomain = process.env.R2_PUBLIC_DOMAIN || process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN;
+    const publicDomain = process.env['R2_PUBLIC_DOMAIN'] || process.env['NEXT_PUBLIC_R2_PUBLIC_DOMAIN'];
     const publicUrl = `${publicDomain}/${jsonKey}`;
 
     // 3. 如果有面板图片需要上传（base64格式）
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
             // 上传图片
             const imageKey = `projects/${projectId}/panels/panel_${panel.panelNumber}.jpg`;
             const putImageCommand = new PutObjectCommand({
-              Bucket: process.env.R2_BUCKET_NAME!,
+              Bucket: process.env['R2_BUCKET_NAME']!,
               Key: imageKey,
               Body: imageBuffer,
               ContentType: 'image/jpeg',
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
             
             const characterKey = `projects/${projectId}/characters/${character.name.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
             const putCharacterCommand = new PutObjectCommand({
-              Bucket: process.env.R2_BUCKET_NAME!,
+              Bucket: process.env['R2_BUCKET_NAME']!,
               Key: characterKey,
               Body: imageBuffer,
               ContentType: 'image/jpeg',
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     if (uploadedImages > 0 || uploadedCharacters > 0) {
       const updatedJsonData = JSON.stringify(data, null, 2);
       const updateJsonCommand = new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME!,
+        Bucket: process.env['R2_BUCKET_NAME']!,
         Key: jsonKey,
         Body: updatedJsonData,
         ContentType: 'application/json',
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 生成项目JSON的公开访问URL
-    const publicDomain = process.env.R2_PUBLIC_DOMAIN || process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN;
+    const publicDomain = process.env['R2_PUBLIC_DOMAIN'] || process.env['NEXT_PUBLIC_R2_PUBLIC_DOMAIN'];
     const jsonUrl = `${publicDomain}/projects/${projectId}/project-complete.json`;
 
     // 测试文件是否存在

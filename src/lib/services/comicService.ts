@@ -1,13 +1,14 @@
 import { supabase } from '@/lib/supabase';
-import type { 
-  Comic, 
-  ComicPanel, 
-  ComicListParams, 
-  CreateComicData, 
+import type {
+  Comic,
+  ComicPanel,
+  ComicListParams,
+  CreateComicData,
   UpdateComicData,
   UserComicInteraction,
   ComicStats
 } from '@/lib/types/comic';
+import type { ComicStyle } from '@/types';
 
 export class ComicService {
   // 获取漫画列表
@@ -83,22 +84,21 @@ export class ComicService {
         id: work.id,
         title: work.title,
         description: work.description,
-        style: work.tags?.[0] || 'manga', // 使用第一个tag作为style
         author_id: work.author_id,
-        author: work.author,
-        thumbnail_url: work.thumbnail_url,
-        total_panels: 0, // 这个需要从项目数据中获取
-        is_published: work.is_published,
-        visibility: work.visibility,
+        author_name: work.author?.name || 'Unknown Author',
+        author_avatar: work.author?.avatar_url,
+        cover_image: work.thumbnail_url || '/placeholder-comic.svg',
+        style: work.tags?.[0] || 'manga', // 使用第一个tag作为style
+        panels: [], // 面板数据需要单独加载
         tags: work.tags || [],
-        view_count: work.view_count || 0,
-        like_count: work.like_count || 0,
-        favorite_count: work.favorite_count || 0,
         created_at: work.created_at,
         updated_at: work.updated_at,
         published_at: work.created_at, // 使用created_at作为published_at
-        project_id: work.project_id,
-        panels: [] // 面板数据需要单独加载
+        is_published: work.is_published,
+        likes_count: work.like_count || 0,
+        favorites_count: work.favorite_count || 0,
+        views_count: work.view_count || 0,
+        total_panels: 0 // 这个需要从项目数据中获取
       }));
 
       return {
@@ -218,13 +218,9 @@ export class ComicService {
   static async recordView(comicId: string, userId?: string) {
     try {
       // 增加浏览计数
+      // 使用 RPC 函数来增加浏览计数
       const { error: updateError } = await supabase
-        .from('comics')
-        .update({ 
-          views_count: supabase.sql`views_count + 1`,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', comicId);
+        .rpc('increment_comic_views', { comic_id: comicId });
 
       if (updateError) {
         throw new Error(updateError.message);
@@ -274,12 +270,7 @@ export class ComicService {
 
         // 减少点赞计数
         const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            likes_count: supabase.sql`likes_count - 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
+          .rpc('decrement_comic_likes', { comic_id: comicId });
 
         if (updateError) {
           throw new Error(updateError.message);
@@ -301,12 +292,7 @@ export class ComicService {
 
         // 增加点赞计数
         const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            likes_count: supabase.sql`likes_count + 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
+          .rpc('increment_comic_likes', { comic_id: comicId });
 
         if (updateError) {
           throw new Error(updateError.message);
@@ -347,12 +333,7 @@ export class ComicService {
 
         // 减少收藏计数
         const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            favorites_count: supabase.sql`favorites_count - 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
+          .rpc('decrement_comic_favorites', { comic_id: comicId });
 
         if (updateError) {
           throw new Error(updateError.message);
@@ -374,12 +355,7 @@ export class ComicService {
 
         // 增加收藏计数
         const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            favorites_count: supabase.sql`favorites_count + 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
+          .rpc('increment_comic_favorites', { comic_id: comicId });
 
         if (updateError) {
           throw new Error(updateError.message);
@@ -434,9 +410,8 @@ export class ComicService {
     try {
       console.log('🔧 ComicService.createComic called with:', { data, userId, userName, userAvatar });
 
-      // 使用统一API客户端创建项目和发布作品
-      const { UnifiedAPIClient } = await import('@/lib/unifiedApiClient');
-      const apiClient = new UnifiedAPIClient();
+      // 使用新的API客户端创建项目和发布作品
+      const { apiClient } = await import('@/lib/apiClient');
 
       // 1. 首先创建一个项目
       console.log('📝 Step 1: Creating project for comic...');
@@ -444,12 +419,12 @@ export class ComicService {
       const projectData = {
         name: data.title,
         description: data.description,
-        story: `漫画作品：${data.title}\n\n${data.description}\n\n面板内容：\n${data.panels.map((panel, index) => `面板 ${index + 1}: ${panel.text_content}`).join('\n')}`,
-        style: data.style
+        story: `漫画作品：${data.title}\n\n${data.description}\n\n面板内容：\n${data.panels.map((panel, index) => `面板 ${index + 1}: ${panel.text_content || ''}`).join('\n')}`,
+        style: data.style as ComicStyle
       };
 
       const project = await apiClient.createProject(projectData);
-      console.log('✅ Project created:', project.id);
+      console.log('✅ Project created:', project.projectId);
 
       // 2. 保存漫画面板数据到项目存储
       console.log('📝 Step 2: Saving comic panels data...');
@@ -474,71 +449,27 @@ export class ComicService {
       try {
         console.log('💾 Attempting to save comic data to unified storage...');
         console.log('📊 Request data:', {
-          projectId: project.id,
+          projectId: project.projectId,
           story: projectData.story?.substring(0, 100) + '...',
           metadataKeys: Object.keys(comicMetadata)
         });
 
-        // 使用统一存储适配器保存数据
-        const { storageAdapter } = await import('@/lib/storageAdapter');
+        // 使用项目服务保存数据
+        const { projectService } = await import('@/lib/projectService');
 
-        await storageAdapter.saveProjectData(
-          project.id,
-          projectData.story || `漫画作品：${data.title}`, // 确保story不为空
-          projectData.style || 'manga',
-          null, // storyAnalysis
-          null, // storyBreakdown
-          [], // characterReferences
-          data.panels.map((panel, index) => ({
-            panelNumber: panel.panel_number || (index + 1),
-            image: panel.image_url,
-            description: panel.text_content || `面板 ${index + 1}`,
-            characters: [],
-            setting: '',
-            dialogue: panel.text_content || '',
-            action: '',
-            mood: '',
-            prompt: `漫画面板 ${index + 1}: ${panel.text_content}`
-          })),
-          [], // uploadedCharacterReferences
-          [], // uploadedSettingReferences
-          { width: 512, height: 768, aspectRatio: '2:3' }, // imageSize
-          { isGenerating: false, currentStep: 'completed', progress: 100 }, // generationState
-          'manual', // aiModel - 手动创建的漫画
-          {
-            type: 'shared-comic',
-            title: data.title,
-            description: data.description,
-            authorId: userId,
-            authorName: userName,
-            createdAt: new Date().toISOString()
-          }, // setting
-          [] // scenes
-        );
+        await projectService.updateProject(project.projectId, {
+          name: data.title,
+          description: data.description || `漫画作品：${data.title}`,
+          style: projectData.style || 'manga'
+        });
+
+        console.log('✅ Project updated with comic data');
 
         console.log('✅ Comic data saved to unified storage');
       } catch (storageError) {
         console.warn('⚠️ Failed to save comic data to unified storage, but continuing...', storageError);
-        // 如果统一存储失败，尝试直接本地保存作为备份
-        try {
-          const { saveProjectData } = await import('@/lib/projectStorage');
-          await saveProjectData(
-            project.id,
-            projectData.story,
-            projectData.style,
-            null, // storyAnalysis
-            null, // storyBreakdown
-            [], // characterReferences
-            [], // generatedPanels
-            [], // uploadedCharacterReferences
-            [], // uploadedSettingReferences
-            { width: 512, height: 768 }, // imageSize
-            null // generationState
-          );
-          console.log('✅ Comic data saved to local storage as backup');
-        } catch (localError) {
-          console.warn('⚠️ Local backup also failed:', localError);
-        }
+        // 如果项目服务失败，记录错误但继续
+        console.log('⚠️ Project service failed, but comic creation will continue');
       }
 
       // 3. 如果需要发布，则发布作品
@@ -546,7 +477,7 @@ export class ComicService {
         console.log('📝 Step 3: Publishing work...');
 
         const publishData = {
-          projectId: project.id,
+          projectId: project.projectId,
           title: data.title,
           description: data.description,
           tags: data.tags || [],
@@ -555,17 +486,22 @@ export class ComicService {
         };
 
         try {
-          const publishResponse = await apiClient.request('/sharing/publish', {
+          const publishResponse = await fetch('/api/sharing/publish', {
             method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
             body: JSON.stringify(publishData)
           });
 
-          if (!publishResponse.success) {
-            console.error('❌ Failed to publish work:', publishResponse.error);
-            throw new Error(`Failed to publish work: ${publishResponse.error || 'Unknown error'}`);
+          const result = await publishResponse.json();
+
+          if (!result.success) {
+            console.error('❌ Failed to publish work:', result.error);
+            throw new Error(`Failed to publish work: ${result.error || 'Unknown error'}`);
           }
 
-          console.log('✅ Work published successfully:', publishResponse.data);
+          console.log('✅ Work published successfully:', result.data);
         } catch (publishError) {
           console.error('❌ Publish request failed:', publishError);
           // 发布失败不应该影响整个创建流程，只是记录错误
@@ -576,11 +512,11 @@ export class ComicService {
       return {
         success: true,
         data: {
-          id: project.id,
+          id: project.projectId,
           title: data.title,
           description: data.description,
           isPublished: data.is_published,
-          projectId: project.id
+          projectId: project.projectId
         }
       };
     } catch (error) {

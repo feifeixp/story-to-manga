@@ -142,7 +142,11 @@ export class StoragePathManager {
     }
 
     const [, userType, userId, projectId] = match;
-    
+
+    if (!userId || !projectId) {
+      return null;
+    }
+
     return {
       userId,
       projectId,
