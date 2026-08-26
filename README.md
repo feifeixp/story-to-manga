@@ -1,3 +1,5 @@
+
+
 # Story to Manga Machine Enhanced 🎨
 
 **The Ultimate AI-Powered Story-to-Visual Converter**
@@ -404,7 +406,7 @@ After updating, verify these features are working:
    - Open browser DevTools → Application → Storage → Clear site data
 3. **Reinstall Dependencies**:
    ```bash
-   rm -rf node_modules package-lock.json
+   rm -rf node_modules pnpm-lock.yaml
    pnpm install
    ```
 4. **Check API Keys**: Ensure your `.env.local` file has valid API keys
