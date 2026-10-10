@@ -34,7 +34,8 @@
 		"check": "npm run typecheck && npm run lint && npm run knip",
 		"test": "node --test tests/*.test.mjs",
 		"test:storage": "node --test tests/project-storage.test.mjs",
-		"test:workflow": "node --test tests/studio-workflow.test.mjs"
+		"test:workflow": "node --test tests/studio-workflow.test.mjs",
+		"build:market": "node scripts/build-market.mjs"
 	},
 	"dependencies": {
 		"@google/genai": "1.19.0",
@@ -43,6 +44,7 @@
 		"@supabase/supabase-js": "^2.57.4",
 		"@types/crypto-js": "^4.2.2",
 		"@volcengine/openapi": "^1.32.0",
+		"ali-oss": "^6.23.0",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"crypto-js": "^4.2.0",
@@ -67,6 +69,7 @@
 		"@types/node": "24.3.1",
 		"@types/react": "19.1.12",
 		"@types/react-dom": "19.1.9",
+		"esbuild": "^0.28.2",
 		"knip": "5.63.1",
 		"postcss": "8.5.6",
 		"tailwindcss": "4.1.13",

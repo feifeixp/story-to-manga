@@ -6,12 +6,23 @@ export type ApiClient = <T>(
 	signal?: AbortSignal,
 ) => Promise<T>;
 
+let services: {
+	api: ApiClient;
+	imageSource: (source: string) => string;
+} | null = null;
+
+/** Installed by the standalone Market entry point; the Next.js app keeps its APIs. */
+export function configureStudioServices(value: typeof services) {
+	services = value;
+}
+
 /** No retries here: an uncertain paid request must not silently be submitted twice. */
 export const requestStudioApi: ApiClient = async <T>(
 	path: string,
 	body: unknown,
 	signal?: AbortSignal,
 ): Promise<T> => {
+	if (services) return services.api<T>(path, body, signal);
 	const controller = new AbortController();
 	const abort = () => controller.abort();
 	signal?.addEventListener("abort", abort, {
@@ -141,6 +152,7 @@ export async function generatePendingPanels(options: {
 
 /** Reuse the existing proxy URL returned by Volcengine rather than proxying it twice. */
 export function studioImageSource(source: string): string {
+	if (services) return services.imageSource(source);
 	if (source.startsWith("data:image/") || source.startsWith("blob:"))
 		return source;
 	if (source.startsWith("/api/image-proxy?")) return source;

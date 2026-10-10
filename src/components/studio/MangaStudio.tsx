@@ -141,7 +141,18 @@ type Dialog =
 	| "versions"
 	| null;
 type Panel = StoryBreakdown["panels"][number];
-export default function MangaStudio() {
+export default function MangaStudio({
+	deployment = "next",
+	imageModels = [],
+	modelNotice = "",
+	previewImage = "/studio/story-preview.svg",
+}: {
+	deployment?: "next" | "neowow";
+	imageModels?: { id: string; name: string }[];
+	modelNotice?: string;
+	previewImage?: string;
+} = {}) {
+	const market = deployment === "neowow";
 	const fieldPrefix = useId();
 	const { language } = useI18n();
 	const router = useRouter();
@@ -366,7 +377,8 @@ export default function MangaStudio() {
 						(reference) => reference.name === character.name && reference.image,
 					),
 			);
-			if (missingCharacters.length) {
+			for (const character of missingCharacters) {
+				if (pause.current) return;
 				setStatus(
 					copy("正在绘制角色参考图…", "Creating character reference images…"),
 				);
@@ -375,7 +387,7 @@ export default function MangaStudio() {
 				}>(
 					"/api/generate-character-refs",
 					{
-						characters: missingCharacters,
+						characters: [character],
 						setting: analysis.setting,
 						style: snapshot.style,
 						uploadedCharacterReferences: snapshot.uploadedCharacterReferences,
@@ -405,12 +417,8 @@ export default function MangaStudio() {
 				});
 				await save();
 				if (
-					missingCharacters.some(
-						(character) =>
-							!references.some(
-								(reference) =>
-									reference.name === character.name && reference.image,
-							),
+					!references.some(
+						(reference) => reference.name === character.name && reference.image,
 					)
 				)
 					throw new Error(
@@ -1088,7 +1096,7 @@ export default function MangaStudio() {
 				</div>
 				<div className="studio-top-actions">
 					<Link
-						href="/comics"
+						href={market ? "/about" : "/comics"}
 						className="studio-text-link gallery-link"
 						aria-disabled={busy}
 						onClick={(event) => {
@@ -1096,11 +1104,13 @@ export default function MangaStudio() {
 							if (!busyRef.current)
 								void run(async () => {
 									await save();
-									router.push("/comics");
+									router.push(market ? "/about" : "/comics");
 								});
 						}}
 					>
-						{copy("作品画廊", "Gallery")}
+						{market
+							? copy("使用说明与源码", "Guide & source")
+							: copy("作品画廊", "Gallery")}
 					</Link>
 					<LanguageSwitcher />
 					<button
@@ -1647,7 +1657,9 @@ export default function MangaStudio() {
 												{Object.entries(IMAGE_SIZE_PRESETS).map(
 													([key, size]) => (
 														<option key={key} value={key}>
-															{size.aspectRatio} · {size.width} × {size.height}
+															{market
+																? size.aspectRatio
+																: `${size.aspectRatio} · ${size.width} × ${size.height}`}
 														</option>
 													),
 												)}
@@ -1671,15 +1683,29 @@ export default function MangaStudio() {
 												<option value="auto">
 													{copy("自动选择", "Automatic")}
 												</option>
-												<option value="nanobanana">Google Gemini</option>
-												<option value="volcengine">
-													{copy("火山引擎 Doubao", "Volcengine Doubao")}
-												</option>
+												{market ? (
+													imageModels.map((model) => (
+														<option key={model.id} value={model.id}>
+															{model.name}
+														</option>
+													))
+												) : (
+													<>
+														<option value="nanobanana">Google Gemini</option>
+														<option value="volcengine">
+															{copy("火山引擎 Doubao", "Volcengine Doubao")}
+														</option>
+													</>
+												)}
 											</select>
 											<p className="muted micro">
 												{copy(
-													"使用服务器已配置的模型。故事拆解由 Google 文本模型完成。",
-													"Uses server-configured providers. Story planning uses the Google text model.",
+													market
+														? modelNotice
+														: "使用服务器已配置的模型。故事拆解由 Google 文本模型完成。",
+													market
+														? "Sign in to NeoWoW to load models. AI uses your own text plan and image credits; resolution follows model defaults."
+														: "Uses server-configured providers. Story planning uses the Google text model.",
 												)}
 											</p>
 										</fieldset>
@@ -1687,7 +1713,7 @@ export default function MangaStudio() {
 									<section className="inspiration-card">
 										<div className="inspiration-art">
 											<img
-												src="/studio/story-preview.svg"
+												src={previewImage}
 												alt={copy(
 													"雨巷旧书店的故事示意插画",
 													"Illustrated rainy bookshop story example",
@@ -2408,12 +2434,18 @@ export default function MangaStudio() {
 									<Upload size={22} />
 									<span>
 										<strong>
-											{copy("分享到作品画廊", "Share to the gallery")}
+											{market
+												? copy("分享导出的作品", "Share exported artwork")
+												: copy("分享到作品画廊", "Share to the gallery")}
 										</strong>
 										<small>
 											{copy(
-												"下一步确认标题与可见范围，需要登录",
-												"Review title and visibility next. Sign-in required",
+												market
+													? "导出漫画文件后自行分享"
+													: "下一步确认标题与可见范围，需要登录",
+												market
+													? "Export comic files to share them yourself."
+													: "Review title and visibility next. Sign-in required",
 											)}
 										</small>
 									</span>
@@ -2479,8 +2511,12 @@ export default function MangaStudio() {
 							</p>
 							<p>
 								{copy(
-									"模型需要由部署者在服务器端配置 Google AI / 火山引擎凭据。此版本保留现有真实 API，尚未接入 Neowow。请勿把密钥提交到 GitHub，或填入故事与参考描述。",
-									"The operator configures Google AI / Volcengine credentials on the server. This version keeps the existing real APIs; Neowow is not integrated yet. Never put keys in GitHub, your story, or reference descriptions.",
+									market
+										? "Market 版使用 NeoWoW 网页 AI 接口。点击右上角账户登录后，文本规划使用自己的 Coding Plan 额度，图像生成使用自己的积分。输出尺寸以模型默认值为准。网页 AI 和 CLI 使用不同凭证。"
+										: "模型需要由部署者在服务器端配置 Google AI / 火山引擎凭据。此版本保留现有真实 API，尚未接入 Neowow。请勿把密钥提交到 GitHub，或填入故事与参考描述。",
+									market
+										? "The Market edition uses NeoWoW web AI APIs. Sign in through the account button; planning uses your own Coding Plan quota and images use your own credits. Output resolution follows model defaults. Web AI and CLI use different credentials."
+										: "The operator configures Google AI / Volcengine credentials on the server. This version keeps the existing real APIs; Neowow is not integrated yet. Never put keys in GitHub, your story, or reference descriptions.",
 								)}
 							</p>
 							<p>
@@ -2501,8 +2537,12 @@ export default function MangaStudio() {
 							</p>
 							<p className="muted micro">
 								{copy(
-									"CLI Key 不要填入故事或项目备份，也不要提交到 GitHub。此步骤仅配置 CLI，不能替代当前工作台的 Google / 火山引擎服务端凭据。",
-									"Keep the CLI Key out of stories, project backups and GitHub. CLI setup does not replace this studio’s Google / Volcengine server credentials.",
+									market
+										? "CLI Key 不要填入故事或项目备份，也不要提交到 GitHub。CLI 配置在自己的终端完成，不能用网页登录凭证替代。"
+										: "CLI Key 不要填入故事或项目备份，也不要提交到 GitHub。此步骤仅配置 CLI，不能替代当前工作台的 Google / 火山引擎服务端凭据。",
+									market
+										? "Keep CLI keys out of stories, backups and GitHub. Configure the CLI in your own terminal using its dedicated Key."
+										: "Keep the CLI Key out of stories, project backups and GitHub. CLI setup does not replace this studio’s Google / Volcengine server credentials.",
 								)}
 							</p>
 						</>
