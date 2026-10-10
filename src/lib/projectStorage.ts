@@ -161,11 +161,10 @@ const projectImageStorage = new ProjectImageStorage();
 // Without Web Locks, autosaves retain old image revisions rather than risking cross-tab loss.
 let pendingOperations: Promise<void> = Promise.resolve();
 function enqueueOperation<T>(action: (hasExclusiveLock: boolean) => Promise<T>): Promise<T> {
-	const result = pendingOperations.then(() => {
+	const result = pendingOperations.then(async (): Promise<T> => {
 		const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
-		return locks
-			? locks.request("manga-project-storage", { mode: "exclusive" }, () => action(true))
-			: action(false);
+		if (locks) return await locks.request("manga-project-storage", { mode: "exclusive" }, async () => await action(true));
+		return await action(false);
 	});
 	pendingOperations = result.then(() => undefined, () => undefined);
 	return result;

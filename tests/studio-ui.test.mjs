@@ -12,7 +12,7 @@ if (process.env.STUDIO_TRANSFORM_MODULE) {
   compile = (code, file) => babel.babelTransform(code, file, false, [], []).code;
 } else {
   const ts = require('typescript');
-  compile = (code, file) => ts.transpileModule(code, {fileName:file,compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+  compile = (code, file) => ts.transpileModule(code, {fileName:file,compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
 }
 const source = stripTypeScriptTypes(readFileSync(new URL('../src/lib/studioWorkflow.ts',import.meta.url),'utf8'),{mode:'transform'});
 const workflow = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
@@ -23,7 +23,7 @@ function harness(initial=base()) {
   const hooks=[];let cursor=0; const calls=[],routes=[];let saves=0;let pending=[];
   const state={project:structuredClone(initial)};
   const store={current:{current:state.project},get project(){return state.project},update(fn){state.project=fn(state.project);store.current.current=state.project},async save(){saves++},async open(){},async create(){state.project=base();store.current.current=state.project},loading:false,saveStatus:'saved',storageError:''};
-  const react={useState(initial){const index=cursor++;if(!(index in hooks))hooks[index]=typeof initial==='function'?initial():initial;return[hooks[index],value=>{hooks[index]=typeof value==='function'?value(hooks[index]):value}]},useRef(initial){const index=cursor++;if(!(index in hooks))hooks[index]={current:initial};return hooks[index]},useEffect(){cursor++}};
+  const react={useId(){cursor++;return "test-studio"},useState(initial){const index=cursor++;if(!(index in hooks))hooks[index]=typeof initial==='function'?initial():initial;return[hooks[index],value=>{hooks[index]=typeof value==='function'?value(hooks[index]):value}]},useRef(initial){const index=cursor++;if(!(index in hooks))hooks[index]={current:initial};return hooks[index]},useEffect(){cursor++}};
   const jsx=(type,props)=>({type,props:props||{}});
   const external=(name)=>(props)=>jsx('mock-component',{'data-component':name,...props});
   let provider=async(path,body)=>{if(path==='/api/analyze-story')return{analysis};if(path==='/api/chunk-story')return{storyBreakdown:{panels:[panel(1),panel(2),panel(3),panel(4)]}};if(path==='/api/generate-character-refs')return{characterReferences:[{name:'小满',description:'短发',image:'data:image/png;base64,REF'}]};if(path==='/api/generate-panel')return{generatedPanel:{panelNumber:body.panel.panelNumber,image:`data:image/png;base64,PANEL${body.panel.panelNumber}`}};return{imageData:'data:image/png;base64,EDIT'}};

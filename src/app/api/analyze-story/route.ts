@@ -37,11 +37,6 @@ interface AnalysisData {
 	scenes: Scene[];
 }
 
-const apiKey = process.env["GOOGLE_AI_API_KEY"];
-if (!apiKey) {
-	console.error("GOOGLE_AI_API_KEY environment variable is not set");
-}
-const genAI = new GoogleGenAI({ apiKey: apiKey! });
 const model = process.env["GOOGLE_TEXT_MODEL"] || "gemini-2.5-flash";
 
 export async function POST(request: NextRequest) {
@@ -51,6 +46,9 @@ export async function POST(request: NextRequest) {
 	logApiRequest(storyAnalysisLogger, endpoint);
 
 	try {
+		const apiKey = process.env["GOOGLE_AI_API_KEY"];
+		if (!apiKey) return NextResponse.json({ error: "请先配置 GOOGLE_AI_API_KEY / Configure GOOGLE_AI_API_KEY before planning." }, { status: 503 });
+		const genAI = new GoogleGenAI({ apiKey });
 		const { story, style, language = "en" } = await request.json();
 
 		storyAnalysisLogger.debug(

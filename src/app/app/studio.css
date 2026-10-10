@@ -1486,7 +1486,13 @@
     grid-column:1/-1
   }
 }
+.mobile-projects {
+  display:none
+}
 @media(max-width:720px) {
+  .mobile-projects {
+    display:inline-flex
+  }
   .studio-layout {
     display:block
   }

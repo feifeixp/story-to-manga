@@ -151,28 +151,12 @@ export class ComicService {
   // 记录漫画浏览
   static async recordView(comicId: string, userId?: string) {
     try {
-      // 增加浏览计数
-      const { error: updateError } = await supabase
-        .from('comics')
-        .update({ 
-          views_count: supabase.sql`views_count + 1`,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', comicId);
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
-
-      // 记录浏览记录（可选，用于分析）
-      if (userId) {
-        await supabase
-          .from('comic_views')
-          .insert({
-            comic_id: comicId,
-            user_id: userId
-          });
-      }
+      // Counter totals are maintained by database interaction triggers.
+      const { error } = await supabase.from('comic_views').insert({
+        comic_id: comicId,
+        ...(userId ? { user_id: userId } : {})
+      });
+      if (error) throw new Error(error.message);
 
       return { success: true };
     } catch (error) {
@@ -206,18 +190,7 @@ export class ComicService {
           throw new Error(deleteError.message);
         }
 
-        // 减少点赞计数
-        const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            likes_count: supabase.sql`likes_count - 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
-
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
+        // Counter totals are maintained by database interaction triggers.
 
         return { success: true, liked: false };
       } else {
@@ -233,18 +206,7 @@ export class ComicService {
           throw new Error(insertError.message);
         }
 
-        // 增加点赞计数
-        const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            likes_count: supabase.sql`likes_count + 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
-
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
+        // Counter totals are maintained by database interaction triggers.
 
         return { success: true, liked: true };
       }
@@ -279,18 +241,7 @@ export class ComicService {
           throw new Error(deleteError.message);
         }
 
-        // 减少收藏计数
-        const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            favorites_count: supabase.sql`favorites_count - 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
-
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
+        // Counter totals are maintained by database interaction triggers.
 
         return { success: true, favorited: false };
       } else {
@@ -306,18 +257,7 @@ export class ComicService {
           throw new Error(insertError.message);
         }
 
-        // 增加收藏计数
-        const { error: updateError } = await supabase
-          .from('comics')
-          .update({ 
-            favorites_count: supabase.sql`favorites_count + 1`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comicId);
-
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
+        // Counter totals are maintained by database interaction triggers.
 
         return { success: true, favorited: true };
       }

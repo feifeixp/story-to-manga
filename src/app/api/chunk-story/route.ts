@@ -22,7 +22,6 @@ interface StoryBreakdown {
 	panels: Panel[];
 }
 
-const genAI = new GoogleGenAI({ apiKey: process.env["GOOGLE_AI_API_KEY"]! });
 const model = process.env["GOOGLE_TEXT_MODEL"] || "gemini-2.5-flash";
 
 export async function POST(request: NextRequest) {
@@ -32,6 +31,9 @@ export async function POST(request: NextRequest) {
 	logApiRequest(storyChunkingLogger, endpoint);
 
 	try {
+		const apiKey = process.env["GOOGLE_AI_API_KEY"];
+		if (!apiKey) return NextResponse.json({ error: "请先配置 GOOGLE_AI_API_KEY / Configure GOOGLE_AI_API_KEY before planning." }, { status: 503 });
+		const genAI = new GoogleGenAI({ apiKey });
 		const { story, characters, setting, scenes, style, language = "en", panelCount } = await request.json();
 
 		storyChunkingLogger.debug(

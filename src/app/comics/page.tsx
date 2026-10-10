@@ -48,13 +48,13 @@ export default function ComicsPage() {
         page: currentPage,
         limit: 12,
         sort: sortBy,
-        style: selectedStyle || undefined,
-        search: searchQuery || undefined,
+        style: selectedStyle,
+        search: searchQuery,
         ...params
       });
 
       if (result.success) {
-        setComics(result.data);
+        setComics(result.data || []);
         if (result.pagination) {
           setTotalPages(result.pagination.totalPages);
         }
@@ -86,8 +86,8 @@ export default function ComicsPage() {
     loadComics({
       page: 1,
       sort: 'latest',
-      style: undefined,
-      search: undefined
+      style: '',
+      search: ''
     });
   };
 
