@@ -172,6 +172,23 @@ pnpm start --port 8000
 
 **Neowow 单 Key 接入尚未实现**。当前保留 Google/火山引擎接口，不能直接用 Neowow Key 替代上述凭据。
 
+### NeoWoW CLI 凭证设置
+
+**网页登录获取的凭证不能用于调用 `neowow-cli`。使用 CLI 前，必须单独设置 CLI 专用 API Key；登录 NeoWoW 网页不会自动配置本机 CLI。**
+
+1. 在 NeoWoW 网页点击头像，进入 **用户中心 → CLI → 生成 / 更换 Key**，复制专用 API Key。
+2. 安装 CLI 后，在自己的终端运行 `neowow login`，按提示输入 Key；也可使用下方命令。
+3. 运行 `neowow whoami`，确认 CLI 已登录，再执行 CLI 操作。
+
+```sh
+neowow login --api-key "<你的 CLI API Key>"
+neowow whoami
+```
+
+CLI 使用 `api-key` 请求头，不接受网页登录的 `Authorization` / Bearer / `accessToken` 作为替代。专用 Key 仅在生成时完整展示一次；重新生成会使旧 Key 失效，需要重新配置 CLI。
+
+请在自己的终端配置 Key，不要填写在 Market 介绍、故事、参考描述或项目备份中，也不要提交到 GitHub。此步骤仅配置 NeoWoW CLI；当前 Next.js 工作台的 Google / 火山引擎接口仍按上文配置。
+
 ## 常见问题
 
 | 问题 | 处理方式 |
@@ -179,6 +196,7 @@ pnpm start --port 8000
 | 8000 端口被占用 | 停止旧服务，或运行 `pnpm exec next dev --hostname 127.0.0.1 --port 8001`，访问新端口。 |
 | 故事拆解提示缺少配置 | 填写有效的 `GOOGLE_AI_API_KEY` 并重启；火山图片密钥不能替代文本规划凭据。 |
 | 模型请求失败 | 查看界面错误与服务端日志，检查账号模型权限、额度和网络，再决定是否重试。 |
+| 已登录 NeoWoW 网页，但 CLI 无法调用 | 在「用户中心 → CLI」生成专用 API Key，运行 `neowow login` 配置后再用 `neowow whoami` 检查；网页登录凭证不能替代 CLI Key。 |
 | 图片无法下载 | 部分供应商图片链接会过期。及时导出原图与项目 ZIP；过期链接可能需要重新生成。 |
 | 项目无法读取或保存 | 保留现有数据，先备份可读取的项目，检查浏览器存储空间与隐私设置。 |
 | 测试报 TypeScript 转换错误 | 确认当前终端使用 Node 24，然后重新运行 `pnpm test`。 |

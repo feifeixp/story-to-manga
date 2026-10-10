@@ -2489,6 +2489,22 @@ export default function MangaStudio() {
 									"Export JSON or ZIP backups regularly. Clearing browser data deletes local projects.",
 								)}
 							</p>
+							<p>
+								<strong>
+									{copy("NeoWoW CLI 凭证设置", "NeoWoW CLI credentials")}
+								</strong>
+								<br />
+								{copy(
+									"网页登录获取的凭证不能用于调用 neowow-cli。使用 CLI 前，请到 NeoWoW「用户中心 → CLI」生成专用 API Key，在自己的终端运行 neowow login 配置，再用 neowow whoami 确认。网页登录不会自动配置 CLI；更换 Key 后需重新登录 CLI。",
+									"Web login credentials cannot authenticate neowow-cli. Before using the CLI, generate a dedicated API Key in NeoWoW User Center → CLI, run neowow login in your own terminal, then verify with neowow whoami. Web login does not configure the CLI; log in again after replacing the Key.",
+								)}
+							</p>
+							<p className="muted micro">
+								{copy(
+									"CLI Key 不要填入故事或项目备份，也不要提交到 GitHub。此步骤仅配置 CLI，不能替代当前工作台的 Google / 火山引擎服务端凭据。",
+									"Keep the CLI Key out of stories, project backups and GitHub. CLI setup does not replace this studio’s Google / Volcengine server credentials.",
+								)}
+							</p>
 						</>
 					)}
 				</StudioDialog>
