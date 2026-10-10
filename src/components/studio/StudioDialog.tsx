@@ -6,10 +6,12 @@ export function StudioDialog({
 	title,
 	children,
 	onClose,
+	className = "",
 }: {
 	title: string;
 	children: ReactNode;
 	onClose: () => void;
+	className?: string;
 }) {
 	const ref = useRef<HTMLDialogElement>(null);
 	const heading = useId();
@@ -26,7 +28,7 @@ export function StudioDialog({
 		<dialog
 			ref={ref}
 			aria-labelledby={heading}
-			className="studio-dialog"
+			className={`studio-dialog ${className}`}
 			onCancel={(event) => {
 				event.preventDefault();
 				onClose();

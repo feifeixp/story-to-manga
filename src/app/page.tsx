@@ -124,15 +124,7 @@ export default function HomePage() {
 		await signOut();
 	};
 
-	const handleStartCreating = () => {
-		if (!user) {
-			// 如果用户未登录，显示登录模态框
-			setShowAuthModal(true);
-		} else {
-			// 如果用户已登录，跳转到创作页面
-			router.push('/app');
-		}
-	};
+	const handleStartCreating = () => router.push('/app');
 
 	const features = [
 		{
@@ -195,7 +187,7 @@ export default function HomePage() {
 							</div>
 						) : (
 							<Button onClick={handleLogin} disabled={loading}>
-								{loading ? (language === 'zh' ? '加载中...' : 'Loading...') : (language === 'zh' ? '登录' : 'Login')}
+								{loading ? (language === 'zh' ? '加载中...' : 'Loading...') : (language === 'zh' ? '关联 NeoWoW' : 'Connect NeoWoW')}
 							</Button>
 						)}
 					</div>
@@ -218,8 +210,8 @@ export default function HomePage() {
 						<div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
 							<p className="text-blue-800 text-sm text-center">
 								{language === 'zh'
-									? '🔐 请先登录以开始创作您的漫画作品'
-									: '🔐 Please login first to start creating your comic works'
+									? '本地创作无需注册或登录。推荐关联 NeoWoW 并使用 neowow-cli。'
+									: 'Create locally without an account. Connect NeoWoW and use neowow-cli.'
 								}
 							</p>
 						</div>
@@ -229,7 +221,7 @@ export default function HomePage() {
 							<Play className="mr-2 h-5 w-5" />
 							{user
 								? (language === 'zh' ? '开始创作' : 'Start Creating')
-								: (language === 'zh' ? '登录并开始创作' : 'Login & Start Creating')
+								: (language === 'zh' ? '开始创作' : 'Start Creating')
 							}
 						</Button>
 						<Button size="lg" variant="outline">
@@ -386,7 +378,7 @@ export default function HomePage() {
 						<Play className="mr-2 h-5 w-5" />
 						{user
 							? (language === 'zh' ? '立即开始' : 'Get Started Now')
-							: (language === 'zh' ? '登录开始' : 'Login to Start')
+							: (language === 'zh' ? '立即开始' : 'Get Started Now')
 						}
 					</Button>
 				</div>

@@ -1,359 +1,299 @@
 "use client";
+import {
+	ArrowUpRight,
+	BookOpen,
+	Check,
+	Copy,
+	Link2,
+	Loader2,
+	RefreshCw,
+	Terminal,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
+import { StudioDialog } from "@/components/studio/StudioDialog";
+import type { CliStatus } from "@/lib/neowowCli";
+import "@/app/app/studio.css";
+import "./neowow-account.css";
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { useAuth } from '@/components/AuthProvider';
-import { useI18n } from '@/components/I18nProvider';
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
+const INSTALL_MAC =
+	"curl -fsSL https://wlpaas.oss-cn-shanghai.aliyuncs.com/agent/neowow-canvas/install.sh | bash -s -- --all";
+const INSTALL_WINDOWS =
+	"& ([scriptblock]::Create((irm https://wlpaas.oss-cn-shanghai.aliyuncs.com/agent/neowow-canvas/install.ps1))) -All";
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+function Command({
+	value,
+	label,
+	copyLabel,
+}: {
+	value: string;
+	label: string;
+	copyLabel: string;
+}) {
+	const [copied, setCopied] = useState(false);
+	const [failed, setFailed] = useState(false);
+	return (
+		<div className="neo-command-wrap">
+			<div className="neo-command">
+				<pre>
+					<code>{value}</code>
+				</pre>
+				<button
+					type="button"
+					aria-label={label}
+					title={label}
+					onClick={async () => {
+						try {
+							await navigator.clipboard.writeText(value);
+							setCopied(true);
+							setFailed(false);
+						} catch {
+							setFailed(true);
+						}
+					}}
+				>
+					{copied ? <Check size={15} /> : <Copy size={15} />}
+					<span>{copied ? "✓" : copyLabel}</span>
+				</button>
+			</div>
+			{failed && (
+				<output>
+					{copyLabel === "复制"
+						? "请选中命令手动复制。"
+						: "Select the command to copy manually."}
+				</output>
+			)}
+		</div>
+	);
 }
 
-type AuthMode = 'login' | 'register' | 'reset';
-
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const { signIn, signUp, resetPassword, loading } = useAuth();
-  const { language } = useI18n();
-  
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    name: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setError('');
-    setSuccess('');
-  };
-
-  const validateForm = () => {
-    if (!formData.email) {
-      setError(language === 'zh' ? '请输入邮箱地址' : 'Please enter your email');
-      return false;
-    }
-
-    if (!formData.email.includes('@')) {
-      setError(language === 'zh' ? '请输入有效的邮箱地址' : 'Please enter a valid email address');
-      return false;
-    }
-
-    if (mode !== 'reset' && !formData.password) {
-      setError(language === 'zh' ? '请输入密码' : 'Please enter your password');
-      return false;
-    }
-
-    if (mode === 'register') {
-      if (formData.password.length < 6) {
-        setError(language === 'zh' ? '密码至少需要6个字符' : 'Password must be at least 6 characters');
-        return false;
-      }
-
-      if (formData.password !== formData.confirmPassword) {
-        setError(language === 'zh' ? '密码确认不匹配' : 'Password confirmation does not match');
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      if (mode === 'login') {
-        const result = await signIn(formData.email, formData.password);
-        if (result.success) {
-          setSuccess(language === 'zh' ? '登录成功！' : 'Login successful!');
-          setTimeout(() => {
-            onClose();
-            resetForm();
-          }, 1000);
-        } else {
-          setError(result.error || (language === 'zh' ? '登录失败' : 'Login failed'));
-        }
-      } else if (mode === 'register') {
-        const result = await signUp(formData.email, formData.password, formData.name);
-        if (result.success) {
-          setSuccess(result.message || (language === 'zh' ? '注册成功！请检查邮箱验证' : 'Registration successful! Please check your email'));
-          setTimeout(() => {
-            setMode('login');
-            resetForm();
-          }, 2000);
-        } else {
-          setError(result.error || (language === 'zh' ? '注册失败' : 'Registration failed'));
-        }
-      } else if (mode === 'reset') {
-        const result = await resetPassword(formData.email);
-        if (result.success) {
-          setSuccess(result.message || (language === 'zh' ? '密码重置邮件已发送' : 'Password reset email sent'));
-          setTimeout(() => {
-            setMode('login');
-            resetForm();
-          }, 2000);
-        } else {
-          setError(result.error || (language === 'zh' ? '密码重置失败' : 'Password reset failed'));
-        }
-      }
-    } catch (error) {
-      setError(language === 'zh' ? '操作失败，请重试' : 'Operation failed, please try again');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      email: '',
-      password: '',
-      confirmPassword: '',
-      name: ''
-    });
-    setError('');
-    setSuccess('');
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-  };
-
-  const handleClose = () => {
-    resetForm();
-    setMode('login');
-    onClose();
-  };
-
-  const getTitle = () => {
-    switch (mode) {
-      case 'login':
-        return language === 'zh' ? '登录' : 'Login';
-      case 'register':
-        return language === 'zh' ? '注册' : 'Register';
-      case 'reset':
-        return language === 'zh' ? '重置密码' : 'Reset Password';
-    }
-  };
-
-  const getDescription = () => {
-    switch (mode) {
-      case 'login':
-        return language === 'zh' ? '登录以保存和分享你的作品' : 'Login to save and share your works';
-      case 'register':
-        return language === 'zh' ? '创建账户开始你的创作之旅' : 'Create an account to start your creative journey';
-      case 'reset':
-        return language === 'zh' ? '输入邮箱地址重置密码' : 'Enter your email to reset password';
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md mx-4 shadow-2xl">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-center text-2xl font-bold">{getTitle()}</CardTitle>
-          <CardDescription className="text-center text-gray-600">{getDescription()}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* 邮箱输入 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                {language === 'zh' ? '邮箱' : 'Email'}
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="pl-10 h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                  placeholder={language === 'zh' ? '输入邮箱地址' : 'Enter your email'}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* 姓名输入（仅注册时显示） */}
-            {mode === 'register' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {language === 'zh' ? '姓名' : 'Name'}
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="pl-10 h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    placeholder={language === 'zh' ? '输入你的姓名（可选）' : 'Enter your name (optional)'}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 密码输入（重置密码时不显示） */}
-            {mode !== 'reset' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {language === 'zh' ? '密码' : 'Password'}
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="pl-10 pr-10 h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    placeholder={language === 'zh' ? '输入密码' : 'Enter your password'}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 确认密码输入（仅注册时显示） */}
-            {mode === 'register' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {language === 'zh' ? '确认密码' : 'Confirm Password'}
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    className="pl-10 pr-10 h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    placeholder={language === 'zh' ? '再次输入密码' : 'Confirm your password'}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 错误和成功消息 */}
-            {error && (
-              <div className="flex items-center space-x-2 text-red-600 text-sm">
-                <AlertCircle className="h-4 w-4" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {success && (
-              <div className="flex items-center space-x-2 text-green-600 text-sm">
-                <CheckCircle className="h-4 w-4" />
-                <span>{success}</span>
-              </div>
-            )}
-
-            {/* 提交按钮 */}
-            <Button
-              type="submit"
-              className="w-full h-11 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
-              disabled={isSubmitting || loading}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>{language === 'zh' ? '处理中...' : 'Processing...'}</span>
-                </div>
-              ) : (
-                getTitle()
-              )}
-            </Button>
-
-            {/* 模式切换链接 */}
-            <div className="text-center space-y-3">
-              {mode === 'login' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setMode('register')}
-                    className="text-sm text-purple-600 hover:text-purple-800 font-medium transition-colors"
-                  >
-                    {language === 'zh' ? '还没有账户？立即注册' : "Don't have an account? Sign up"}
-                  </button>
-                  <br />
-                  <button
-                    type="button"
-                    onClick={() => setMode('reset')}
-                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    {language === 'zh' ? '忘记密码？' : 'Forgot password?'}
-                  </button>
-                </>
-              )}
-
-              {mode === 'register' && (
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-sm text-purple-600 hover:text-purple-800 font-medium transition-colors"
-                >
-                  {language === 'zh' ? '已有账户？立即登录' : 'Already have an account? Sign in'}
-                </button>
-              )}
-
-              {mode === 'reset' && (
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-sm text-purple-600 hover:text-purple-800 font-medium transition-colors"
-                >
-                  {language === 'zh' ? '返回登录' : 'Back to login'}
-                </button>
-              )}
-            </div>
-
-            {/* 取消按钮 */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-11 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg transition-colors"
-              onClick={handleClose}
-            >
-              {language === 'zh' ? '取消' : 'Cancel'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
+export function AuthModal({
+	isOpen,
+	onClose,
+}: {
+	isOpen: boolean;
+	onClose: () => void;
+}) {
+	return isOpen ? <NeoWoWAccount onClose={onClose} /> : null;
+}
+function NeoWoWAccount({ onClose }: { onClose: () => void }) {
+	const { language } = useI18n();
+	const zh = language.startsWith("zh");
+	const t = (cn: string, en: string) => (zh ? cn : en);
+	const [account, setAccount] = useState<CliStatus | null>(null);
+	const [checking, setChecking] = useState(true);
+	const [platform, setPlatform] = useState<"mac" | "windows">("mac");
+	const refresh = useCallback(async (signal?: AbortSignal) => {
+		setChecking(true);
+		try {
+			const response = await fetch("/api/neowow/account", {
+				cache: "no-store",
+				...(signal ? { signal } : {}),
+			});
+			const result = await response.json();
+			if (!signal?.aborted)
+				setAccount(response.ok ? result : { status: "unavailable" });
+		} catch {
+			if (!signal?.aborted) setAccount({ status: "unavailable" });
+		} finally {
+			if (!signal?.aborted) setChecking(false);
+		}
+	}, []);
+	useEffect(() => {
+		const controller = new AbortController();
+		void refresh(controller.signal);
+		return () => controller.abort();
+	}, [refresh]);
+	const connected = account?.status === "connected";
+	const status = checking
+		? t("正在检查本机 CLI…", "Checking this computer’s CLI…")
+		: connected
+			? t(`已关联 · ${account.nickname}`, `Connected · ${account.nickname}`)
+			: account?.status === "not-installed"
+				? t("尚未安装 CLI", "CLI is not installed")
+				: account?.status === "not-linked"
+					? t("尚未关联 NeoWoW", "NeoWoW is not connected")
+					: t(
+							"暂时无法确认连接，请在终端运行 neowow whoami",
+							"Unable to verify. Run neowow whoami in your terminal.",
+						);
+	return (
+		<StudioDialog
+			title={t("关联 NeoWoW", "Connect NeoWoW")}
+			className="neo-account-dialog"
+			onClose={onClose}
+		>
+			<div className="neo-account-hero">
+				<p className="neo-account-eyebrow">LOCAL WORKSPACE / NEOWOW CLI</p>
+				<div className="neo-account-visual" aria-hidden="true">
+					<span>
+						<BookOpen size={24} />
+					</span>
+					<i />
+					<Link2 size={18} />
+					<i />
+					<span>
+						<Terminal size={24} />
+					</span>
+				</div>
+				<h3>
+					{t(
+						"本地创作，连接你的 NeoWoW。",
+						"Create locally. Connect with NeoWoW.",
+					)}
+				</h3>
+				<p>
+					{t(
+						"无需注册本站。故事、漫画与项目保存在当前浏览器，随时编辑、保存和导出。",
+						"No account here is needed. Your stories, artwork and projects stay in this browser, ready to edit, save and export.",
+					)}
+				</p>
+			</div>
+			<div className={`neo-account-status ${connected ? "is-connected" : ""}`}>
+				{checking ? (
+					<Loader2 size={16} className="spin" />
+				) : connected ? (
+					<Check size={16} />
+				) : (
+					<Link2 size={16} />
+				)}
+				<output>{status}</output>
+				<button
+					type="button"
+					disabled={checking}
+					onClick={() => void refresh()}
+					aria-label={t("刷新关联状态", "Refresh connection")}
+					title={t("刷新关联状态", "Refresh connection")}
+				>
+					<RefreshCw size={15} />
+				</button>
+			</div>
+			<div className="neo-account-steps">
+				<section>
+					<span className="neo-step-number">01</span>
+					<div>
+						<h4>{t("准备你的 NeoWoW 账户", "Get your NeoWoW account")}</h4>
+						<p>
+							{t(
+								"推荐注册 NeoWoW，用自己的账户管理 AI 创作与积分。已有账户可以直接继续。",
+								"We recommend NeoWoW for managing AI creations and credits. Already have an account? Continue below.",
+							)}
+						</p>
+						<a
+							className="neo-account-link"
+							href="https://neowow.cn/"
+							target="_blank"
+							rel="noreferrer"
+						>
+							{t("注册 / 打开 NeoWoW", "Register / open NeoWoW")}
+							<ArrowUpRight size={15} />
+						</a>
+					</div>
+				</section>
+				<section>
+					<span className="neo-step-number">02</span>
+					<div>
+						<h4>{t("安装 neowow-cli", "Install neowow-cli")}</h4>
+						<p>
+							{t(
+								"让 Codex 或 Claude Code 在终端里帮你创建画布、生成图片与视频。",
+								"Use Codex or Claude Code to create canvases, images and videos from your terminal.",
+							)}
+						</p>
+						<details>
+							<summary>{t("查看安装命令", "Show install command")}</summary>
+							<fieldset
+								className="neo-platforms"
+								aria-label={t("操作系统", "Operating system")}
+							>
+								<button
+									type="button"
+									aria-pressed={platform === "mac"}
+									onClick={() => setPlatform("mac")}
+								>
+									macOS / Linux
+								</button>
+								<button
+									type="button"
+									aria-pressed={platform === "windows"}
+									onClick={() => setPlatform("windows")}
+								>
+									Windows
+								</button>
+							</fieldset>
+							<Command
+								value={platform === "mac" ? INSTALL_MAC : INSTALL_WINDOWS}
+								label={t("复制安装命令", "Copy install command")}
+								copyLabel={t("复制", "Copy")}
+							/>
+							<small>
+								{t(
+									"安装完成后重新打开终端。",
+									"Open a new terminal after installation.",
+								)}
+							</small>
+						</details>
+					</div>
+				</section>
+				<section>
+					<span className="neo-step-number">03</span>
+					<div>
+						<h4>
+							{t(
+								"使用 CLI 专用 Key 关联账户",
+								"Connect with your dedicated CLI Key",
+							)}
+						</h4>
+						<p>
+							{t(
+								"在 NeoWoW「用户中心 → CLI」生成专用 API Key，然后在自己的终端执行以下命令，按提示输入 Key。",
+								"Generate a dedicated API Key in NeoWoW User Center → CLI. Run these commands in your own terminal and enter the Key when prompted.",
+							)}
+						</p>
+						<Command
+							value={"neowow login\nneowow whoami"}
+							label={t("复制关联命令", "Copy connection commands")}
+							copyLabel={t("复制", "Copy")}
+						/>
+						<p className="neo-key-note">
+							{t(
+								"网页登录凭证不能用于 CLI。Key 只在终端配置，无需填入本工作台。",
+								"Web login credentials cannot authenticate the CLI. Configure the Key in your terminal; this studio does not need it.",
+							)}
+						</p>
+					</div>
+				</section>
+			</div>
+			<div className="neo-account-footer">
+				<p>
+					{t(
+						"CLI 用于终端创作；工作台生成仍使用本地配置的模型服务。",
+						"The CLI is for terminal creation. Studio generation still uses your locally configured model services.",
+					)}
+				</p>
+				<div>
+					<button
+						type="button"
+						className="studio-btn"
+						disabled={checking}
+						onClick={() => void refresh()}
+					>
+						{checking ? (
+							<Loader2 size={15} className="spin" />
+						) : (
+							<RefreshCw size={15} />
+						)}
+						{t("检查关联", "Check connection")}
+					</button>
+					<button
+						type="button"
+						className="studio-btn primary"
+						onClick={onClose}
+					>
+						{t("继续创作", "Continue creating")}
+					</button>
+				</div>
+			</div>
+		</StudioDialog>
+	);
 }

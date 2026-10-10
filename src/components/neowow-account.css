@@ -1,0 +1,43 @@
+.neo-account-dialog { width:min(650px,calc(100vw - 32px)); padding:22px 28px; max-height:calc(100dvh - 32px); background:#fff; }
+.neo-account-dialog .dialog-heading { margin-bottom:16px; }
+.neo-account-hero { background:#f3f6f0; border:1px solid #e4eadd; border-radius:12px; padding:18px 22px; position:relative; }
+.neo-account-eyebrow { color:#7b8676; font-size:9px; letter-spacing:1.5px; }
+.neo-account-visual { display:flex; align-items:center; gap:12px; color:#738a78; margin:0; position:absolute; top:20px; right:22px; gap:7px; }
+.neo-account-visual span { width:32px; height:32px; border:1px solid #dbe3d6; background:white; color:#235a4e; display:grid; place-items:center; border-radius:12px; }
+.neo-account-visual svg { width:18px; height:18px; }
+.neo-account-visual i { width:10px; height:1px; background:#c9d7c8; }
+.neo-account-dialog h3 { font-size:21px; line-height:1.5; letter-spacing:-.5px; margin:15px 0 7px; color:#233b32; font-weight:650; }
+.neo-account-hero>p:last-child { max-width:460px; color:#718071; font-size:12px; line-height:1.8; }
+.neo-account-status { display:flex; align-items:center; gap:9px; padding:12px 3px; border-bottom:1px solid #e9ede6; color:#778278; font-size:12px; }
+.neo-account-status.is-connected { color:#235a4e; }
+.neo-account-status output { flex:1; overflow-wrap:anywhere; }
+.neo-account-status button { border:0; background:transparent; padding:5px; display:flex; color:inherit; border-radius:5px; }
+.neo-account-steps { margin:4px 0 14px; }
+.neo-account-steps section { display:flex; gap:15px; padding:12px 0 0; }
+.neo-step-number { display:grid; place-items:center; flex-shrink:0; width:28px; height:28px; border:1px solid #e5e9e0; border-radius:50%; color:#74816e; font-size:10px; font-variant-numeric:tabular-nums; margin-top:1px; }
+.neo-account-steps section>div { flex:1; min-width:0; }
+.neo-account-dialog h4 { margin:0 0 4px; color:#2c3a32; font-size:14px; font-weight:600; }
+.neo-account-steps p { color:#7a847b; font-size:12px; line-height:1.8; }
+.neo-account-link { display:inline-flex; align-items:center; gap:4px; color:#235a4e; text-decoration:none; font-weight:600; font-size:12px; margin-top:7px; }
+.neo-account-link:hover { text-decoration:underline; }
+.neo-account-steps details { margin-top:7px; color:#235a4e; font-size:12px; }
+.neo-account-steps summary { cursor:pointer; width:fit-content; }
+.neo-platforms { border:0; padding:0; display:flex; gap:6px; margin-top:10px; }
+.neo-platforms button { background:#fff; color:#788476; border:1px solid #e3e8dd; padding:4px 9px; font-size:10px; border-radius:5px; }
+.neo-platforms button[aria-pressed=true] { background:#eaf1eb; border-color:#bbcebd; color:#235a4e; }
+.neo-command { display:flex; align-items:center; border:1px solid #e5e9e2; border-radius:8px; background:#f7f8f5; margin-top:9px; overflow:hidden; }
+.neo-command pre { flex:1; min-width:0; margin:0; padding:11px 12px; overflow:auto; font-size:11px; line-height:1.8; color:#355443; white-space:pre-wrap; overflow-wrap:anywhere; }
+.neo-command button { display:flex; align-items:center; gap:4px; border:0; background:transparent; color:#728171; font-size:10px; padding:12px; flex-shrink:0; }
+.neo-command button:hover { color:#235a4e; background:#eef2ea; }
+.neo-account-steps small,.neo-command-wrap>small { display:block; color:#8b9488; font-size:10px; margin-top:6px; }
+.neo-account-steps .neo-key-note { font-size:10px; color:#87907f; margin-top:7px; }
+.neo-account-footer { padding-top:12px; border-top:1px solid #e8ece4; }
+.neo-account-footer>p { color:#889082; font-size:10px; margin-bottom:13px; }
+.neo-account-footer>div { display:flex; justify-content:flex-end; gap:8px; }
+.studio-top-actions .studio-neo-account { display:flex; align-items:center; gap:6px; background:#edf3ed; border:1px solid #dce7da; color:#315e4e; padding:8px 11px; border-radius:8px; font-size:12px; white-space:nowrap; }
+.studio-neo-account:hover { background:#e1ece0; }
+@media(max-width:600px) { .neo-account-dialog { padding:20px; max-height:92dvh; } .neo-account-hero { padding:16px; } .neo-account-dialog h3 { font-size:18px; } .neo-account-visual { display:none; } .neo-account-steps section { gap:10px; } .studio-neo-account span { display:none; } .neo-account-footer>div { justify-content:stretch; } .neo-account-footer button { flex:1; } }
+
+.neo-account-dialog[open] { display:flex; flex-direction:column; }
+.neo-account-dialog .dialog-heading,.neo-account-hero,.neo-account-status,.neo-account-footer { flex-shrink:0; }
+.neo-account-steps { min-height:0; overflow-y:auto; padding-right:3px; }

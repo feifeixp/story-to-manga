@@ -4,7 +4,7 @@
 
 A bilingual story-to-manga workspace: write, review the storyboard, generate, then refine and export.
 
-基于 [victorhuangwq/story-to-manga](https://github.com/victorhuangwq/story-to-manga) 扩展，使用 Next.js、React 和 TypeScript，保留 Google Gemini、火山引擎图像接口与 Supabase 图库分享功能。
+基于 [victorhuangwq/story-to-manga](https://github.com/victorhuangwq/story-to-manga) 扩展，使用 Next.js、React 和 TypeScript，保留 Google Gemini、火山引擎图像接口；本地创作无需注册或登录。
 
 ## 新版工作台（2026-10）
 
@@ -27,7 +27,7 @@ A bilingual story-to-manga workspace: write, review the storyboard, generate, th
 - **可恢复的生成流程**：防止重复启动同一生成流程；每格保存后再开始下一格，继续时跳过已完成画面。
 - **单格精修**：调整分镜描述、重绘或修改图片；每格保留最多三个先前图片版本。
 - **导出**：单张图片、分页 PNG、原图与项目 ZIP、项目 JSON 备份。漫画页面每页最多六格，多页导出为 ZIP。
-- **图库分享**：保留 Supabase 登录和作品发布入口，需配置相应数据库与存储。
+- **本地使用**：无需本站账户；保存、导出与分享文件均无需登录。右上角「关联 NeoWoW」提供注册推荐、CLI 安装、专用 Key 设置与本机关联检查。
 
 ## 快速开始
 
@@ -98,7 +98,7 @@ Mac 用户安装依赖后，也可以在 Finder 双击 `Start Story to Manga.com
 4. 如需暂停，等待当前请求完成；继续时补齐缺失或待重绘的分镜。
 5. 在精修页选择单格调整、重绘或恢复先前版本，再导出成品和项目备份。
 
-项目文字保存在当前浏览器的 localStorage，图片保存在 IndexedDB。**本地项目不会自动同步到其他浏览器或设备**；登录图库也不代表草稿已上传。
+项目文字保存在当前浏览器的 localStorage，图片保存在 IndexedDB。**本地项目不会自动同步到其他浏览器或设备**。NeoWoW CLI 关联不会自动上传或同步本地草稿。
 
 定期导出 JSON 或 ZIP 备份。清理浏览器数据会删除本地项目；存储失败时，请先备份再排查。当前工作台还没有一键导入项目备份的入口。避免同时在多个标签页编辑同一个项目。
 
@@ -120,7 +120,7 @@ pnpm build
 - **工作台范围 Biome 检查通过**。
 - **Next.js 生产构建通过**，本地 `/app` 返回 HTTP 200。
 
-上述自动化测试使用模拟接口，不消耗模型额度；不代表真实模型生成、图库登录或作品发布已经验收。
+上述自动化测试使用模拟接口，不消耗模型额度；不代表真实模型生成或作品发布已经验收。
 
 全仓库 Biome 和 knip 仍有历史问题。`pnpm lint`、`pnpm format` 会写入文件；`pnpm check` 也包含会写入文件的 lint 步骤。只需查看全仓库规范问题时，使用 `pnpm exec biome check .`。
 
@@ -166,7 +166,7 @@ pnpm start --port 8000
 
 仓库的旧版一键部署脚本和 Amplify 配置尚未与新版 pnpm 安装流程同步。当前请按上述命令配置构建与启动；仓库未提供 Dockerfile。
 
-图库沿用 `src/lib/supabase.ts` 的连接配置。接入自己的 Supabase 时，需要核对认证、表结构、行级权限和图片存储。相关说明见 [数据库配置指南](DATABASE_SETUP_GUIDE.md) 与 [漫画分享配置](COMIC_SHARING_SETUP.md)。
+本地版本已移除 Supabase 注册、登录与云图库发布流程，分享使用导出的 PNG / ZIP / JSON。仓库保留旧图库与数据库代码作为历史实现，相关历史说明见 [数据库配置指南](DATABASE_SETUP_GUIDE.md) 与 [漫画分享配置](COMIC_SHARING_SETUP.md)。
 
 图库浏览、点赞和收藏计数改为依赖数据库触发器。可选迁移 [interaction_counters.sql](database/interaction_counters.sql) **尚未在远端执行**；执行前检查现有触发器并备份数据。该迁移会按交互记录重新计算历史计数；没有对应触发器时，计数不会自动更新。
 
@@ -195,6 +195,14 @@ pnpm build:market
 支持通过 `MANGA_MARKET_OUT` 指定输出目录。生成的 `index.html` 内嵌脚本、样式、示意插画和图标，兼容静态资源路径不完整的旧版上传服务；只需上传这一个文件。发布包内不包含 `.env.local` 或本机 CLI 配置。入口为 `index.html`；`/app` 和 `/about` 依赖托管平台的单页应用路由回退。
 
 2026-10-11：46 项自动化测试通过（含 7 项 Market 接口模拟测试及角色逐张保存回归测试），TypeScript 检查与静态构建通过。模拟验证覆盖无登录拦截、网页/CLI 凭证分离、积分错误、任务恢复、参考图限制和下载地址；尚未执行付费真实生成验收。
+
+### 本地 NeoWoW 关联面板
+
+本地 `/` 首页可直接进入 `/app` 工作台，无需注册或登录本站。右上角「关联 NeoWoW」提供 NeoWoW 注册入口、macOS / Linux / Windows CLI 安装命令与凭证设置步骤。
+
+关联由用户在自己的终端运行 `neowow login` 完成。面板通过本机 `neowow whoami` 检查状态，只显示状态与昵称，不向浏览器返回 Key，也不会生成新的 Key。macOS / Linux 支持 PATH 与 `~/.neowow/bin/neowow`，Windows 支持官方安装器的 Claude Code / Codex skill 入口；打开面板或点击「检查关联」时执行只读检查，无付费生成请求。检查接口仅接受 localhost / loopback 的同源请求，远程部署不可读取服务端 CLI 账户。
+
+CLI 用于终端画布与 AI 创作；关联成功不会切换工作台的生成接口，当前本地 Next.js 生成仍按 Google / 火山引擎配置执行。Market 版继续使用独立的 NeoWoW 网页登录和每位用户的额度。
 
 ### NeoWoW CLI 凭证设置
 
@@ -243,3 +251,5 @@ CLI 使用 `api-key` 请求头，不接受网页登录的 `Authorization` / Bear
 欢迎通过 Issue 提交问题，或从功能分支发起 Pull Request。说明修改场景、验证结果，以及界面变更的截图。
 
 本项目采用 [MIT License](LICENSE)。感谢原项目作者 [victorhuangwq](https://github.com/victorhuangwq/story-to-manga) 及所有贡献者。
+
+2026-10-11 本地关联面板改版：50 项自动化测试通过，包含同源 / 本机访问限制、CLI 凭证与个人字段过滤、异常状态及免登录分享回归验证。

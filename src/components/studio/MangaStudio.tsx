@@ -11,6 +11,7 @@ import {
 	FolderOpen,
 	ImagePlus,
 	LayoutGrid,
+	Link2,
 	Loader2,
 	Pause,
 	Pencil,
@@ -139,6 +140,7 @@ type Dialog =
 	| "export"
 	| "help"
 	| "versions"
+	| "share"
 	| null;
 type Panel = StoryBreakdown["panels"][number];
 export default function MangaStudio({
@@ -666,6 +668,10 @@ export default function MangaStudio({
 		});
 	}
 	function share() {
+		if (!market) {
+			setDialog("share");
+			return;
+		}
 		if (user) setShareOpen(true);
 		else {
 			shareAfterLogin.current = true;
@@ -1134,13 +1140,24 @@ export default function MangaStudio({
 					</button>
 					<button
 						type="button"
-						className="studio-avatar"
+						className={market ? "studio-avatar" : "studio-neo-account"}
 						onClick={() => setAuthOpen(true)}
 						aria-label={
-							user ? copy("账户", "Account") : copy("登录", "Sign in")
+							market
+								? user
+									? copy("账户", "Account")
+									: copy("登录 NeoWoW", "Sign in to NeoWoW")
+								: copy("关联 NeoWoW", "Connect NeoWoW")
 						}
 					>
-						{user?.name?.slice(0, 1) || <UserRound size={18} />}
+						{market ? (
+							user?.name?.slice(0, 1) || <UserRound size={18} />
+						) : (
+							<>
+								<Link2 size={16} />
+								<span>NeoWoW</span>
+							</>
+						)}
 					</button>
 				</div>
 			</header>
@@ -2139,7 +2156,7 @@ export default function MangaStudio({
 					</footer>
 				</main>
 			</div>
-			{dialog && (
+			{dialog && dialog !== "share" && (
 				<StudioDialog
 					title={
 						dialog === "projects"
@@ -2434,18 +2451,12 @@ export default function MangaStudio({
 									<Upload size={22} />
 									<span>
 										<strong>
-											{market
-												? copy("分享导出的作品", "Share exported artwork")
-												: copy("分享到作品画廊", "Share to the gallery")}
+											{copy("分享导出的作品", "Share exported artwork")}
 										</strong>
 										<small>
 											{copy(
-												market
-													? "导出漫画文件后自行分享"
-													: "下一步确认标题与可见范围，需要登录",
-												market
-													? "Export comic files to share them yourself."
-													: "Review title and visibility next. Sign-in required",
+												"导出漫画文件后自行分享，无需登录",
+												"Export comic files to share them yourself. No sign-in required.",
 											)}
 										</small>
 									</span>
@@ -2513,10 +2524,10 @@ export default function MangaStudio({
 								{copy(
 									market
 										? "Market 版使用 NeoWoW 网页 AI 接口。点击右上角账户登录后，文本规划使用自己的 Coding Plan 额度，图像生成使用自己的积分。输出尺寸以模型默认值为准。网页 AI 和 CLI 使用不同凭证。"
-										: "模型需要由部署者在服务器端配置 Google AI / 火山引擎凭据。此版本保留现有真实 API，尚未接入 Neowow。请勿把密钥提交到 GitHub，或填入故事与参考描述。",
+										: "本地工作台无需注册或登录。右上角「关联 NeoWoW」可查看 CLI 安装与专用 Key 设置步骤，并检查本机账户状态。工作台生成仍按本地 Google AI / 火山引擎配置执行。",
 									market
 										? "The Market edition uses NeoWoW web AI APIs. Sign in through the account button; planning uses your own Coding Plan quota and images use your own credits. Output resolution follows model defaults. Web AI and CLI use different credentials."
-										: "The operator configures Google AI / Volcengine credentials on the server. This version keeps the existing real APIs; Neowow is not integrated yet. Never put keys in GitHub, your story, or reference descriptions.",
+										: "The local studio needs no application account. Connect NeoWoW in the header for CLI setup and account verification. Studio generation still uses your local Google AI / Volcengine configuration.",
 								)}
 							</p>
 							<p>
@@ -2644,6 +2655,26 @@ export default function MangaStudio({
 						src={preview}
 						alt={copy("当前分镜大图", "Current panel preview")}
 					/>
+				</StudioDialog>
+			)}
+			{dialog === "share" && (
+				<StudioDialog
+					title={copy("分享你的作品", "Share your artwork")}
+					onClose={() => setDialog(null)}
+				>
+					<p>
+						{copy(
+							"在「精修与导出」里保存漫画 PNG 或原图 ZIP，再把文件分享给朋友。项目 JSON 可留作备份。整个过程无需注册或登录。",
+							"Export a comic PNG or original-image ZIP, then share the files with friends. Keep the project JSON as a backup. No account is needed.",
+						)}
+					</p>
+					<button
+						type="button"
+						className="studio-btn primary"
+						onClick={() => setDialog("export")}
+					>
+						{copy("返回导出", "Back to export")}
+					</button>
 				</StudioDialog>
 			)}
 			{authOpen && (
