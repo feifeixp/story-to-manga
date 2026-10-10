@@ -31,7 +31,10 @@
 		"format": "biome format . --write",
 		"typecheck": "tsc --noEmit",
 		"knip": "knip",
-		"check": "npm run typecheck && npm run lint && npm run knip"
+		"check": "npm run typecheck && npm run lint && npm run knip",
+		"test": "node --test tests/*.test.mjs",
+		"test:storage": "node --test tests/project-storage.test.mjs",
+		"test:workflow": "node --test tests/studio-workflow.test.mjs"
 	},
 	"dependencies": {
 		"@google/genai": "1.19.0",

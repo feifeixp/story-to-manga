@@ -23,7 +23,7 @@ interface StoryBreakdown {
 }
 
 const genAI = new GoogleGenAI({ apiKey: process.env["GOOGLE_AI_API_KEY"]! });
-const model = "gemini-2.5-flash";
+const model = process.env["GOOGLE_TEXT_MODEL"] || "gemini-2.5-flash";
 
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 	logApiRequest(storyChunkingLogger, endpoint);
 
 	try {
-		const { story, characters, setting, scenes, style, language = "en" } = await request.json();
+		const { story, characters, setting, scenes, style, language = "en", panelCount } = await request.json();
 
 		storyChunkingLogger.debug(
 			{
@@ -70,6 +70,11 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		if (panelCount !== undefined && (!Number.isInteger(panelCount) || panelCount < 2 || panelCount > 50)) {
+			return NextResponse.json({ error: "panelCount must be an integer from 2 to 50" }, { status: 400 });
+		}
+
+		const requestedPanelCount = panelCount ? (language === "zh" ? `用户希望分成 ${panelCount} 格。请优先创建恰好 ${panelCount} 格，并保持完整的叙事。` : `The user requested ${panelCount} panels. Prefer exactly ${panelCount} panels while preserving the complete story.`) : "";
 		const characterNames = characters
 			.map((c: { name: string }) => c.name)
 			.join(", ");
@@ -221,6 +226,7 @@ ${sceneInfo}
 风格：${style}
 
 ${layoutGuidance}
+${requestedPanelCount}
 
 根据故事的复杂性和节奏需要创建2-50个面板。选择最佳的面板数量来有效地讲述这个故事 - 简单的故事可能需要较少的面板（2-8个），而复杂的叙述可能需要更多（10-50个）。对于很长的故事，将其分解为逻辑段落并创建详细的面板序列。
 
@@ -248,6 +254,7 @@ ${sceneInfo}
 Style: ${style}
 
 ${layoutGuidance}
+${requestedPanelCount}
 
 Create 2-50 panels based on the story's complexity and pacing needs. Choose the optimal number of panels to tell this story effectively - simple stories may need fewer panels (2-8), while complex narratives may require more (10-50). For very long stories, break them into logical segments and create detailed panel sequences.
 

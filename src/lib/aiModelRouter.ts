@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import {
 	type GenerateImageRequest,
 	getVolcEngineClient,
@@ -46,10 +46,10 @@ export function selectAIModel(
 
 // NanoBanana (Gemini Flash Image) API Handler
 class NanoBananaHandler {
-	private genAI: GoogleGenerativeAI;
+	private genAI: GoogleGenAI;
 
 	constructor(apiKey: string) {
-		this.genAI = new GoogleGenerativeAI(apiKey);
+		this.genAI = new GoogleGenAI({ apiKey });
 	}
 
 	async generateMangaPanel(
@@ -62,9 +62,7 @@ class NanoBananaHandler {
 	): Promise<any> {
 		try {
 			// Use Gemini 2.5 Flash Image model for generation
-			const model = this.genAI.getGenerativeModel({
-				model: "gemini-2.5-flash-image-preview"
-			});
+			const model = process.env["GOOGLE_IMAGE_MODEL"] || "gemini-2.5-flash-image";
 
 			// Enhance prompt based on language and style
 			const stylePrefix = getStylePrompt(style, 'prefix', language);
@@ -84,7 +82,7 @@ class NanoBananaHandler {
 					inputParts.push({
 						inlineData: {
 							data: base64Data,
-							mimeType: "image/jpeg",
+							mimeType: ref.match(/^data:([^;]+);/)?.[1] || "image/png",
 						}
 					});
 				}
@@ -95,9 +93,9 @@ class NanoBananaHandler {
 				setTimeout(() => reject(new Error('NanoBanana API timeout after 120 seconds')), 120000);
 			});
 
-			const apiCallPromise = model.generateContent(inputParts);
+			const apiCallPromise = this.genAI.models.generateContent({ model, contents: inputParts, config: { responseModalities: ["TEXT", "IMAGE"] } });
 			const result = await Promise.race([apiCallPromise, timeoutPromise]) as any;
-			const response = result.response;
+			const response = result;
 
 			// Check if we got image data
 			if (response.candidates && response.candidates[0]?.content?.parts) {
@@ -156,9 +154,9 @@ class NanoBananaHandler {
 					setTimeout(() => reject(new Error('NanoBanana safety retry timeout after 120 seconds')), 120000);
 				});
 
-				const safeApiCallPromise = model.generateContent(safeInputParts);
+				const safeApiCallPromise = this.genAI.models.generateContent({ model, contents: safeInputParts, config: { responseModalities: ["TEXT", "IMAGE"] } });
 				const safeResult = await Promise.race([safeApiCallPromise, safeTimeoutPromise]) as any;
-				const safeResponse = safeResult.response;
+				const safeResponse = safeResult;
 
 				// Check safe result
 				if (safeResponse.candidates && safeResponse.candidates[0]?.content?.parts) {

@@ -8,180 +8,209 @@ import type {
 	UploadedSettingReference,
 } from "@/types";
 import type {
-	ProjectData,
-	ProjectMetadata,
-	ProjectListItem,
 	CreateProjectParams,
-	UpdateProjectParams,
-	ImageSizeConfig,
 	GenerationState,
+	ImageSizeConfig,
+	ProjectData,
+	ProjectListItem,
+	ProjectMetadata,
+	ProjectStudioState,
+	SaveProjectOptions,
+	UpdateProjectParams,
 } from "@/types/project";
 import { DEFAULT_IMAGE_SIZE } from "@/types/project";
 
-// 存储键
 const STORAGE_KEYS = {
 	PROJECT_LIST: "manga-projects-list",
 	PROJECT_DATA: (id: string) => `manga-project-${id}`,
 	CURRENT_PROJECT: "manga-current-project",
-	VERSION: "manga-project-storage-version",
 } as const;
 
+// Keep compatibility with existing project data and IndexedDB records.
 const STORAGE_VERSION = "2.0.0";
-
-// IndexedDB 设置
 const DB_NAME = "MangaProjectsDB";
 const DB_VERSION = 2;
 const IMAGE_STORE = "project-images";
 
+type StoredImage<T> = Omit<T, "image"> & {
+	image?: string;
+	imageKey?: string | null;
+};
+type StoredStudio = Omit<ProjectStudioState, "panelVersions"> & {
+	panelVersions?: Record<string, StoredImage<GeneratedPanel>[]>;
+};
+interface StoredProject {
+	version: string;
+	story: string;
+	style: ComicStyle;
+	imageSize?: ImageSizeConfig;
+	storyAnalysis: StoryAnalysis | null;
+	storyBreakdown: StoryBreakdown | null;
+	characterReferences: StoredImage<CharacterReference>[];
+	generatedPanels: StoredImage<GeneratedPanel>[];
+	uploadedCharacterReferences?: StoredImage<UploadedCharacterReference>[];
+	uploadedSettingReferences?: StoredImage<UploadedSettingReference>[];
+	generationState?: GenerationState;
+	studio?: StoredStudio;
+	timestamp: number;
+}
+interface ImageRecord {
+	id: string;
+	projectId: string;
+	imageId: string;
+	imageData: string;
+	timestamp: number;
+}
+
 class ProjectImageStorage {
 	private db: IDBDatabase | null = null;
+	private opening: Promise<void> | null = null;
 
 	async init(): Promise<void> {
-		return new Promise((resolve, reject) => {
+		if (this.db) return;
+		if (this.opening) return this.opening;
+		this.opening = new Promise<void>((resolve, reject) => {
 			const request = indexedDB.open(DB_NAME, DB_VERSION);
-
 			request.onerror = () => reject(request.error);
 			request.onsuccess = () => {
 				this.db = request.result;
+				this.db.onversionchange = () => {
+					this.db?.close();
+					this.db = null;
+				};
 				resolve();
 			};
-
-			request.onupgradeneeded = (event) => {
-				const db = (event.target as IDBOpenDBRequest).result;
+			request.onupgradeneeded = () => {
+				const db = request.result;
 				if (!db.objectStoreNames.contains(IMAGE_STORE)) {
 					db.createObjectStore(IMAGE_STORE, { keyPath: "id" });
 				}
 			};
 		});
+		try {
+			await this.opening;
+		} finally {
+			this.opening = null;
+		}
 	}
 
-	async storeImage(projectId: string, imageId: string, imageData: string): Promise<void> {
-		if (!this.db) await this.init();
-
-		return new Promise((resolve, reject) => {
-			if (!this.db) {
-				reject(new Error("Database not initialized"));
-				return;
+	private async write(action: (store: IDBObjectStore) => void): Promise<void> {
+		await this.init();
+		const db = this.db;
+		if (!db) throw new Error("Database not initialized");
+		return new Promise<void>((resolve, reject) => {
+			const transaction = db.transaction([IMAGE_STORE], "readwrite");
+			// A successful request can still be rolled back. Only report committed writes.
+			transaction.oncomplete = () => resolve();
+			transaction.onabort = () => reject(transaction.error || new Error("Image transaction aborted"));
+			transaction.onerror = () => reject(transaction.error || new Error("Image transaction failed"));
+			try {
+				action(transaction.objectStore(IMAGE_STORE));
+			} catch (error) {
+				transaction.abort();
+				reject(error);
 			}
+		});
+	}
 
-			const transaction = this.db.transaction([IMAGE_STORE], "readwrite");
-			const store = transaction.objectStore(IMAGE_STORE);
-			const fullId = `${projectId}-${imageId}`;
-			const request = store.put({ id: fullId, projectId, imageId, imageData, timestamp: Date.now() });
-
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve();
+	async storeImages(records: ImageRecord[]): Promise<void> {
+		if (!records.length) return;
+		await this.write((store) => {
+			for (const record of records) store.put(record);
 		});
 	}
 
 	async getImage(projectId: string, imageId: string): Promise<string | null> {
-		if (!this.db) await this.init();
-
+		await this.init();
+		const db = this.db;
+		if (!db) throw new Error("Database not initialized");
 		return new Promise((resolve, reject) => {
-			if (!this.db) {
-				reject(new Error("Database not initialized"));
-				return;
-			}
-
-			const transaction = this.db.transaction([IMAGE_STORE], "readonly");
-			const store = transaction.objectStore(IMAGE_STORE);
-			const fullId = `${projectId}-${imageId}`;
-			const request = store.get(fullId);
-
+			const transaction = db.transaction([IMAGE_STORE], "readonly");
+			const request = transaction.objectStore(IMAGE_STORE).get(`${projectId}-${imageId}`);
+			let image: string | null = null;
 			request.onerror = () => reject(request.error);
-			request.onsuccess = () => {
-				const result = request.result;
-				resolve(result ? result.imageData : null);
-			};
+			request.onsuccess = () => { image = request.result?.imageData ?? null; };
+			transaction.oncomplete = () => resolve(image);
+			transaction.onabort = () => reject(transaction.error || new Error("Image read transaction aborted"));
+			transaction.onerror = () => reject(transaction.error || new Error("Image read transaction failed"));
 		});
 	}
 
-	async deleteProjectImages(projectId: string): Promise<void> {
-		if (!this.db) await this.init();
-
-		return new Promise((resolve, reject) => {
-			if (!this.db) {
-				reject(new Error("Database not initialized"));
-				return;
-			}
-
-			const transaction = this.db.transaction([IMAGE_STORE], "readwrite");
-			const store = transaction.objectStore(IMAGE_STORE);
+	async deleteProjectImages(projectId: string, retain = new Set<string>()): Promise<void> {
+		await this.write((store) => {
 			const request = store.openCursor();
-
-			request.onerror = () => reject(request.error);
-			request.onsuccess = (event) => {
-				const cursor = (event.target as IDBRequest).result;
-				if (cursor) {
-					const record = cursor.value;
-					if (record.projectId === projectId) {
-						cursor.delete();
-					}
-					cursor.continue();
-				} else {
-					resolve();
-				}
+			request.onsuccess = () => {
+				const cursor = request.result;
+				if (!cursor) return;
+				const record = cursor.value as ImageRecord;
+				if (record.projectId === projectId && !retain.has(record.imageId)) cursor.delete();
+				cursor.continue();
 			};
 		});
 	}
 
 	async clear(): Promise<void> {
-		if (!this.db) await this.init();
-
-		return new Promise((resolve, reject) => {
-			if (!this.db) {
-				reject(new Error("Database not initialized"));
-				return;
-			}
-
-			const transaction = this.db.transaction([IMAGE_STORE], "readwrite");
-			const store = transaction.objectStore(IMAGE_STORE);
-			const request = store.clear();
-
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve();
-		});
+		await this.write((store) => { store.clear(); });
 	}
 }
 
 const projectImageStorage = new ProjectImageStorage();
 
-// 生成唯一项目ID
-function generateProjectId(): string {
-	return `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+// Serialize operations within this app instance and across cooperating tabs where Web Locks
+// are supported. Reads share the lock so cleanup cannot remove a revision being restored.
+// Without Web Locks, autosaves retain old image revisions rather than risking cross-tab loss.
+let pendingOperations: Promise<void> = Promise.resolve();
+function enqueueOperation<T>(action: (hasExclusiveLock: boolean) => Promise<T>): Promise<T> {
+	const result = pendingOperations.then(() => {
+		const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+		return locks
+			? locks.request("manga-project-storage", { mode: "exclusive" }, () => action(true))
+			: action(false);
+	});
+	pendingOperations = result.then(() => undefined, () => undefined);
+	return result;
 }
 
-// 获取项目列表
+function generateProjectId(): string {
+	return `project-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function blankProject(metadata: ProjectMetadata): StoredProject {
+	return {
+		version: STORAGE_VERSION,
+		story: "",
+		style: metadata.style,
+		imageSize: metadata.imageSize || DEFAULT_IMAGE_SIZE,
+		storyAnalysis: null,
+		storyBreakdown: null,
+		characterReferences: [],
+		generatedPanels: [],
+		uploadedCharacterReferences: [],
+		uploadedSettingReferences: [],
+		timestamp: metadata.updatedAt,
+	};
+}
+
 export function getProjectList(): ProjectListItem[] {
 	try {
 		const storedData = localStorage.getItem(STORAGE_KEYS.PROJECT_LIST);
 		if (!storedData) return [];
-
-		const projectList: ProjectListItem[] = JSON.parse(storedData);
-		return projectList.sort((a, b) => b.metadata.updatedAt - a.metadata.updatedAt);
+		const projects: ProjectListItem[] = JSON.parse(storedData);
+		return projects.sort((a, b) => b.metadata.updatedAt - a.metadata.updatedAt);
 	} catch (error) {
 		console.error("Failed to load project list:", error);
 		return [];
 	}
 }
 
-// 保存项目列表
 function saveProjectList(projects: ProjectListItem[]): void {
-	try {
-		localStorage.setItem(STORAGE_KEYS.PROJECT_LIST, JSON.stringify(projects));
-	} catch (error) {
-		console.error("Failed to save project list:", error);
-		throw error;
-	}
+	localStorage.setItem(STORAGE_KEYS.PROJECT_LIST, JSON.stringify(projects));
 }
 
-// 创建新项目
 export function createProject(params: CreateProjectParams): ProjectMetadata {
-	const projectId = generateProjectId();
 	const now = Date.now();
-
 	const metadata: ProjectMetadata = {
-		id: projectId,
+		id: generateProjectId(),
 		name: params.name,
 		...(params.description && { description: params.description }),
 		createdAt: now,
@@ -191,19 +220,20 @@ export function createProject(params: CreateProjectParams): ProjectMetadata {
 		style: params.style || "manga",
 		imageSize: params.imageSize || DEFAULT_IMAGE_SIZE,
 	};
-
-	// 添加到项目列表
-	const projects = getProjectList();
-	projects.push({ metadata });
-	saveProjectList(projects);
-
-	// 设置为当前项目
-	setCurrentProject(projectId);
-
+	const previousList = getProjectList();
+	// Persist a usable document before exposing the project in the list.
+	localStorage.setItem(STORAGE_KEYS.PROJECT_DATA(metadata.id), JSON.stringify(blankProject(metadata)));
+	try {
+		saveProjectList([...previousList, { metadata }]);
+		setCurrentProject(metadata.id);
+	} catch (error) {
+		localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(metadata.id));
+		saveProjectList(previousList);
+		throw error;
+	}
 	return metadata;
 }
 
-// 获取当前项目ID
 export function getCurrentProjectId(): string | null {
 	try {
 		return localStorage.getItem(STORAGE_KEYS.CURRENT_PROJECT);
@@ -212,40 +242,19 @@ export function getCurrentProjectId(): string | null {
 	}
 }
 
-// 设置当前项目
 export function setCurrentProject(projectId: string): void {
-	try {
-		localStorage.setItem(STORAGE_KEYS.CURRENT_PROJECT, projectId);
-	} catch (error) {
-		console.error("Failed to set current project:", error);
-		throw error;
-	}
+	localStorage.setItem(STORAGE_KEYS.CURRENT_PROJECT, projectId);
 }
 
-// 更新项目元数据
 export function updateProjectMetadata(projectId: string, updates: UpdateProjectParams): void {
 	const projects = getProjectList();
-	const projectIndex = projects.findIndex(p => p.metadata.id === projectId);
-
-	if (projectIndex === -1) {
-		throw new Error(`Project ${projectId} not found`);
-	}
-
-	const project = projects[projectIndex];
-	if (!project) {
-		throw new Error(`Project ${projectId} not found`);
-	}
-
-	project.metadata = {
-		...project.metadata,
-		...updates,
-		updatedAt: Date.now(),
-	};
-
+	const project = projects.find((item) => item.metadata.id === projectId);
+	if (!project) throw new Error(`Project ${projectId} not found`);
+	project.metadata = { ...project.metadata, ...updates, updatedAt: Date.now() };
 	saveProjectList(projects);
 }
 
-// 保存项目数据
+/** Saves a snapshot, including optional studio settings and editable project metadata. */
 export async function saveProjectData(
 	projectId: string,
 	story: string,
@@ -258,230 +267,186 @@ export async function saveProjectData(
 	uploadedSettingReferences: UploadedSettingReference[] = [],
 	imageSize?: ImageSizeConfig,
 	generationState?: GenerationState,
+	options?: SaveProjectOptions,
 ): Promise<void> {
-	try {
-		// 准备文本数据（不包含图片）
-		const textData = {
+	// Capture nested inputs now, before a caller can edit them while this save is queued.
+	const snapshot = JSON.parse(JSON.stringify({
+		story, style, storyAnalysis, storyBreakdown, characterReferences, generatedPanels,
+		uploadedCharacterReferences, uploadedSettingReferences, imageSize, generationState, options,
+	})) as {
+		story: string; style: ComicStyle; storyAnalysis: StoryAnalysis | null;
+		storyBreakdown: StoryBreakdown | null; characterReferences: CharacterReference[];
+		generatedPanels: GeneratedPanel[]; uploadedCharacterReferences: UploadedCharacterReference[];
+		uploadedSettingReferences: UploadedSettingReference[]; imageSize?: ImageSizeConfig;
+		generationState?: GenerationState; options?: SaveProjectOptions;
+	};
+	return enqueueOperation(async (hasExclusiveLock) => {
+		const metadata = getProjectList().find((item) => item.metadata.id === projectId)?.metadata;
+		if (!metadata) throw new Error(`Project ${projectId} not found`);
+		const previousJSON = localStorage.getItem(STORAGE_KEYS.PROJECT_DATA(projectId));
+		const previous = previousJSON ? JSON.parse(previousJSON) as StoredProject : blankProject(metadata);
+		const revision = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+		const records: ImageRecord[] = [];
+		const packImages = <T extends { image: string }>(items: T[], prefix: string): StoredImage<T>[] =>
+			items.map(({ image, ...item }, index) => {
+				const imageKey = image ? `${revision}-${prefix}-${index}` : null;
+				if (imageKey) records.push({
+					id: `${projectId}-${imageKey}`, projectId, imageId: imageKey,
+					imageData: image, timestamp: Date.now(),
+				});
+				return { ...item, imageKey };
+			});
+		let studio = previous.studio;
+		if (snapshot.options?.studio) {
+			const { panelVersions, ...settings } = snapshot.options.studio;
+			studio = { ...settings };
+			if (panelVersions) {
+				studio.panelVersions = Object.fromEntries(Object.entries(panelVersions).map(
+					([panel, versions]) => [panel, packImages(versions, `version-${panel}`)],
+				));
+			}
+		}
+		const textData: StoredProject = {
 			version: STORAGE_VERSION,
-			story,
-			style,
-			imageSize: imageSize || DEFAULT_IMAGE_SIZE,
-			storyAnalysis,
-			storyBreakdown,
-			characterReferences: characterReferences.map(({ image, ...char }) => char),
-			generatedPanels: generatedPanels.map(({ image, ...panel }) => panel),
-			uploadedCharacterReferences: uploadedCharacterReferences.map(({ image, ...ref }) => ref),
-			uploadedSettingReferences: uploadedSettingReferences.map(({ image, ...ref }) => ref),
-			generationState,
+			story: snapshot.story,
+			style: snapshot.style,
+			imageSize: snapshot.imageSize || metadata.imageSize || previous.imageSize || DEFAULT_IMAGE_SIZE,
+			storyAnalysis: snapshot.storyAnalysis,
+			storyBreakdown: snapshot.storyBreakdown,
+			characterReferences: packImages(snapshot.characterReferences, "char"),
+			generatedPanels: packImages(snapshot.generatedPanels, "panel"),
+			uploadedCharacterReferences: packImages(snapshot.uploadedCharacterReferences, "uploaded-char"),
+			uploadedSettingReferences: packImages(snapshot.uploadedSettingReferences, "uploaded-setting"),
+			...(snapshot.generationState && { generationState: snapshot.generationState }),
+			...(studio && { studio }),
 			timestamp: Date.now(),
 		};
-
-		// 保存文本数据到 localStorage
-		localStorage.setItem(STORAGE_KEYS.PROJECT_DATA(projectId), JSON.stringify(textData));
-
-		// 保存图片到 IndexedDB
-		await projectImageStorage.init();
-
-		// 保存角色图片
-		for (const char of characterReferences) {
-			if (char.image) {
-				await projectImageStorage.storeImage(projectId, `char-${char.name}`, char.image);
-			}
-		}
-
-		// 保存面板图片
-		for (const panel of generatedPanels) {
-			if (panel.image) {
-				await projectImageStorage.storeImage(projectId, `panel-${panel.panelNumber}`, panel.image);
-			}
-		}
-
-		// 保存上传的角色参考图片
-		for (const ref of uploadedCharacterReferences) {
-			if (ref.image) {
-				await projectImageStorage.storeImage(projectId, `uploaded-char-${ref.id}`, ref.image);
-			}
-		}
-
-		// 保存上传的场景参考图片
-		for (const ref of uploadedSettingReferences) {
-			if (ref.image) {
-				await projectImageStorage.storeImage(projectId, `uploaded-setting-${ref.id}`, ref.image);
-			}
-		}
-
-		// 更新项目元数据
-		const thumbnail = generatedPanels.length > 0 ? generatedPanels[0]?.image : undefined;
-		if (thumbnail) {
-			updateProjectMetadata(projectId, {
-				thumbnail,
-			});
-		}
-
-		// 更新项目统计信息
+		// Copy-on-write keys keep the last saved project's images valid if either store fails.
+		await projectImageStorage.storeImages(records);
 		const projects = getProjectList();
-		const projectIndex = projects.findIndex(p => p.metadata.id === projectId);
-		if (projectIndex !== -1) {
-			const project = projects[projectIndex];
-			if (project) {
-				project.metadata.panelCount = generatedPanels.length;
-				project.metadata.characterCount = characterReferences.length;
-				project.metadata.style = style;
-				project.metadata.updatedAt = Date.now();
-				saveProjectList(projects);
+		const project = projects.find((item) => item.metadata.id === projectId);
+		if (!project) throw new Error(`Project ${projectId} not found`);
+		const { thumbnail: _oldThumbnail, description, ...rest } = project.metadata;
+		const editableMetadata = snapshot.options?.metadata || {
+			name: rest.name,
+			...(description !== undefined && { description }),
+		};
+		// Full image data belongs only in IndexedDB; duplicating it here can exhaust localStorage.
+		const thumbnail = snapshot.generatedPanels.find((panel) => /^https?:\/\//i.test(panel.image))?.image;
+		project.metadata = {
+			...rest,
+			name: editableMetadata.name,
+			...(editableMetadata.description !== undefined && { description: editableMetadata.description }),
+			...(thumbnail && { thumbnail }),
+			panelCount: snapshot.generatedPanels.length,
+			characterCount: snapshot.characterReferences.length,
+			style: snapshot.style,
+			imageSize: textData.imageSize || DEFAULT_IMAGE_SIZE,
+			updatedAt: Date.now(),
+		};
+		try {
+			localStorage.setItem(STORAGE_KEYS.PROJECT_DATA(projectId), JSON.stringify(textData));
+			saveProjectList(projects);
+		} catch (error) {
+			// localStorage writes are individually atomic. Restore the document if its list update fails.
+			if (previousJSON === null) localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
+			else localStorage.setItem(STORAGE_KEYS.PROJECT_DATA(projectId), previousJSON);
+			throw error;
+		}
+		const retain = new Set<string>();
+		JSON.stringify(textData, (key, value) => {
+			if (key === "imageKey" && typeof value === "string") retain.add(value);
+			return value;
+		});
+		// Cleanup is best effort after commit; a cleanup failure must not lose the saved project.
+		if (hasExclusiveLock && (records.length || previous.generatedPanels?.length || previous.characterReferences?.length
+			|| previous.uploadedCharacterReferences?.length || previous.uploadedSettingReferences?.length || previous.studio)) {
+			try {
+				await projectImageStorage.deleteProjectImages(projectId, retain);
+			} catch (error) {
+				console.warn(`Could not clean up old images for project ${projectId}:`, error);
 			}
 		}
-
-		console.log(`✅ Project ${projectId} saved successfully`);
-	} catch (error) {
-		console.error(`❌ Failed to save project ${projectId}:`, error);
-		throw error;
-	}
+	});
 }
 
-// 加载项目数据
 export async function loadProjectData(projectId: string): Promise<ProjectData | null> {
-	try {
-		// 加载文本数据
-		const storedData = localStorage.getItem(STORAGE_KEYS.PROJECT_DATA(projectId));
-		if (!storedData) return null;
-
-		const textData = JSON.parse(storedData);
-
-		// 版本检查
-		if (textData.version !== STORAGE_VERSION) {
-			console.warn(`Project ${projectId} version mismatch, skipping load`);
+	return enqueueOperation(async () => {
+		try {
+			const project = getProjectList().find((item) => item.metadata.id === projectId);
+			if (!project) return null;
+			const storedData = localStorage.getItem(STORAGE_KEYS.PROJECT_DATA(projectId));
+			// Missing data for a populated project is not a recoverable blank project.
+			if (!storedData && (project.metadata.panelCount > 0 || project.metadata.characterCount > 0)) return null;
+			// Recover projects created by the former metadata-only createProject implementation.
+			const data: StoredProject = storedData ? JSON.parse(storedData) : blankProject(project.metadata);
+			if (data.version !== STORAGE_VERSION) return null;
+			const restoreImages = async <T extends { image: string }>(
+				items: StoredImage<T>[], legacyKey: (item: StoredImage<T>) => string,
+			): Promise<T[]> => Promise.all(items.map(async (item) => {
+				const { imageKey, image: inlineImage, ...fields } = item;
+				let image = inlineImage || "";
+				if (imageKey !== null) {
+					// A read error must fail the whole load. Returning an empty image could let an
+					// autosave overwrite a recoverable image and garbage-collect the original.
+					image = (await projectImageStorage.getImage(projectId, imageKey || legacyKey(item))) || image;
+				}
+				// Preserve the editable record when the image key is genuinely absent.
+				return { ...fields, image } as unknown as T;
+			}));
+			const [characterReferences, generatedPanels, uploadedCharacterReferences, uploadedSettingReferences] = await Promise.all([
+				restoreImages<CharacterReference>(data.characterReferences || [], (item) => `char-${item.name}`),
+				restoreImages<GeneratedPanel>(data.generatedPanels || [], (item) => `panel-${item.panelNumber}`),
+				restoreImages<UploadedCharacterReference>(data.uploadedCharacterReferences || [], (item) => `uploaded-char-${item.id}`),
+				restoreImages<UploadedSettingReference>(data.uploadedSettingReferences || [], (item) => `uploaded-setting-${item.id}`),
+			]);
+			let studio: ProjectStudioState | undefined;
+			if (data.studio) {
+				const { panelVersions, ...settings } = data.studio;
+				studio = { ...settings };
+				if (panelVersions) {
+					studio.panelVersions = Object.fromEntries(await Promise.all(Object.entries(panelVersions).map(
+						async ([panel, versions]) => [panel, await restoreImages<GeneratedPanel>(versions, (item) => `panel-${item.panelNumber}`)],
+					)));
+				}
+			}
+			return {
+				metadata: project.metadata,
+				story: data.story,
+				style: data.style,
+				imageSize: project.metadata.imageSize || data.imageSize || DEFAULT_IMAGE_SIZE,
+				storyAnalysis: data.storyAnalysis,
+				storyBreakdown: data.storyBreakdown,
+				characterReferences,
+				generatedPanels,
+				uploadedCharacterReferences,
+				uploadedSettingReferences,
+				...(data.generationState && { generationState: data.generationState }),
+				...(studio && { studio }),
+			};
+		} catch (error) {
+			console.error(`Failed to load project ${projectId}:`, error);
 			return null;
 		}
-
-		// 加载图片
-		await projectImageStorage.init();
-
-		// 恢复角色图片
-		const characterReferences: CharacterReference[] = [];
-		for (const char of textData.characterReferences) {
-			try {
-				const image = await projectImageStorage.getImage(projectId, `char-${char.name}`);
-				if (image) {
-					characterReferences.push({ ...char, image });
-				}
-			} catch (error) {
-				console.warn(`Failed to load image for character ${char.name}:`, error);
-			}
-		}
-
-		// 恢复面板图片
-		const generatedPanels: GeneratedPanel[] = [];
-		for (const panel of textData.generatedPanels) {
-			try {
-				const image = await projectImageStorage.getImage(projectId, `panel-${panel.panelNumber}`);
-				if (image) {
-					generatedPanels.push({ ...panel, image });
-				}
-			} catch (error) {
-				console.warn(`Failed to load image for panel ${panel.panelNumber}:`, error);
-			}
-		}
-
-		// 恢复上传的角色参考图片
-		const uploadedCharacterReferences: UploadedCharacterReference[] = [];
-		for (const ref of textData.uploadedCharacterReferences) {
-			try {
-				const image = await projectImageStorage.getImage(projectId, `uploaded-char-${ref.id}`);
-				if (image) {
-					uploadedCharacterReferences.push({ ...ref, image });
-				}
-			} catch (error) {
-				console.warn(`Failed to load uploaded character reference ${ref.id}:`, error);
-			}
-		}
-
-		// 恢复上传的场景参考图片
-		const uploadedSettingReferences: UploadedSettingReference[] = [];
-		for (const ref of textData.uploadedSettingReferences) {
-			try {
-				const image = await projectImageStorage.getImage(projectId, `uploaded-setting-${ref.id}`);
-				if (image) {
-					uploadedSettingReferences.push({ ...ref, image });
-				}
-			} catch (error) {
-				console.warn(`Failed to load uploaded setting reference ${ref.id}:`, error);
-			}
-		}
-
-		// 获取项目元数据
-		const projects = getProjectList();
-		const project = projects.find(p => p.metadata.id === projectId);
-		if (!project) {
-			throw new Error(`Project metadata not found for ${projectId}`);
-		}
-
-		return {
-			metadata: project.metadata,
-			story: textData.story,
-			style: textData.style,
-			imageSize: project.metadata.imageSize || DEFAULT_IMAGE_SIZE, // 向后兼容
-			storyAnalysis: textData.storyAnalysis,
-			storyBreakdown: textData.storyBreakdown,
-			characterReferences,
-			generatedPanels,
-			uploadedCharacterReferences,
-			uploadedSettingReferences,
-			generationState: textData.generationState,
-		};
-	} catch (error) {
-		console.error(`❌ Failed to load project ${projectId}:`, error);
-		return null;
-	}
+	});
 }
 
-// 删除项目
 export async function deleteProject(projectId: string): Promise<void> {
-	try {
-		// 删除项目数据
-		localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
-
-		// 删除项目图片
+	return enqueueOperation(async () => {
 		await projectImageStorage.deleteProjectImages(projectId);
-
-		// 从项目列表中移除
-		const projects = getProjectList();
-		const filteredProjects = projects.filter(p => p.metadata.id !== projectId);
-		saveProjectList(filteredProjects);
-
-		// 如果删除的是当前项目，清除当前项目设置
-		if (getCurrentProjectId() === projectId) {
-			localStorage.removeItem(STORAGE_KEYS.CURRENT_PROJECT);
-		}
-
-		console.log(`✅ Project ${projectId} deleted successfully`);
-	} catch (error) {
-		console.error(`❌ Failed to delete project ${projectId}:`, error);
-		throw error;
-	}
+		localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
+		saveProjectList(getProjectList().filter((item) => item.metadata.id !== projectId));
+		if (getCurrentProjectId() === projectId) localStorage.removeItem(STORAGE_KEYS.CURRENT_PROJECT);
+	});
 }
 
-// 清除所有项目数据
 export async function clearAllProjects(): Promise<void> {
-	try {
-		// 清除项目列表
+	return enqueueOperation(async () => {
+		await projectImageStorage.clear();
+		for (const key of Object.keys(localStorage)) {
+			if (key.startsWith("manga-project-")) localStorage.removeItem(key);
+		}
 		localStorage.removeItem(STORAGE_KEYS.PROJECT_LIST);
 		localStorage.removeItem(STORAGE_KEYS.CURRENT_PROJECT);
-
-		// 清除所有项目数据
-		const keys = Object.keys(localStorage);
-		for (const key of keys) {
-			if (key.startsWith('manga-project-')) {
-				localStorage.removeItem(key);
-			}
-		}
-
-		// 清除所有图片
-		await projectImageStorage.clear();
-
-		console.log("✅ All projects cleared successfully");
-	} catch (error) {
-		console.error("❌ Failed to clear all projects:", error);
-		throw error;
-	}
+	});
 }

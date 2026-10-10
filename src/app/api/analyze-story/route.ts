@@ -42,7 +42,7 @@ if (!apiKey) {
 	console.error("GOOGLE_AI_API_KEY environment variable is not set");
 }
 const genAI = new GoogleGenAI({ apiKey: apiKey! });
-const model = "gemini-2.5-flash";
+const model = process.env["GOOGLE_TEXT_MODEL"] || "gemini-2.5-flash";
 
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();

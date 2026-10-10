@@ -46,6 +46,24 @@ export interface GenerationState {
 	};
 }
 
+/** Studio workflow state. Optional so projects from earlier versions still load. */
+export interface ProjectStudioState {
+	aiModel: string;
+	step: 1 | 2 | 3 | 4;
+	approved: boolean;
+	requestedPanelCount: number;
+	plannedStory?: string;
+	stalePanels: number[];
+	panelVersions?: Record<string, GeneratedPanel[]>;
+}
+
+/** Optional final argument to saveProjectData. Omitted sections keep their saved values. */
+export interface SaveProjectOptions {
+	studio?: ProjectStudioState;
+	/** Editable metadata snapshot; omitting description here removes an old description. */
+	metadata?: Pick<ProjectMetadata, "name" | "description">;
+}
+
 // 完整的项目数据
 export interface ProjectData {
 	metadata: ProjectMetadata;
@@ -59,6 +77,7 @@ export interface ProjectData {
 	uploadedCharacterReferences: UploadedCharacterReference[];
 	uploadedSettingReferences: UploadedSettingReference[];
 	generationState?: GenerationState; // 生成状态
+	studio?: ProjectStudioState;
 }
 
 // 项目列表项（不包含完整数据，只有元数据）

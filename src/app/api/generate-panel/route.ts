@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// 检查面板图片缓存
-		const panelDescription = panel.description || panel.panelDescription;
+		const panelDescription = JSON.stringify({ sceneDescription: panel.sceneDescription || panel.description || panel.panelDescription, dialogue: panel.dialogue, cameraAngle: panel.cameraAngle, visualMood: panel.visualMood, characters: panel.characters, sceneId: panel.sceneId, setting, scenes, uploadedSettingReferences, language, aiModel });
 		const cachedPanel = cacheHelpers.getCachedPanelImage(
 			panel.panelNumber,
 			panelDescription,

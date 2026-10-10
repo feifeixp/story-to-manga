@@ -208,103 +208,20 @@ Generate a single panel image with proper framing and composition.`;
 			"Calling AI Model Router for image redraw",
 		);
 
-		// Use AI model router to redraw the image with retry mechanism - 使用与generate-panel API相同的方法，添加重试机制
+		// Do not start an overlapping paid retry when a still-running request times out.
 		const selectedModel = selectAIModel(language as "en" | "zh", aiModel as any);
 		const aiRouter = getAIModelRouter();
-		const maxRetries = 3;
-		let lastError: Error | null = null;
-		let result: any = null;
-
-		for (let attempt = 1; attempt <= maxRetries; attempt++) {
-			try {
-				redrawLogger.info(
-					{ requestId, attempt, maxRetries, imageType },
-					`🔄 Attempting AI model generation (attempt ${attempt}/${maxRetries})`
-				);
-
-				// 设置超时控制
-				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000);
-				});
-
-				let generationPromise: Promise<any>;
-
-				if (imageType === 'panel') {
-					// 添加最终提示词调试信息
-					redrawLogger.info(
-						{
-							requestId,
-							final_prompt_to_ai: finalPrompt,
-							prompt_length: finalPrompt.length,
-							reference_images_count: processedReferenceImages.length,
-						},
-						"🚀 Sending final prompt to AI for panel redraw",
-					);
-
-					// 对于panel类型，使用与generate-panel API完全相同的调用方式
-					generationPromise = aiRouter.generateComicPanel(
-						finalPrompt,
-						processedReferenceImages,
-						language as "en" | "zh",
-						selectedModel,
-						imageSize
-					);
-				} else if (imageType === 'character') {
-					// 对于character类型，也使用generateComicPanel方法
-					generationPromise = aiRouter.generateComicPanel(
-						finalPrompt,
-						processedReferenceImages,
-						language as "en" | "zh",
-						selectedModel,
-						imageSize
-					);
-				} else {
-					throw new Error(`Unsupported image type: ${imageType}`);
-				}
-
-				result = await Promise.race([generationPromise, timeoutPromise]);
-
-				redrawLogger.info(
-					{ requestId, attempt, success: true, imageType },
-					`✅ AI model generation succeeded on attempt ${attempt}`
-				);
-				break; // 成功则跳出重试循环
-
-			} catch (error) {
-				lastError = error instanceof Error ? error : new Error(String(error));
-
-				redrawLogger.warn(
-					{
-						requestId,
-						attempt,
-						maxRetries,
-						imageType,
-						error: lastError.message,
-						willRetry: attempt < maxRetries
-					},
-					`❌ AI model generation failed on attempt ${attempt}`
-				);
-
-				if (attempt < maxRetries) {
-					// 等待一段时间后重试，使用指数退避
-					const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000);
-					redrawLogger.info(
-						{ delay },
-						`Waiting ${delay}ms before retry`
-					);
-					await new Promise(resolve => setTimeout(resolve, delay));
-				}
-			}
+		if (imageType !== "panel" && imageType !== "character") {
+			throw new Error(`Unsupported image type: ${imageType}`);
 		}
-
-		// 如果所有重试都失败了
-		if (!result && lastError) {
-			redrawLogger.error(
-				{ requestId, error: lastError.message, imageType },
-				"💥 All AI model generation attempts failed for image redraw"
-			);
-			throw lastError;
-		}
+		const result = await aiRouter.generateComicPanel(
+			finalPrompt,
+			processedReferenceImages,
+			language as "en" | "zh",
+			selectedModel,
+			imageSize,
+			style as any,
+		);
 
 		if (!result.success || !result.imageData) {
 			throw new Error(result.error || "Failed to redraw image");

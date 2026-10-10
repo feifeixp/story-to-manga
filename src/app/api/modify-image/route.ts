@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
 				language as "en" | "zh",
 				aiModel as any,
 				imageSize,
+				style as any,
 			);
 		} else if (imageType === 'character') {
 			result = await aiRouter.generateMangaPanel(
