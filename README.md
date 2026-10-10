@@ -1,611 +1,203 @@
-# Story to Manga Machine Enhanced 🎨
+# Story to Manga · 故事创作工作台
 
-**The Ultimate AI-Powered Story-to-Visual Converter**
+把文字故事变成可以逐格打磨的漫画。先写故事、审核角色与分镜，再生成画面，最后精修和导出。
 
-Transform your written stories into stunning visual manga or comic book pages using multiple AI models including Google's Gemini 2.5 Flash and VolcEngine Doubao!
+A bilingual story-to-manga workspace: write, review the storyboard, generate, then refine and export.
 
-> **🚀 This is an enhanced version** based on the original [Story to Manga Machine](https://github.com/victorhuangwq/story-to-manga) by victorhuangwq, featuring significant improvements and new capabilities.
+基于 [victorhuangwq/story-to-manga](https://github.com/victorhuangwq/story-to-manga) 扩展，使用 Next.js、React 和 TypeScript，保留 Google Gemini、火山引擎图像接口与 Supabase 图库分享功能。
 
-## ✨ What's New in Enhanced Version
+## 新版工作台（2026-10）
 
-- 🤖 **Multi-AI Model Support**: Choose between Google Gemini and VolcEngine Doubao
-- 📁 **Project Management**: Create, save, and manage multiple story projects
-- 🎨 **10 Comic Styles**: Japanese Manga, American Comic, Chinese Wuxia, Healing, Korean Manhwa, Cinematic, Shojo, Seinen, Chibi, Fantasy
-- 🖼️ **Advanced Image Editing**: Redraw and modify panels with reference images
-- 📏 **Custom Image Sizes**: Configure image dimensions per project
-- 🌍 **Internationalization**: Full Chinese and English language support
-- 📄 **Pagination System**: Handle large projects with 50+ panels
-- ⚡ **Performance Optimizations**: Caching, parallel processing, lazy loading
-- 🔄 **Continue Generation**: Resume interrupted generations seamlessly
-- 📱 **Enhanced UI/UX**: Modern design with improved user experience
-- 🛡️ **Stability Improvements**: Robust error handling and crash prevention
-- 🔧 **Developer Experience**: Comprehensive logging and debugging tools
+`/app` 已升级为四步创作流程，支持中文和英文：
 
-## 🆕 Latest Updates (v2.4.0) - January 2025
+| 步骤 | 操作 |
+| --- | --- |
+| 1. 写下故事 | 输入故事、选择画风和期望分镜数量，让 AI 拆解故事。 |
+| 2. 确认角色与分镜 | 编辑角色、场景、镜头与对白，上传参考图，确认后再生成画面。 |
+| 3. 生成漫画 | 按顺序生成并保存分镜，查看进度，暂停或继续缺失、待重绘的画面。 |
+| 4. 精修与导出 | 单格重绘、修改图片、恢复历史版本，导出漫画页面、原图和项目备份。 |
 
-### 🔐 **Supabase Authentication System**
+故事拆解只调用文本接口；图片生成在确认分镜后单独开始。修改故事后，需要重新拆解并审核分镜。
 
-- **🔑 Real User Authentication**: Complete Supabase integration with signup, signin, and profile management
-- **📧 Email Verification**: Secure user registration with email confirmation
-- **🔒 Password Security**: Secure password authentication with reset functionality
-- **👤 User Profiles**: Profile management with avatar support and user metadata
-- **🔄 Session Management**: Persistent login sessions across browser refreshes
-- **🛡️ Security**: Production-ready authentication with Supabase's built-in security features
+### 主要功能
 
-### 🎨 **Enhanced UI Components**
+- **项目管理**：创建、切换和自动保存多个项目，兼容已有本地项目。
+- **十种画风**：日系治愈、黑白漫画、东方水墨、复古美漫、韩式条漫、电影叙事、少女漫画、青年漫画、Q 版萌系、奇幻冒险。
+- **角色与场景参考**：生成角色参考图，或上传自己的角色、场景图片。
+- **可恢复的生成流程**：防止重复启动同一生成流程；每格保存后再开始下一格，继续时跳过已完成画面。
+- **单格精修**：调整分镜描述、重绘或修改图片；每格保留最多三个先前图片版本。
+- **导出**：单张图片、分页 PNG、原图与项目 ZIP、项目 JSON 备份。漫画页面每页最多六格，多页导出为 ZIP。
+- **图库分享**：保留 Supabase 登录和作品发布入口，需配置相应数据库与存储。
 
-- **📝 Input Component**: Professional input fields with shadcn/ui styling and proper validation
-- **🔐 AuthModal**: Complete authentication modal with login, registration, and password reset
-- **⚡ Loading States**: Proper loading indicators and error handling throughout authentication flow
-- **✅ Form Validation**: Comprehensive client-side validation with user-friendly error messages
+## 快速开始
 
-### 🏗️ **Architecture Improvements**
+### 1. 准备环境并安装
 
-- **🌐 AuthProvider Context**: Global user state management with automatic synchronization
-- **🔧 AuthService Class**: Clean separation of authentication logic with comprehensive error handling
-- **📱 Responsive Design**: Mobile-first approach with adaptive layouts for all screen sizes
-- **🎯 Intuitive Navigation**: Clear call-to-action buttons and seamless flow between homepage and application
+使用 **Node.js 24** 和 **pnpm**；当前测试依赖 Node 的 TypeScript 转换能力。先确认 `node --version` 和 `pnpm --version` 可用。
 
-### 🎨 **UI Component System**
-
-- **🧩 shadcn/ui Architecture**: Professional component system with Button, Card, and Badge components
-- **🎨 Multiple Variants**: Button variants (default, outline, ghost, destructive) with different sizes
-- **📦 Reusable Components**: Consistent design language across all interface elements
-- **🔧 Developer-Friendly**: TypeScript-first components with proper forwarded refs and variant support
-
-### 🔄 **Application Restructuring**
-
-- **🏠 Homepage Route (/)**: New landing page showcasing application capabilities and community features
-- **⚙️ Main Application (/app)**: Preserved all existing functionality in dedicated application route
-- **🌐 Seamless Integration**: Smooth navigation between marketing page and functional application
-- **📱 Consistent Experience**: Unified language preferences and user settings across all pages
-
-### 🌍 **Enhanced Internationalization**
-
-- **🏠 Homepage Localization**: Complete Chinese and English support for all homepage content
-- **🎯 Dynamic Content**: Featured works, descriptions, and UI elements adapt to user language
-- **🔄 Language Persistence**: User language preference maintained across homepage and application
-- **📱 Auto-Detection**: Automatic language detection based on browser settings
-
-## 📋 Previous Updates (v2.2.1) - December 2024
-
-### 🎯 **Critical Bug Fixes & Stability**
-
-- **🔧 Character Reference System**: Fixed critical issue where wrong character references were used in panel generation
-- **🎨 Style Consistency**: Resolved redraw functionality producing inconsistent styles (manga vs wuxia issue)
-- **🌐 Language Localization**: Implemented comprehensive Chinese language support for all AI-generated content
-- **⚡ Frontend Error Resolution**: Fixed all TypeScript errors, undefined variables, and null safety issues
-- **🔗 Repository Links**: Updated all GitHub links to point to correct project repository
-
-### 🚀 **Enhanced AI Generation**
-
-- **🎭 Dynamic Character Matching**: Panels now automatically use correct character references based on scene content
-- **📝 Intelligent Prompt Construction**: Language-aware prompts ensure Chinese users get Chinese content
-- **🎨 Style Prefix Standardization**: All 10 comic styles now use consistent, optimized prompt formats
-- **🔄 Improved Redraw Logic**: Fixed black/white manga bias in redraw functionality
-
-### 🌍 **Internationalization Improvements**
-
-- **📖 Story Analysis**: Chinese language stories now generate Chinese titles, character descriptions, and settings
-- **🎬 Panel Generation**: Scene descriptions and dialogue properly localized based on user language
-- **🎨 Character Creation**: Style-appropriate character generation with language-specific annotations
-- **🔧 API Consistency**: All endpoints now respect user language preferences
-
-### 🛠️ **Developer Experience & Production Readiness**
-
-- **📊 Comprehensive Logging**: Added detailed debugging logs for all AI generation processes
-- **🔍 Error Tracking**: Enhanced error reporting with request IDs and detailed context
-- **⚙️ Code Quality**: Resolved all linting issues, spell check warnings, and type safety problems
-- **📚 Documentation**: Updated all configuration files and repository metadata
-- **🏗️ Production Build**: Fixed all TypeScript build errors for seamless deployment
-- **🔒 Type Safety**: Enhanced type safety with proper optional chaining and null checks
-- **📦 Optimized Bundle**: Production build generates optimized 116kB main bundle
-
-## Screenshots
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="screenshots/homepage.png" alt="Story to Manga Homepage" width="100%"/>
-      <br><sub><b>Main Interface</b></sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="screenshots/chardesign.png" alt="Character Design Generation" width="100%"/>
-      <br>
-      <img src="screenshots/Layout.png" alt="Layerout Design Generation" width="100%"/>
-      <br><sub><b>Design</b></sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <img src="screenshots/drawpagepanel.png" alt="Panel Generation Progress" width="100%"/>
-     <br>
-      <img src="screenshots/edit.png" alt="Panel Generation Progress" width="100%"/>
-      <br><sub><b>Generation Progress</b></sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="screenshots/output.png" alt="Final Manga Output" width="100%"/>
-      <br>
-<img src="screenshots/comic-page-1-of-2-wuxia-1758130023797.png" alt="Final Manga Output" width="100%"/>
-      <br><sub><b>Final Output</b></sub>
-    </td>
-  </tr>
-</table>
-
-## 🌟 Core Features
-
-### 🤖 Multi-AI Model Support
-
-- **Google Gemini 2.5 Flash**: High-quality image generation with excellent character consistency
-- **VolcEngine Doubao**: Alternative AI model for diverse artistic styles
-- **Automatic Model Selection**: Smart fallback system for optimal results
-
-### 🎨 Ten Distinct Comic Styles
-
-- **Japanese Manga**: Traditional manga aesthetics with detailed linework
-- **American Comic**: Bold superhero comic book style
-- **Chinese Wuxia**: Martial arts and cultivation themes with Eastern aesthetics
-- **Healing Style**: Soft, warm, therapeutic visual style
-- **Korean Manhwa**: Modern webtoon-inspired artistic approach
-- **Cinematic**: Movie-like dramatic and realistic rendering
-- **Shojo**: Romantic and emotional manga style targeting young women
-- **Seinen**: Mature manga style for adult male audiences
-- **Chibi**: Cute, super-deformed character style
-- **Fantasy**: Epic fantasy art with magical and mythical elements
-
-### 📁 Advanced Project Management
-
-- **Multiple Projects**: Create and manage separate story projects
-- **Auto-Save**: Never lose your work with automatic state persistence
-- **Project Switching**: Seamlessly switch between different stories
-- **Generation History**: Track and resume interrupted generations
-
-### 🖼️ Professional Image Editing
-
-- **Panel Redrawing**: Regenerate individual panels with new prompts
-- **Reference Images**: Upload custom reference images or use character designs
-- **Image Modification**: Advanced editing with AI-powered modifications
-- **Custom Sizing**: Configure image dimensions per project (1K, 2K, 4K options)
-
-### ⚡ Performance & Scalability
-
-- **Parallel Processing**: Generate multiple panels simultaneously
-- **Smart Caching**: Intelligent caching system for faster regeneration
-- **Lazy Loading**: Handle large projects (50+ panels) efficiently
-- **Pagination**: Organized display with auto-download for all pages
-
-### 🌍 International Support
-
-- **Bilingual Interface**: Full Chinese and English language support
-- **Localized Content**: Culturally appropriate prompts and styles
-- **Regional AI Models**: Optimized for different markets and preferences
-
-## 🛠️ Tech Stack
-
-### Frontend
-
-- **Next.js 15**: Latest React framework with App Router
-- **TypeScript**: Full type safety and developer experience
-- **Tailwind CSS v4**: Modern utility-first CSS framework
-- **React i18next**: Internationalization and localization
-
-### AI Models & APIs
-
-- **Google Gemini 2.5 Flash**: Primary AI model for image generation
-- **VolcEngine Doubao**: Secondary AI model with unique capabilities
-- **Smart Model Router**: Automatic model selection and fallback
-
-### Storage & Performance
-
-- **Hybrid Storage**: localStorage (text) + IndexedDB (images)
-- **Advanced Caching**: LRU cache with automatic cleanup
-- **Image Optimization**: Client-side compression and format conversion
-- **Parallel Processing**: Concurrent API requests for faster generation
-
-### Image Processing
-
-- **HTML2Canvas**: Social media composite generation
-- **Custom Image Proxy**: Secure image handling and caching
-- **Multi-format Support**: JPEG, PNG, WebP optimization
-
-### Development & Deployment
-
-- **Biome**: Fast linting and formatting
-- **TypeScript**: Strict type checking
-- **Knip**: Dead code elimination
-- **AWS Amplify**: Production deployment
-
-## 🚀 Quick Start
-
-### 一键部署（推荐）
-
-在新机器上快速部署，只需要一条命令：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/feifeixp/story-to-manga-enhanced/main/quick-deploy.sh | bash
+```sh
+git clone https://github.com/feifeixp/story-to-manga.git
+cd story-to-manga
+pnpm install --frozen-lockfile
 ```
 
-这个脚本会自动安装所有依赖、配置环境并启动服务器。
+请使用 `pnpm-lock.yaml` 安装。仓库现有 `package-lock.json` 与依赖声明不一致，`npm ci` 会失败。
 
-### 手动部署
+### 2. 配置模型
 
-#### Prerequisites
+需要实际故事拆解和生成时，复制配置模板：
 
-- Node.js 18+
-- pnpm (recommended) or npm
-
-#### 1. Clone Repository
-
-```bash
-git clone https://github.com/feifeixp/story-to-manga-enhanced.git
-cd story-to-manga-enhanced
-```
-
-### 2. Install Dependencies
-
-```bash
-pnpm install
-```
-
-### 3. Configure API Keys
-
-Copy the environment template:
-
-```bash
+```sh
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local` and add your API keys:
+将 `.env.local` 中的占位值替换为自己的凭据：
 
 ```env
-# Google AI API Key (Primary)
+# 故事分析、分镜规划与 Google 图片生成
 GOOGLE_AI_API_KEY=your_google_ai_api_key_here
 
-# VolcEngine API Key (Optional, for additional AI model)
+# 当前代码的默认模型，可按账号可用模型调整
+GOOGLE_TEXT_MODEL=gemini-2.5-flash
+GOOGLE_IMAGE_MODEL=gemini-2.5-flash-image
+
+# 可选：火山引擎图片生成；故事拆解仍需 Google 凭据
 VOLCENGINE_API_KEY=your_volcengine_api_key_here
 
-# Development settings
-NODE_ENV=development
+# 可选：Google Analytics；留空可禁用
+NEXT_PUBLIC_GA_MEASUREMENT_ID=
 ```
 
-#### Getting API Keys:
+Google 密钥入口：[Google AI Studio](https://aistudio.google.com/apikey)。火山引擎凭据入口：[火山引擎控制台](https://console.volcengine.com/)。实际可用模型与调用额度取决于供应商和账号权限。
 
-**Google AI API Key:**
+密钥仅配置在本地环境文件或部署平台的服务端环境变量中。不要提交到 GitHub，也不要添加 `NEXT_PUBLIC_` 前缀或填进故事文本。修改配置后重启服务。
 
-1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Sign in with your Google account
-3. Create a new API key
-4. Copy the API key
+未配置密钥也可以打开界面、编辑故事和管理本地草稿。故事拆解在缺少 Google 密钥时返回 503 配置提示；模板中的占位值不能用于真实生成。
 
-**VolcEngine API Key (Optional):**
+### 3. 启动
 
-1. Visit [VolcEngine Console](https://console.volcengine.com/)
-2. Create an account and verify
-3. Navigate to AI Services → Image Generation
-4. Create API credentials
-
-### 4. Run Development Server
-
-```bash
-pnpm dev
+```sh
+pnpm dev --hostname 127.0.0.1
 ```
 
-Open [http://localhost:8000](http://localhost:8000) in your browser.
+打开 **[http://localhost:8000/app](http://localhost:8000/app)** 进入创作工作台。
 
-## 🔄 Updating to Latest Version (v2.2.1)
+| 地址 | 页面 |
+| --- | --- |
+| `/` | 项目首页 |
+| `/app` | 四步创作工作台 |
+| `/comics` | 作品图库 |
 
-### 🚨 Important: Production Ready Build
+Mac 用户安装依赖后，也可以在 Finder 双击 `Start Story to Manga.command`。保持启动终端打开，使用 Ctrl-C 停止服务。项目专用的 Mac 安装记录见 [LOCAL_MAC_SETUP.md](docs/LOCAL_MAC_SETUP.md)。
 
-Version 2.2.1 includes critical production build fixes that ensure seamless deployment.
+## 创作与保存
 
-This version includes significant improvements to character reference handling and style consistency. **Your existing projects will continue to work**, but new projects will benefit from enhanced features.
+1. 新建项目或打开已有项目，填写故事。当前故事输入框最多接受 5,000 个字符。
+2. 选择画风与期望分镜数量，拆解故事。规划支持 2–50 格，实际数量以审核后的分镜结果为准。
+3. 检查角色外观、场景描述、镜头与对白，确认分镜后开始生成。
+4. 如需暂停，等待当前请求完成；继续时补齐缺失或待重绘的分镜。
+5. 在精修页选择单格调整、重绘或恢复先前版本，再导出成品和项目备份。
 
-### For Existing Installations
+项目文字保存在当前浏览器的 localStorage，图片保存在 IndexedDB。**本地项目不会自动同步到其他浏览器或设备**；登录图库也不代表草稿已上传。
 
-#### Method 1: Git Pull (Recommended)
+定期导出 JSON 或 ZIP 备份。清理浏览器数据会删除本地项目；存储失败时，请先备份再排查。当前工作台还没有一键导入项目备份的入口。避免同时在多个标签页编辑同一个项目。
 
-```bash
-cd story-to-manga-enhanced
-git pull origin main
-pnpm install  # Install any new dependencies
-pnpm dev      # Restart development server
-```
+暂停会阻止下一次客户端请求，无法取消供应商已经开始的任务。现有服务端模型路由仍可能尝试其他供应商；真实生成的费用和额度以供应商为准。
 
-#### Method 2: Fresh Installation
+## 开发与验证
 
-If you encounter issues with git pull, you can do a fresh installation:
-
-```bash
-# Backup your .env.local file first
-cp .env.local .env.local.backup
-
-# Remove old installation
-rm -rf story-to-manga-enhanced
-
-# Fresh clone and setup
-git clone https://github.com/feifeixp/story-to-manga-enhanced.git
-cd story-to-manga-enhanced
-pnpm install
-
-# Restore your API keys
-cp .env.local.backup .env.local
-```
-
-### 🆕 What's New After Update
-
-After updating to v2.2.1, you'll immediately benefit from:
-
-1. **🎯 Better Character Consistency**: Panels now automatically use the correct character references
-2. **🎨 Fixed Style Issues**: Redraw functionality now maintains proper style (no more unwanted manga style)
-3. **🌐 Chinese Language Support**: Full localization for Chinese users
-4. **🔧 Enhanced Stability**: Resolved all major frontend crashes and TypeScript errors
-5. **📱 Improved UI**: Better error handling and user feedback
-6. **🏗️ Production Ready**: All TypeScript build errors fixed for seamless deployment
-7. **🔒 Type Safety**: Enhanced type safety prevents runtime errors
-8. **📦 Optimized Build**: Smaller bundle size and better performance
-
-### 🔧 Troubleshooting Update Issues
-
-If you experience issues after updating:
-
-```bash
-# Clear Next.js cache
-rm -rf .next
-
-# Reinstall dependencies
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
-
-# Restart development server
-pnpm dev
-```
-
-# Start development server
-
-pnpm dev
-
-```
-
-### For Production Deployments
-
-#### AWS Amplify
-Your deployment will automatically update when you push changes to your connected GitHub repository.
-
-#### Vercel
-Vercel will automatically redeploy when you push to your connected repository.
-
-#### Manual Server Updates
-```bash
-# On your production server
-cd /path/to/your/deployment
-git pull origin main
-pnpm install
+```sh
+pnpm test
+pnpm typecheck
+pnpm exec biome check src/components/studio src/lib/studioWorkflow.ts src/lib/studioExport.ts
 pnpm build
-pm2 restart your-app-name  # or your process manager
 ```
 
-### 📋 Update Checklist
+2026-10-11 在 Mac 本地对新版代码完成验证：
 
-After updating, verify these features are working:
+- **38 个测试通过**：19 个存储回归测试、11 个流程与接口错误测试、8 个模拟组件交互测试。
+- **完整 TypeScript 检查通过**。
+- **工作台范围 Biome 检查通过**。
+- **Next.js 生产构建通过**，本地 `/app` 返回 HTTP 200。
 
-- [ ]  Project creation and management
-- [ ]  Story analysis and character generation
-- [ ]  Panel generation with your preferred AI model
-- [ ]  Image editing and redraw functionality
-- [ ]  Export and download features
-- [ ]  Language switching (Chinese/English)
+上述自动化测试使用模拟接口，不消耗模型额度；不代表真实模型生成、图库登录或作品发布已经验收。
 
-### 🆘 Update Troubleshooting
+全仓库 Biome 和 knip 仍有历史问题。`pnpm lint`、`pnpm format` 会写入文件；`pnpm check` 也包含会写入文件的 lint 步骤。只需查看全仓库规范问题时，使用 `pnpm exec biome check .`。
 
-**If you encounter issues after updating:**
+### 目录结构
 
-1. **Clear Browser Cache**: Hard refresh (Ctrl+F5 or Cmd+Shift+R)
-2. **Clear Application Data**:
-   - Open browser DevTools → Application → Storage → Clear site data
-3. **Reinstall Dependencies**:
-   ```bash
-   rm -rf node_modules package-lock.json
-   pnpm install
-   ```
-4. **Check API Keys**: Ensure your `.env.local` file has valid API keys
-5. **Restart Development Server**: Stop and restart `pnpm dev`
+```text
+src/app/app/              工作台页面与样式
+src/components/studio/    工作台、对话框与项目状态
+src/app/api/              故事分析、分镜、图片生成和编辑接口
+src/lib/projectStorage.ts 本地项目与图片存储
+src/lib/studioWorkflow.ts 生成流程与接口处理
+src/lib/studioExport.ts   PNG、ZIP 与 JSON 导出
+src/lib/services/         图库服务
+src/locales/              中文和英文翻译
+public/                  静态资源
+database/                Supabase 建表与迁移脚本
+tests/                   存储、流程与组件测试
+```
 
-## 🔄 How It Works
+## 更新现有安装
 
-### 1. **Project Creation & Setup**
+先导出浏览器内的重要项目，并保存自己的 `.env.local`。如果有未提交代码，先提交或备份，之后执行：
 
-- Create a new project with custom settings
-- Choose from 6 distinct comic styles
-- Configure image dimensions and language preferences
+```sh
+git pull --ff-only origin main
+pnpm install --frozen-lockfile
+pnpm dev --hostname 127.0.0.1
+```
 
-### 2. **Intelligent Story Analysis**
+更新前先停止原开发服务。不要为了更新删除浏览器数据或锁文件。
 
-- AI analyzes your narrative structure and themes
-- Extracts characters, settings, and emotional arcs
-- Identifies key scenes and dialogue moments
+## 部署与图库
 
-### 3. **Character Design Generation**
+本项目包含 Next.js 服务端 POST 接口，部署需要支持 Node/Next.js 服务端运行的环境。GitHub Pages 不能单独运行这些模型接口。
 
-- Creates consistent character reference sheets
-- Generates detailed visual descriptions
-- Maintains character consistency across all panels
+在部署平台配置服务端凭据后，执行：
 
-### 4. **Smart Panel Planning**
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+pnpm start --port 8000
+```
 
-- Intelligently breaks story into sequential panels (up to 50)
-- Optimizes scene descriptions and dialogue placement
-- Plans visual composition and pacing
+仓库的旧版一键部署脚本和 Amplify 配置尚未与新版 pnpm 安装流程同步。当前请按上述命令配置构建与启动；仓库未提供 Dockerfile。
 
-### 5. **Multi-Model Panel Generation**
+图库沿用 `src/lib/supabase.ts` 的连接配置。接入自己的 Supabase 时，需要核对认证、表结构、行级权限和图片存储。相关说明见 [数据库配置指南](DATABASE_SETUP_GUIDE.md) 与 [漫画分享配置](COMIC_SHARING_SETUP.md)。
 
-- Generates panels using selected AI model
-- Maintains character consistency with reference sheets
-- Supports parallel processing for faster generation
+图库浏览、点赞和收藏计数改为依赖数据库触发器。可选迁移 [interaction_counters.sql](database/interaction_counters.sql) **尚未在远端执行**；执行前检查现有触发器并备份数据。该迁移会按交互记录重新计算历史计数；没有对应触发器时，计数不会自动更新。
 
-### 6. **Advanced Editing & Export**
+**Neowow 单 Key 接入尚未实现**。当前保留 Google/火山引擎接口，不能直接用 Neowow Key 替代上述凭据。
 
-- Edit individual panels with redraw functionality
-- Add custom reference images for better results
-- Export individual panels or create paginated composites
+## 常见问题
 
-## 📖 Usage Guide
+| 问题 | 处理方式 |
+| --- | --- |
+| 8000 端口被占用 | 停止旧服务，或运行 `pnpm exec next dev --hostname 127.0.0.1 --port 8001`，访问新端口。 |
+| 故事拆解提示缺少配置 | 填写有效的 `GOOGLE_AI_API_KEY` 并重启；火山图片密钥不能替代文本规划凭据。 |
+| 模型请求失败 | 查看界面错误与服务端日志，检查账号模型权限、额度和网络，再决定是否重试。 |
+| 图片无法下载 | 部分供应商图片链接会过期。及时导出原图与项目 ZIP；过期链接可能需要重新生成。 |
+| 项目无法读取或保存 | 保留现有数据，先备份可读取的项目，检查浏览器存储空间与隐私设置。 |
+| 测试报 TypeScript 转换错误 | 确认当前终端使用 Node 24，然后重新运行 `pnpm test`。 |
 
-### Basic Workflow
+## 漫画示例
 
-1. **Create New Project**: Click "我的项目" → "新建项目"
-2. **Configure Settings**:
-   - Choose comic style (Manga, Comic, Wuxia, etc.)
-   - Set image dimensions (1K, 2K, 4K)
-   - Select language preference
-3. **Input Your Story**: Paste your story (up to 2000 words)
-4. **Generate Content**: Click "生成漫画" and watch the magic happen:
-   - Story analysis and character extraction
-   - Character reference sheet generation
-   - Panel-by-panel comic creation
-5. **Edit & Refine**: Use editing tools to perfect your panels
-6. **Export & Share**: Download individual panels or complete pages
+以下是仓库保留的历史生成示例，不是新版工作台界面截图：
 
-### Advanced Features
+![漫画生成示例](screenshots/output.png)
 
-- **Project Management**: Switch between multiple story projects
-- **Continue Generation**: Resume interrupted generations seamlessly
-- **Batch Operations**: Generate multiple panels simultaneously
-- **Reference Images**: Upload custom images to guide AI generation
-- **Multi-language**: Switch between Chinese and English interfaces
+## 更多资料与贡献
 
-## 🚀 Deployment
+- [工作台改造记录](docs/STORY_STUDIO_UPGRADE.md)：最初实现范围与限制，早期验证记录以本文最新结果为补充。
+- [Mac 本地运行记录](docs/LOCAL_MAC_SETUP.md)：项目专用启动方式和本地验收说明。
+- [提示词说明](PROMPTS_DOCUMENTATION.md)。
+- [历史更新日志](CHANGELOG.md)。
+- [贡献指南](CONTRIBUTING.md)。
+- [提交问题](https://github.com/feifeixp/story-to-manga/issues)。
 
-### AWS Amplify (Recommended)
+欢迎通过 Issue 提交问题，或从功能分支发起 Pull Request。说明修改场景、验证结果，以及界面变更的截图。
 
-1. Fork this repository to your GitHub account
-2. Connect your GitHub repo to AWS Amplify
-3. Add environment variables in Amplify console:
-   ```
-   GOOGLE_AI_API_KEY=your_google_ai_api_key
-   VOLCENGINE_API_KEY=your_volcengine_api_key (optional)
-   ```
-4. Deploy automatically on push
-
-### Vercel
-
-1. Fork this repository
-2. Import project to Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy with one click
-
-### Docker (Coming Soon)
-
-Docker support will be added in future releases for easy self-hosting.
-
-## 📝 Story Guidelines
-
-### ✅ Best Practices for Optimal Results
-
-**Story Length:**
-
-- **Optimal**: 500-2000 words
-- **Minimum**: 200 words for meaningful content
-- **Maximum**: 2000 words (longer stories will be chunked)
-
-**Content Structure:**
-
-- Clear character introductions and descriptions
-- Well-defined settings and environments
-- Dialogue-heavy scenes work exceptionally well
-- Action sequences with clear visual elements
-- Emotional moments and character interactions
-
-**Character Guidelines:**
-
-- Provide physical descriptions (appearance, clothing, distinctive features)
-- Limit to 3-5 main characters for best consistency
-- Include personality traits that affect visual presentation
-
-### ❌ What to Avoid
-
-- Extremely complex plots with numerous characters
-- Stories requiring specific copyrighted visual references
-- Adult content or inappropriate material
-- Overly abstract or philosophical content without visual elements
-- Stories with rapid location changes
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**"Failed to generate character references"**
-
-- Verify API keys are correctly configured
-- Check if you've exceeded rate limits (wait 1-2 minutes)
-- Ensure stable internet connection
-- Try switching AI models in settings
-
-**"Generation stopped unexpectedly"**
-
-- Use "Continue Generation" feature to resume
-- Check browser console for specific error messages
-- Verify sufficient browser storage space
-
-**"Images not displaying"**
-
-- Clear browser cache and cookies
-- Disable ad blockers temporarily
-- Check network connectivity
-- Try refreshing the page
-
-**"Project not saving"**
-
-- Ensure browser allows localStorage and IndexedDB
-- Check available storage space
-- Try creating a new project
-
-### Performance Tips
-
-- Close unnecessary browser tabs during generation
-- Use Chrome or Firefox for best performance
-- Ensure stable internet connection
-- Generate during off-peak hours for faster API responses
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-### Ways to Contribute
-
-- 🐛 **Bug Reports**: Submit detailed issue reports
-- 💡 **Feature Requests**: Suggest new features or improvements
-- 🔧 **Code Contributions**: Submit pull requests
-- 📖 **Documentation**: Improve documentation and guides
-- 🌍 **Translations**: Add support for more languages
-- 🎨 **UI/UX**: Suggest design improvements
-
-### Development Setup
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and test thoroughly
-4. Commit with clear messages: `git commit -m 'Add amazing feature'`
-5. Push to your branch: `git push origin feature/amazing-feature`
-6. Open a Pull Request
-
-## 📄 License
-
-MIT License - This project is open source and free to use for personal and commercial projects.
-
-## 🙏 Acknowledgments
-
-This enhanced version is built upon the excellent foundation of the original [Story to Manga Machine](https://github.com/victorhuangwq/story-to-manga) by victorhuangwq. We extend our gratitude for the initial concept and implementation.
-
-### Key Enhancements Added:
-
-- Multi-AI model support and intelligent routing
-- Comprehensive project management system
-- Advanced image editing and modification tools
-- Six distinct comic styles with cultural authenticity
-- Full internationalization and localization
-- Performance optimizations and scalability improvements
-- Modern UI/UX with enhanced user experience
-
----
-
-**Made with ❤️ for the global storytelling community**
+本项目采用 [MIT License](LICENSE)。感谢原项目作者 [victorhuangwq](https://github.com/victorhuangwq/story-to-manga) 及所有贡献者。
