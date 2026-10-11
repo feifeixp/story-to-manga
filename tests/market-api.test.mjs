@@ -21,7 +21,7 @@ test('Market AI never sends requests without a user web session', async () => {
 });
 test('web AI keeps Authorization and accessToken separate from CLI api-key', async () => {
   signIn(); const calls = []; globalThis.fetch = async (url, options) => { calls.push([url, options.headers]); return json({ success: true, data: [] }); };
-  await platformJson('/api/chat', { messages: [] }); await platformJson('/neo-api/agent/ai-image-generation/models/by-scenario?scenarioType=1');
+  await platformJson('/api/me/chat/completions', { messages: [] }); await platformJson('/neo-api/agent/ai-image-generation/models/by-scenario?scenarioType=1');
   assert.equal(calls[0][1].Authorization, 'Bearer test-web-session');
   assert.equal(calls[1][1].accessToken, 'test-web-session');
   assert.equal(calls[0][1]['api-key'], undefined); assert.equal(calls[1][1]['api-key'], undefined);
@@ -98,11 +98,42 @@ test('models are cached per token for a minute and switching accounts cannot cha
  await mod.exports.listModels();await mod.exports.listModels();assert.equal(calls,1);
  data.set('neoStudioSession',JSON.stringify({authorization:'user-b-token',userId:'b'}));
  await mod.exports.listModels();assert.equal(calls,2);
- await assert.rejects(platformJson('/api/chat',{},undefined,'test-web-session'),/切换/);assert.equal(calls,2);
+ await assert.rejects(platformJson('/api/me/chat/completions',{},undefined,'test-web-session'),/切换/);assert.equal(calls,2);
 });
 test('credits use method 2 and expired login is reported clearly',async()=>{
  signIn();globalThis.fetch=async url=>{assert(url.endsWith('/agent/user/points/info'));return json({data:{totalAvailablePoints:42}});};assert.equal(await getBalance(),42);
  globalThis.fetch=async()=>json({success:false,errCode:2001,errMessage:'invalid'});
  await assert.rejects(getBalance(),/登录已过期/);
 });
+
+test('story planning uses method 1 Coding Plan with explicit model and OpenAI messages', async () => {
+  signIn(); const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, headers: options.headers, body: JSON.parse(options.body) });
+    return json({ choices: [{ message: { content: '{"storyBreakdown":{"panels":[]}}' } }] });
+  };
+  await requestMarketApi('/api/chunk-story', { story: 'A cat returns an umbrella.', panelCount: 4 });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://app.neowow.studio/api/me/chat/completions');
+  assert.equal(calls[0].headers.Authorization, 'Bearer test-web-session');
+  assert.equal(calls[0].headers.accessToken, undefined);
+  assert.equal(calls[0].body.model, 'deepseek-v4-flash');
+  assert.equal(calls[0].body.stream, false);
+  assert.equal(calls[0].body.messages[0].role, 'system');
+  assert.equal(calls[0].body.messages[1].role, 'user');
+  assert.equal(calls[0].body.system, undefined);
+});
+test('Coding Plan surfaces the detailed model/plan error without submitting again', async () => {
+  signIn(); let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ error: 'model_not_in_plan', message: '模型不在当前套餐内，请更换模型。' }), { status: 400 }); };
+  await assert.rejects(requestMarketApi('/api/chunk-story', {}), /模型不在当前套餐内/);
+  assert.equal(calls, 1);
+});
+test('LLM upstream balance errors are distinguished from image credits and never retried', async () => {
+  signIn(); let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ error: '402 Insufficient Balance (request_id: test-llm-request)' }), { status: 502 }); };
+  await assert.rejects(requestMarketApi('/api/chunk-story', {}), error => /文本模型服务/.test(error.message) && /图片积分/.test(error.message) && /test-llm-request/.test(error.message));
+  assert.equal(calls, 1);
+});
+
 test.after(() => { globalThis.fetch = originalFetch; });

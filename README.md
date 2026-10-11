@@ -187,7 +187,9 @@ pnpm start --port 8000
 
 媒体接口目标为 `https://neowow.cn`，请求头使用当前用户的 `accessToken`，从 `neoStudioSession.authorization` / 官方登录回传中读取。浏览器使用 NeoWoW 已有的 `https://app.neowow.studio/neo-api` 跨域网关转发；2026-10-11 实测直接源站的跨域响应不允许 Market 域名，平台网关允许。此网关由 NeoWoW 提供，不需要项目部署者另开服务器。
 
-故事拆解仍使用 Studio 应用原生 `/api/chat` 文本接口及当前用户的网页登录凭证，与多媒体请求分开。外部程序使用文档「方式一」`/api/me/chat/completions` 时，需要带 `chat:invoke` 权限的 `nws_dt_…` 部署令牌，不能把 CLI Key 或媒体登录 JWT 当作该部署令牌。
+故事拆解与分镜规划使用文档「方式一」`POST https://app.neowow.studio/api/me/chat/completions`，采用 OpenAI 格式的 `messages`、显式模型 `deepseek-v4-flash` 和 `stream: false`。Market 网页携带当前用户的 `Authorization: Bearer <登录 JWT>`；平台该接口原生支持网页登录身份，按各自 Coding Plan 计费。外部程序按文档使用带 `chat:invoke` 权限的 `nws_dt_…` 部署令牌。两种凭证均不写入发布包，也不以 CLI Key 替代。
+
+若故事拆解出现 `402 Insufficient Balance`，这是文本模型服务返回的余额错误，不能用图片积分余额判断；旧 `/api/chat` 会直接透传上游错误。当前版本改走方式一并保留平台的详细错误提示。若仍发生，需由 NeoWoW 检查上游模型账户，应用不会通过自动重复请求尝试绕过。
 
 - 点击右上角「关联 NeoWoW」登录或注册。关联面板可只读检查模型、可用积分和连接耗时。文本规划使用当前用户的 Coding Plan 额度；图像生成使用当前用户的积分，实际额度、会员权限与费用以平台为准。
 - 图像模型列表在登录后读取。参考图先通过临时 STS 凭证上传，再提交图像生成；不会内置开发者或发布者的 Key。
@@ -268,3 +270,5 @@ CLI 使用 `api-key` 请求头，不接受网页登录的 `Authorization` / Bear
 2026-10-11 本地关联面板改版：50 项自动化测试通过，包含同源 / 本机访问限制、CLI 凭证与个人字段过滤、异常状态及免登录分享回归验证。
 
 2026-10-11 方式二接入修订：兼容媒体接口两种响应格式，增加连接与积分查询、账号工作区、提交不确定时的防重复保护。模型列表按当前凭证缓存 60 秒，切换账户后清除。57 项自动化测试、Next.js 生产构建与 Market 单文件构建通过；实际付费生成仍需使用者验证。
+
+2026-10-11 文本接入修订：故事拆解与分镜改走方式一 Coding Plan，60 项测试、类型检查与 Market 构建通过。线上实际复测确认接口接入成功，但平台返回「平台模型额度需要补充」，文本生成暂受上游 LLM 账户余额限制；补充图片积分不能解决该问题。
