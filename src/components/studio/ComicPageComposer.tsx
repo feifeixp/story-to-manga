@@ -12,6 +12,7 @@ import {
 	type RenderedComicPage,
 	renderComicPage,
 } from "@/lib/comicPageRenderer";
+import { STORY_PREVIEWS, STYLE_PREVIEWS } from "@/lib/studioArtwork";
 import type { ProjectData } from "@/types/project";
 
 export function ComicLayoutChoices({
@@ -40,33 +41,41 @@ export function ComicLayoutChoices({
 						disabled={disabled}
 						onClick={() => onChange(item.id)}
 					>
-						<svg
-							viewBox={`-32 -32 ${geometry.width + 64} ${geometry.height + 64}`}
-							aria-hidden="true"
-						>
-							{geometry.frames.map((frame, i) => (
-								<g key={`${frame.x}-${frame.y}`}>
-									<rect
-										x={frame.x}
-										y={frame.y}
-										width={frame.width}
-										height={frame.height}
+						<span className="comic-layout-preview" aria-hidden="true">
+							<span
+								className="comic-layout-mini-page"
+								style={{
+									aspectRatio: `${geometry.width} / ${geometry.height}`,
+									width: `min(100%, calc(var(--comic-preview-height) * ${geometry.width / geometry.height}))`,
+								}}
+							>
+								{geometry.frames.map((frame, i) => (
+									<img
+										key={`${frame.x}-${frame.y}`}
+										alt=""
+										loading="lazy"
+										decoding="async"
+										src={
+											item.id === "japanese"
+												? STORY_PREVIEWS.nested
+												: [
+														STYLE_PREVIEWS.healing,
+														STORY_PREVIEWS.letter,
+														STORY_PREVIEWS.doorway,
+														STYLE_PREVIEWS.healing,
+													][i]
+										}
+										style={{
+											left: `${(frame.x / geometry.width) * 100}%`,
+											top: `${(frame.y / geometry.height) * 100}%`,
+											width: `${(frame.width / geometry.width) * 100}%`,
+											height: `${(frame.height / geometry.height) * 100}%`,
+											objectFit: item.id === "japanese" ? "contain" : "cover",
+										}}
 									/>
-									{item.id === "japanese" && (
-										<path
-											d={
-												i % 2
-													? `M${frame.x + frame.width * 0.6},${frame.y} L${frame.x + frame.width * 0.4},${frame.y + frame.height}`
-													: `M${frame.x},${frame.y + frame.height * 0.32} H${frame.x + frame.width}`
-											}
-											stroke="#fffdf8"
-											strokeWidth="24"
-											fill="none"
-										/>
-									)}
-								</g>
-							))}
-						</svg>
+								))}
+							</span>
+						</span>
 						<span>
 							<strong>{zh ? item.zh : item.en}</strong>
 							<small>{zh ? item.detail : item.english}</small>

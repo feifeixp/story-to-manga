@@ -1,0 +1,72 @@
+{
+  "generator": "Built-in image_gen",
+  "purpose": "Static UI examples; not generated from the current user story or a promise of provider output.",
+  "assets": [
+    {
+      "id": "healing",
+      "file": "public/studio/generated/healing.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Japanese healing slice-of-life anime illustration. Delicate hand-drawn ink, gentle watercolor shading, muted sage and warm cream, expressive friendly face, quiet warm light. Clearly a lovingly drawn manga illustration, not a vector icon."
+    },
+    {
+      "id": "manga",
+      "file": "public/studio/generated/manga.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Classic Japanese BLACK AND WHITE manga. Black ink on white paper, expressive varied line weights, bold contrasting shadow shapes, traditional screentone dots, a few restrained dramatic ink strokes. Absolutely no color. Clearly recognizable authentic manga drawing."
+    },
+    {
+      "id": "wuxia",
+      "file": "public/studio/generated/wuxia.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Traditional Chinese ink-wash illustration, expressive calligraphic brush strokes, diluted gray and pale jade washes on ivory rice paper. The cat is rendered with a few confident ink strokes and gentle ochre wash. Generous unpainted negative space, spare poetic composition. Not a vector icon."
+    },
+    {
+      "id": "comic",
+      "file": "public/studio/generated/comic.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Vintage American comic illustration, thick confident black outlines, strong yellow-orange, teal and rusty red, bold cel shading, subtle Ben-Day halftone dots and offset print texture. Dynamic readable silhouette. Not photoreal, not anime."
+    },
+    {
+      "id": "manhwa",
+      "file": "public/studio/generated/manhwa.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Modern Korean color webtoon illustration. Very clean fine contour lines, smooth pastel cel shading, bright soft lighting, mint and peach accents, simple softly blurred bookshop background, airy polished digital comic finish. Not watercolor, not photoreal."
+    },
+    {
+      "id": "cinematic",
+      "file": "public/studio/generated/cinematic.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Cinematic storyboard illustration painted with realistic proportions and deliberate framing. ONE cat in an atmospheric medium shot, warm amber rim light against cool blue rainy shadows, shallow depth of field, subtle film grain, emotionally clear face. Still a painted film storyboard, not a photograph, no letterbox bars."
+    },
+    {
+      "id": "shojo",
+      "file": "public/studio/generated/shojo.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Classic shojo manga illustration in delicate pastel color. Fine elegant ink lines, large luminous expressive cat eyes, soft rose and lavender highlights, just a few airy flower petals and soft sparkles as accents, light background. Romantic gentle manga mood, not 3D, no text."
+    },
+    {
+      "id": "seinen",
+      "file": "public/studio/generated/seinen.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Grounded Japanese seinen graphic-novel ink illustration. Realistic feline anatomy, fine crosshatching, muted brown-gray limited palette, mature restrained atmosphere, precise fur and material lines, natural unsentimental expression. Strong artful realism, not cute chibi, not photoreal."
+    },
+    {
+      "id": "chibi",
+      "file": "public/studio/generated/chibi.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Extremely cute Japanese chibi cartoon illustration. One round orange kitten with a large head, very small body, tiny paws, big sparkling eyes; rounded green umbrella. Simple warm flat-color hand-drawn comic with soft highlights and only a few background shapes. Uncluttered and readable, not a vector icon."
+    },
+    {
+      "id": "fantasy",
+      "file": "public/studio/generated/fantasy.jpg",
+      "prompt": "Use case: illustration-story. Asset: a small visual art-style selection thumbnail for the Story to Manga app, landscape 3:2. Create a simple, instantly readable scene: ONE friendly orange tabby cat sitting under ONE open deep-green umbrella, holding a plain cream envelope gently in its mouth. The cat occupies about 55% of the image, centered, ears and paws fully inside the picture. A very softly suggested warm bookshop doorway behind, with only two or three background shapes; no signs or legible text. Keep cat, umbrella and envelope recognizable even at a 150-pixel thumbnail. No human characters, no extra cats, no collage, no frames, no gradients as a substitute for illustration, no icons, no text, no logo, no watermark. One single scene.\nArt direction: Hand-painted fantasy adventure comic illustration. Same orange cat and cream envelope under green umbrella; add a tiny blue glowing charm to its collar and a few firefly lights. Soft enchanted emerald and gold atmosphere, just a suggested arched wooden bookstore doorway. Luminous painterly comic art, not photoreal, no extra creatures."
+    },
+    {
+      "id": "letter",
+      "file": "public/studio/generated/letter.jpg",
+      "prompt": "Use the reference only for the orange cat's appearance, warm Japanese healing comic style, green and cream palette. Draw ONE simple close-up of the orange tabby's front paws resting beside the plain cream envelope on a wet stone doorstep. The paws and envelope fill the center. Soft warm bookshop light, a hint of green umbrella fabric in the background. Landscape 3:2. Clean composition with very little background detail. No characters other than partial cat paws, no text, no numbers, no borders, no watermark. A different shot in the same comic story."
+    },
+    {
+      "id": "doorway",
+      "file": "public/studio/generated/doorway.jpg",
+      "prompt": "Use the reference for the same friendly orange cat's appearance and gentle Japanese slice-of-life comic drawing style. Draw ONE simple medium shot of the cat carrying the cream envelope in its mouth, walking into a warmly lit open wooden bookshop door, seen in side profile. The folded deep-green umbrella leans beside the door. Main cat clear and central with all paws visible. Landscape 3:2, few background details, warm amber light, sage and cream colors. No human, no extra cats, no text, no grid, no watermark."
+    },
+    {
+      "id": "nested",
+      "file": "public/studio/generated/nested.jpg",
+      "prompt": "Recompose the reference as a SIMPLE Japanese manga image with exactly TWO internal frames. Square canvas. Large main frame occupying about 75%: the same orange cat holding its cream envelope under the green umbrella beside the warm bookshop. One small diagonal inset in the top right occupying about 25%: a clear close-up of the same cat's curious eyes. Sharp dark ink dividing line and narrow white gutter. Same simultaneous moment, same cat and colors. Retain the gentle colored Japanese comic drawing style. Very little background detail. This will be a small layout preview: strong readable structure and big clear subjects. No additional panels, no speech bubbles, no lettering, no title, no watermark."
+    }
+  ],
+  "inspiration": "Higher-resolution rendition of healing.jpg. Optimized JPEGs; originals retained in workspace outputs."
+}

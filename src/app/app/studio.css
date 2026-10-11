@@ -526,68 +526,16 @@
   border-radius:50%;
   color:var(--green)
 }
-.style-swatch {
-  height:80px;
+.style-preview {
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:3/2;
+  object-fit:cover;
   border-radius:4px;
-  position:relative;
-  overflow:hidden;
-  background:#e5e9d7
+  background:#f3f0e6
 }
-.style-swatch span {
-  position:absolute;
-  transform:rotate(-18deg);
-  height:130px;
-  width:26px;
-  background:#758d70;
-  left:15px;
-  top:-20px
-}
-.style-swatch span:nth-child(2) {
-  left:60px;
-  background:#c3ad85;
-  width:22px
-}
-.style-swatch span:nth-child(3) {
-  left:96px;
-  background:#e7d4ac;
-  width:38px
-}
-.style-swatch.manga {
-  filter:grayscale(1);
-  background:#e7e6e0
-}
-.style-swatch.manga span {
-  background:#303b35;
-  transform:rotate(25deg);
-  width:11px
-}
-.style-swatch.wuxia {
-  background:#edf0e5
-}
-.style-swatch.wuxia span {
-  border-radius:70%;
-  transform:rotate(40deg);
-  background:#b2c4b7;
-  width:65px;
-  left:-10px
-}
-.style-swatch.wuxia span:nth-child(2) {
-  background:#8ca599;
-  left:60px
-}
-.style-swatch.comic {
-  background:#ebc79b
-}
-.style-swatch.comic span {
-  background:#bb7457;
-  transform:rotate(-30deg);
-  width:48px;
-  left:5px
-}
-.style-swatch.comic span:nth-child(2) {
-  background:#5f8d7d;
-  left:80px
-}
+.more-style-grid {margin-top:12px}
 .more-styles {
   margin-top:13px
 }
@@ -1360,9 +1308,7 @@
   .style-grid {
     gap:7px
   }
-  .style-swatch {
-    height:66px
-  }
+
   .studio-footer strong {
     font-size:11px
   }
@@ -1595,9 +1541,7 @@
   .style-choice small {
     font-size:8px
   }
-  .style-swatch {
-    height:68px
-  }
+
   .story-sidebar {
     grid-template-columns:1fr
   }
@@ -1791,11 +1735,14 @@
 .comic-layout-choices {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0}
 .comic-layout-choices button {display:flex;flex-direction:column;align-items:center;gap:9px;padding:12px 5px;border:1px solid #dce2d9;border-radius:8px;background:#fffdf8;color:#6d786b;text-align:center;transition:border-color .15s,background .15s}
 .comic-layout-choices button[aria-pressed="true"] {border-color:#235a4e;background:#eef3eb;box-shadow:inset 0 0 0 1px #235a4e;color:#235a4e}
-.comic-layout-choices svg {width:38px;height:52px;fill:currentColor;opacity:.9}
+.comic-layout-preview {display:flex;align-items:center;justify-content:center;width:100%;--comic-preview-height:120px;height:132px;padding:6px;background:#eaece5;border-radius:4px;overflow:hidden}
+.comic-layout-mini-page {position:relative;display:block;max-width:100%;background:#fffdf8;box-shadow:0 0 0 3px #fffdf8}
+.comic-layout-mini-page img {position:absolute;display:block;min-width:0;border:1px solid #34453d;background:#fffdf8}
 .comic-layout-choices strong {display:block;font-size:12px;font-weight:650}
 .comic-layout-choices small {display:block;font-size:9px;margin-top:3px;color:#727d6c}
 .layout-setting {margin:18px 0}
 .layout-setting .comic-layout-choices {grid-template-columns:repeat(2,minmax(0,1fr))}
+.layout-setting .comic-layout-preview {--comic-preview-height:144px;height:156px}
 .layout-setting-label {font-size:12px;font-weight:550}
 .comic-page-toolbar {display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin:14px 0}
 .comic-page-toolbar label {display:flex;gap:7px;align-items:center;font-size:12px}
@@ -1820,8 +1767,8 @@
  .comic-composer-heading {display:block}
  .comic-composer-heading>span {display:inline-block;margin-top:8px}
  .comic-layout-choices {grid-template-columns:repeat(2,minmax(0,1fr))}
- .comic-layout-choices button {flex-direction:row;text-align:left;padding:10px;gap:10px}
- .comic-layout-choices svg {width:26px;height:38px}
+ .comic-layout-choices button {flex-direction:column;text-align:center;padding:8px;gap:8px}
+ .comic-layout-preview, .layout-setting .comic-layout-preview {--comic-preview-height:132px;height:144px}
  .comic-proof {padding:10px}
  .comic-page-navigation>span {font-size:10px}
 }
@@ -1830,3 +1777,5 @@
 .comic-proof>output {display:block;padding:60px 16px;text-align:center;font-size:13px;color:#596956}
 
 .comic-inset-note {padding:12px 14px;border-left:3px solid #749174;background:#f0f3e9;color:#526552;font-size:12px;line-height:1.8;border-radius:0 6px 6px 0}
+
+@media(max-width:600px) {.style-grid {grid-template-columns:repeat(2,minmax(0,1fr))}}

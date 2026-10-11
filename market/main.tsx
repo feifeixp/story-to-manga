@@ -1,6 +1,5 @@
 import { Component, type ReactNode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import previewImage from "../public/studio/story-preview.svg";
 import { I18nProvider } from "../src/components/I18nProvider";
 import MangaStudio from "../src/components/studio/MangaStudio";
 import {
@@ -100,7 +99,6 @@ function App() {
 			key={workspace}
 			projectStorage={storage}
 			deployment="neowow"
-			previewImage={previewImage}
 			imageModels={models.map((m) => ({
 				id: m.model_name,
 				name: m.model_display_name || m.model_name,

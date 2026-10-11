@@ -18,7 +18,14 @@ const global = (await readFile('src/app/globals.css', 'utf8')).replace(/^@import
 const styles = await postcss([tailwind()]).process(global, { from: path.join(root, 'src/app/globals.css') });
 const bundledCss = bundled.outputFiles.filter(file => file.path.endsWith('.css')).map(file => file.text).join('\n');
 const css = styles.css + '\n' + await readFile('src/app/app/studio.css', 'utf8') + '\n' + bundledCss + '\n' + await readFile('market/market.css', 'utf8');
-const js = bundled.outputFiles.find(file => file.path.endsWith('.js')).text;
+let js = bundled.outputFiles.find(file => file.path.endsWith('.js')).text;
+// Keep generated UI artwork self-contained on static Market hosting, with no Next asset requests.
+const artwork = await readFile('src/lib/studioArtwork.ts', 'utf8');
+for (const asset of new Set(artwork.match(/\/studio\/generated\/[a-z-]+\.jpg/g) || [])) {
+  const bytes = await readFile(path.join(root, 'public', asset));
+  if (!js.includes(asset)) throw new Error(`Missing bundled artwork reference: ${asset}`);
+  js = js.replaceAll(asset, `data:image/jpeg;base64,${bytes.toString('base64')}`);
+}
 const icon = `data:image/x-icon;base64,${(await readFile('src/app/favicon.ico')).toString('base64')}`;
 const license = (await readFile('LICENSE', 'utf8')).replace(/--/g, '—');
 const html = (await readFile('market/index.html', 'utf8'))

@@ -42,6 +42,7 @@ import {
 	defaultProjectStorage,
 	type ProjectStorage,
 } from "@/lib/projectStorage";
+import { STORY_PREVIEWS, STYLE_PREVIEWS } from "@/lib/studioArtwork";
 import {
 	downloadImage,
 	downloadProject,
@@ -158,7 +159,7 @@ export default function MangaStudio({
 	imageModels = [],
 	modelNotice = "",
 	defaultImageModelLabel = "Neo Image 2.5",
-	previewImage = "/studio/story-preview.svg",
+	previewImage = STORY_PREVIEWS.inspiration,
 	projectStorage = defaultProjectStorage,
 }: {
 	deployment?: "next" | "neowow";
@@ -1491,11 +1492,17 @@ export default function MangaStudio({
 													}
 													aria-pressed={item.id === project.style}
 												>
-													<div className={`style-swatch ${item.id}`}>
-														<span />
-														<span />
-														<span />
-													</div>
+													<img
+														className="style-preview"
+														src={STYLE_PREVIEWS[item.id]}
+														alt={copy(
+															`${item.zh}画风示例：橘猫、绿伞与信封`,
+															`${item.en} example: a cat, umbrella and letter`,
+														)}
+														width={480}
+														height={320}
+														decoding="async"
+													/>
 													<strong>{zh ? item.zh : item.en}</strong>
 													<small>{zh ? item.detail : item.id}</small>
 													{item.id === project.style && (
@@ -1506,13 +1513,12 @@ export default function MangaStudio({
 										</div>
 										<details className="more-styles">
 											<summary>{copy("更多画风", "More styles")}</summary>
-											<div className="studio-chips">
+											<div className="style-grid more-style-grid">
 												{STYLES.slice(4).map((item) => (
 													<button
 														type="button"
-														className={
-															item.id === project.style ? "selected" : ""
-														}
+														className={`style-choice ${item.id === project.style ? "selected" : ""}`}
+														aria-pressed={item.id === project.style}
 														key={item.id}
 														disabled={busy}
 														onClick={() =>
@@ -1528,7 +1534,23 @@ export default function MangaStudio({
 															)
 														}
 													>
-														{zh ? item.zh : item.en}
+														<img
+															className="style-preview"
+															src={STYLE_PREVIEWS[item.id]}
+															alt={copy(
+																`${item.zh}画风示例：橘猫、绿伞与信封`,
+																`${item.en} example: a cat, umbrella and letter`,
+															)}
+															width={480}
+															height={320}
+															loading="lazy"
+															decoding="async"
+														/>
+														<strong>{zh ? item.zh : item.en}</strong>
+														<small>{zh ? item.detail : item.id}</small>
+														{item.id === project.style && (
+															<CheckCircle2 className="style-check" size={17} />
+														)}
 													</button>
 												))}
 											</div>
@@ -1789,8 +1811,8 @@ export default function MangaStudio({
 											<img
 												src={previewImage}
 												alt={copy(
-													"雨巷旧书店的故事示意插画",
-													"Illustrated rainy bookshop story example",
+													"AI 生成的画面示例：橘猫叼信，在绿伞下等待",
+													"AI-generated example: a cat carrying a letter under a green umbrella",
 												)}
 											/>
 										</div>
@@ -1809,8 +1831,8 @@ export default function MangaStudio({
 										</p>
 										<small>
 											{copy(
-												"示意插画，不是模型生成预览",
-												"Illustration only, not a generated preview",
+												"AI 生成示例，非当前故事的生成结果",
+												"AI-generated example, not a result from your current story",
 											)}
 										</small>
 									</section>
