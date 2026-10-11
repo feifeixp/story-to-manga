@@ -5,6 +5,14 @@ import type {
 	UploadedCharacterReference,
 	UploadedSettingReference,
 } from "../types";
+import {
+	ANALYSIS_INSTRUCTION,
+	artDirection,
+	BREAKDOWN_INSTRUCTION,
+	characterPrompt,
+	type PromptReference,
+	panelPrompt,
+} from "./mangaPrompts";
 import type { ApiClient } from "./studioWorkflow";
 export interface GenerationDriver {
 	plan: <T>(
@@ -85,18 +93,6 @@ interface ImageBody {
 	modificationPrompt?: string;
 	referenceImages?: string[];
 }
-const styles: Record<string, string> = {
-	healing: "gentle Japanese slice-of-life, soft pastel colors",
-	manga: "Japanese black-and-white manga with screentone",
-	wuxia: "Chinese ink painting wuxia",
-	comic: "retro American comic",
-	manhwa: "Korean webtoon",
-	cinematic: "cinematic storytelling",
-	shojo: "romantic shojo manga",
-	seinen: "realistic seinen manga",
-	chibi: "cute chibi",
-	fantasy: "fantasy adventure comic",
-};
 export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 	const plan = driver.plan;
 	const generateImage = driver.image;
@@ -110,28 +106,22 @@ export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 			: AbortSignal.timeout(660_000);
 		if (path === "/api/analyze-story") {
 			const result = await plan<{ analysis: StoryAnalysis }>(
-				'Analyze the story. Return {"analysis":{"title":string,"characters":[{"name":string,"physicalDescription":string,"personality":string,"role":string}],"setting":{"timePeriod":string,"location":string,"mood":string},"scenes":[{"id":string,"name":string,"description":string,"location":string,"timeOfDay":string,"mood":string,"visualElements":string[]}]}}. Include clear character appearance for image generation. Use unique scene IDs.',
+				ANALYSIS_INSTRUCTION,
 				raw,
 				signal,
 			);
 			return { analysis: validateAnalysis(result.analysis) } as T;
 		}
 		if (path === "/api/chunk-story")
-			return await plan<T>(
-				'Create exactly panelCount comic panels (2–50), sequentially numbered from 1. Return {"storyBreakdown":{"panels":[{"panelNumber":integer,"characters":string[],"sceneId":string,"sceneDescription":string,"dialogue":string,"cameraAngle":string,"visualMood":string}]}}. Use only the supplied character names and scene IDs. Describe visible actions precisely. Keep dialogue short.',
-				raw,
-				signal,
-			);
+			return await plan<T>(BREAKDOWN_INSTRUCTION, raw, signal);
 		const body = raw as ImageBody;
-		const style = styles[body.style || "healing"] || "comic illustration";
-		const base = `Comic artwork in ${style} style. Text language: ${body.language || "zh"}. Consistent character appearance. No watermark. Setting: ${JSON.stringify(body.setting || {})}.`;
 		const draw = (
 			prompt: string,
 			refs: string[],
 			ratio = body.imageSize?.aspectRatio || "1:1",
 		) =>
 			generateImage(
-				`${base}\n${prompt}`,
+				prompt,
 				body.aiModel || "auto",
 				ratio,
 				[...new Set(refs)],
@@ -147,29 +137,46 @@ export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 				references.push({
 					name: c.name,
 					description: c.physicalDescription,
-					image: await draw(
-						`Character reference sheet for ${c.name}: ${c.physicalDescription}. Personality: ${c.personality}. One character, full-body front view, plain background, no text.`,
-						ref,
-					),
+					image: await draw(characterPrompt(c, body.style, body.language), ref),
 				});
 			}
 			return { characterReferences: references } as T;
 		}
 		if (path === "/api/generate-panel" && body.panel) {
 			const panel = body.panel;
-			const refs = [
+			const mapped: PromptReference[] = [
 				...(body.characterReferences || [])
 					.filter((r) => panel.characters.includes(r.name))
-					.map((r) => r.image),
-				...(body.uploadedSettingReferences || []).map((r) => r.image),
+					.map((r) => ({
+						image: r.image,
+						label: `Character identity: ${r.name}`,
+					})),
+				...(body.uploadedSettingReferences || []).map((r) => ({
+					image: r.image,
+					label: `Environment: ${r.name}`,
+				})),
 			];
+			const refs: PromptReference[] = [];
+			for (const ref of mapped) {
+				const existing = refs.find((r) => r.image === ref.image);
+				if (existing) existing.label += `; ${ref.label}`;
+				else refs.push({ ...ref });
+			}
 			const scene = body.scenes?.find((s) => s.id === panel.sceneId);
 			return {
 				generatedPanel: {
 					panelNumber: panel.panelNumber,
 					image: await draw(
-						`Draw exactly ONE comic panel, no collage. Scene: ${JSON.stringify(scene || {})}. Action: ${panel.sceneDescription}. Camera: ${panel.cameraAngle}. Mood: ${panel.visualMood}. Characters: ${panel.characters.join(", ")}. Dialogue in speech bubbles: ${panel.dialogue || "none"}. Match the provided character and scene reference images.`,
-						refs,
+						panelPrompt({
+							panel,
+							setting: body.setting,
+							scene,
+							characters: body.characterReferences,
+							references: refs,
+							style: body.style,
+							language: body.language,
+						}),
+						refs.map((r) => r.image),
 					),
 				},
 			} as T;
@@ -181,7 +188,7 @@ export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 			];
 			return {
 				imageData: await draw(
-					`ONE comic panel. ${body.originalPrompt || ""}. ${body.modificationPrompt ? `Edit the first reference image as follows: ${body.modificationPrompt}. Preserve everything else.` : "Redraw with the same story and consistent characters."}`,
+					`${artDirection(body.style, body.language)}\nONE continuous comic panel, no collage. ${body.originalPrompt || ""}. ${body.modificationPrompt ? `Edit only the first reference image as follows: ${body.modificationPrompt}. Preserve all unrelated composition, identities, wardrobe, props, background and lettering. Later references are identity/environment guides, never separate panels.` : "Redraw the stated moment with the same story, cast and consistent designs. Reference images guide identity and environment."} Speaker labels assign bubble tails; do not print the labels. Preserve only the supplied spoken words; add no text when dialogue is empty.`,
 					refs,
 				),
 			} as T;

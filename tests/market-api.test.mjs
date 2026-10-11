@@ -118,7 +118,7 @@ test('story planning uses method 1 Coding Plan with explicit model and OpenAI me
   assert.equal(calls[0].headers.Authorization, 'Bearer test-web-session');
   assert.equal(calls[0].headers.accessToken, undefined);
   assert.equal(calls[0].body.model, 'doubao-seed-2-1-pro-260915');
-  assert.equal(calls[0].body.stream, false);
+  assert.equal(calls[0].body.stream, true);
   assert.equal(calls[0].body.messages[0].role, 'system');
   assert.equal(calls[0].body.messages[1].role, 'user');
   assert.equal(calls[0].body.system, undefined);
@@ -151,6 +151,19 @@ test('Kimi K3 selection is persisted and sent to Coding Plan without changing im
 test('stale or invalid text model preferences restore the verified Doubao default', () => {
   signIn(); data.set('manga-neo-planning-model', 'deepseek-v4-flash');
   assert.equal(mod.exports.getPlanningModel(), 'doubao-seed-2-1-pro-260915');
+});
+
+test('streamed Coding Plan content reaches the story workflow as parsed JSON', async () => {
+  signIn(); let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    const content = JSON.stringify({storyBreakdown:{panels:[{panelNumber:1,sceneDescription:'A red umbrella.',characters:[]}]}});
+    const event = JSON.stringify({choices:[{index:0,delta:{content},finish_reason:'stop'}]});
+    return new Response(`data: ${event}\n\ndata: [DONE]\n\n`, {headers:{'content-type':'text/event-stream'}});
+  };
+  const result = await requestMarketApi('/api/chunk-story', {story:'A red umbrella.',panelCount:2});
+  assert.equal(result.storyBreakdown.panels[0].sceneDescription, 'A red umbrella.');
+  assert.equal(calls, 1);
 });
 
 test.after(() => { globalThis.fetch = originalFetch; });
