@@ -149,8 +149,9 @@ function MarketAccount({ onClose }: { onClose: () => void }) {
 							</select>
 						</label>
 						<p>
-							图片按平台实时模型与价格计费；故事规划通过方式一使用自己的 Coding
-							Plan
+							图片默认优先 Neo Image
+							2.5，不随语言切换，按平台实时价格计费；故事规划通过方式一使用自己的
+							Coding Plan
 							额度，与图片积分分开计费。切换账号会切换浏览器工作区，旧版草稿保留在未关联时的工作区。
 						</p>
 						<p>

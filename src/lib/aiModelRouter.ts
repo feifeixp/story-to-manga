@@ -28,7 +28,7 @@ export function detectLanguage(text: string): "zh" | "en" {
 
 // Model Selection Logic
 export function selectAIModel(
-	language: string,
+	_language: string,
 	userPreference?: AIModel,
 ): AIModel {
 	// If user has explicit preference, respect it (unless it's auto)
@@ -36,12 +36,9 @@ export function selectAIModel(
 		return userPreference;
 	}
 
-	// Auto selection based on language
-	if (language === "zh") {
-		return "volcengine"; // VolcEngine has better Chinese support
-	} else {
-		return "nanobanana"; // nanobanana (Gemini Flash Image) has better English support
-	}
+	// Legacy local providers use configured credentials, never the UI language.
+	// NeoWoW Market uses its own catalog and prefers Neo Image 2.5.
+	return process.env["GOOGLE_AI_API_KEY"] ? "nanobanana" : "volcengine";
 }
 
 // NanoBanana (Gemini Flash Image) API Handler

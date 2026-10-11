@@ -15,6 +15,7 @@ import {
 	imageSource,
 	listModels,
 	requestMarketApi,
+	selectImageModel,
 } from "./api";
 import { pickUpWebSession, useAuth } from "./auth";
 import { About, usePath } from "./ui";
@@ -104,11 +105,16 @@ function App() {
 				id: m.model_name,
 				name: m.model_display_name || m.model_name,
 			}))}
+			defaultImageModelLabel={
+				selectImageModel(models)?.model_display_name ||
+				selectImageModel(models)?.model_name ||
+				"Neo Image 2.5"
+			}
 			modelNotice={
 				modelError ||
 				(!user
 					? "登录 NeoWoW 后加载可用模型。"
-					: "文本规划使用自己的 Coding Plan 额度；图片生成消耗自己的积分。输出尺寸以模型默认值为准。")
+					: "图片默认优先 Neo Image 2.5，不随语言切换；可手动选择其他模型。文本使用自己的 Coding Plan 额度，图片使用自己的积分。")
 			}
 		/>
 	);

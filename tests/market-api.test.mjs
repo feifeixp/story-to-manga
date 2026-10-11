@@ -166,4 +166,32 @@ test('streamed Coding Plan content reaches the story workflow as parsed JSON', a
   assert.equal(calls, 1);
 });
 
+test('Neo Image 2.5 wins over catalog order and the platform default, including legacy preferences', () => {
+  const models=[{...model,is_default_design_model:true},{...model,model_name:'gpt-image-2.5-sunburst'},{...model,model_name:'gpt-image-2.5-flare'}];
+  for(const preference of ['auto','','nanobanana','volcengine']) assert.equal(mod.exports.selectImageModel(models,preference).model_name,'gpt-image-2.5-flare');
+  assert.equal(mod.exports.selectImageModel(models,'gpt-image-2.5-sunburst').model_name,'gpt-image-2.5-sunburst');
+  assert.equal(mod.exports.selectImageModel(models,'missing-model'),undefined);
+});
+test('available Sunburst is preferred before the platform fallback; empty catalogs remain unavailable', () => {
+  const fallback={...model,is_default_design_model:true};
+  assert.equal(mod.exports.selectImageModel([fallback,{...model,model_name:'gpt-image-2.5-sunburst'}]).model_name,'gpt-image-2.5-sunburst');
+  assert.equal(mod.exports.selectImageModel([{...model,model_name:'other'},fallback]).model_name,'mock-image');
+  assert.equal(mod.exports.selectImageModel([]),undefined);
+});
+test('Chinese and English panel requests send the same Neo Image 2.5 model', async () => {
+  const submissions=[];
+  for(const language of ['zh','en']) {
+    signIn();
+    globalThis.fetch=async(url,opts)=>{
+      if(url.includes('models/by-scenario')) return json([{...model,is_default_design_model:true},{...model,model_name:'gpt-image-2.5-flare'}]);
+      if(url.endsWith('/generate')) { submissions.push(JSON.parse(opts.body)); return json({task_code:'neo25-task'}); }
+      if(url.includes('/result/neo25-task')) return json({status:'SUCCESS',image_urls:['https://images.example/neo25.png']});
+      return new Response('image',{headers:{'Content-Type':'image/png'}});
+    };
+    await requestMarketApi('/api/generate-panel',{language,aiModel:'auto',panel:{panelNumber:1,characters:[],sceneId:'scene1',sceneDescription:'A red umbrella',dialogue:'',cameraAngle:'wide',visualMood:'warm'}});
+  }
+  assert.equal(submissions.length,2);
+  assert(submissions.every(body=>body.modelName==='gpt-image-2.5-flare'));
+});
+
 test.after(() => { globalThis.fetch = originalFetch; });

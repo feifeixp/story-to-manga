@@ -150,12 +150,14 @@ export default function MangaStudio({
 	deployment = "next",
 	imageModels = [],
 	modelNotice = "",
+	defaultImageModelLabel = "Neo Image 2.5",
 	previewImage = "/studio/story-preview.svg",
 	projectStorage = defaultProjectStorage,
 }: {
 	deployment?: "next" | "neowow";
 	imageModels?: { id: string; name: string }[];
 	modelNotice?: string;
+	defaultImageModelLabel?: string;
 	previewImage?: string;
 	projectStorage?: ProjectStorage;
 } = {}) {
@@ -1691,7 +1693,14 @@ export default function MangaStudio({
 											</label>
 											<select
 												id={`${fieldPrefix}-model`}
-												value={project.studio.aiModel}
+												value={
+													market &&
+													["nanobanana", "volcengine"].includes(
+														project.studio.aiModel,
+													)
+														? "auto"
+														: project.studio.aiModel
+												}
 												onChange={(event) =>
 													update((value) => ({
 														...value,
@@ -1703,7 +1712,12 @@ export default function MangaStudio({
 												}
 											>
 												<option value="auto">
-													{copy("自动选择", "Automatic")}
+													{market
+														? copy(
+																`默认 · ${defaultImageModelLabel}`,
+																`Default · ${defaultImageModelLabel}`,
+															)
+														: copy("按本地配置选择", "Use local configuration")}
 												</option>
 												{market ? (
 													imageModels.map((model) => (
@@ -1726,7 +1740,7 @@ export default function MangaStudio({
 														? modelNotice
 														: "使用服务器已配置的模型。故事拆解由 Google 文本模型完成。",
 													market
-														? "Sign in to NeoWoW to load models. AI uses your own text plan and image credits; resolution follows model defaults."
+														? "Images prefer Neo Image 2.5 in every language; you can select another model. Text uses your Coding Plan and images use your credits."
 														: "Uses server-configured providers. Story planning uses the Google text model.",
 												)}
 											</p>

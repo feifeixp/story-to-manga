@@ -185,6 +185,10 @@ pnpm start --port 8000
 | 查询结果 | `GET /agent/ai-image-generation/result/{taskCode}` |
 | 可用积分 | `GET /agent/user/points/info` |
 
+Market 图片模型不再按语言选择。默认优先使用 **Neo Image 2.5 Flare**（`gpt-image-2.5-flare`），若目录中没有该模型则选择 **Neo Image 2.5 Sunburst**（`gpt-image-2.5-sunburst`）；两者都不可用时才采用平台默认模型，界面显示实际默认项。用户手动选择的图片模型优先于上述规则，切换中英文只影响文案与图片文字。角色参考、漫画单格和精修共用这一选择逻辑。
+
+本地旧版 Google / 火山引擎自动模式也已移除语言分流：配置了 Google Key 时使用 Google，否则使用火山配置；手动选择保持不变。本地旧版尚未增加 Neo Image 2.5 服务端适配，NeoWoW 模型通过 Market 版的官方方式二接入。
+
 媒体接口目标为 `https://neowow.cn`，请求头使用当前用户的 `accessToken`，从 `neoStudioSession.authorization` / 官方登录回传中读取。浏览器使用 NeoWoW 已有的 `https://app.neowow.studio/neo-api` 跨域网关转发；2026-10-11 实测直接源站的跨域响应不允许 Market 域名，平台网关允许。此网关由 NeoWoW 提供，不需要项目部署者另开服务器。
 
 故事拆解与分镜规划使用文档「方式一」`POST https://app.neowow.studio/api/me/chat/completions`，采用 OpenAI 格式的 `messages`、默认模型 `doubao-seed-2-1-pro-260915`（豆包 2.1 Pro） 和 `stream: true`。Market 网页携带当前用户的 `Authorization: Bearer <登录 JWT>`；平台该接口原生支持网页登录身份，按各自 Coding Plan 计费。外部程序按文档使用带 `chat:invoke` 权限的 `nws_dt_…` 部署令牌。两种凭证均不写入发布包，也不以 CLI Key 替代。可在右上角账户面板的「故事拆解模型」切换为 `kimi-k3`（Kimi K3）；选择保存在当前浏览器，只影响文本规划。两种模型 ID 已于 2026-10-11 在当前账户 Coding Plan 目录核对，其他用户的权限以各自套餐为准。
@@ -280,3 +284,5 @@ CLI 使用 `api-key` 请求头，不接受网页登录的 `Authorization` / Bear
 2026-10-11 文本模型更新：默认使用豆包 2.1 Pro（`doubao-seed-2-1-pro-260915`），可在「账户 → 故事拆解模型」切换 Kimi K3（`kimi-k3`），选择保存在当前浏览器。62 项自动化测试、类型检查与 Market 构建通过。线上豆包实测成功生成 2 位角色与 4 格分镜；Kimi 在非流式版本首次实测触发 60 秒响应超时（后续修复见下）。图片生成未在本轮实测。
 
 2026-10-11 超时与提示词修订：Market 文本改为流式接收，取消固定 60 秒全文等待；保留连接、空闲、总时长三类截止条件，不自动重试。统一线上视觉设定、分镜、角色参考和单格图片提示词。75 项测试、类型检查与 Market 构建通过；Kimi K3 使用此前超时的同一故事复测，成功完成 2 位角色、2 个地点和 4 格分镜。图片提示词经过请求级回归测试，本轮未生成图片。
+
+2026-10-11 图片默认模型修订：Neo Image 2.5 优先，中英文使用同一模型策略，保留手动选择。79 项自动化测试通过，未为本次配置调整发起付费图片生成。

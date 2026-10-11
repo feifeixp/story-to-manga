@@ -18,6 +18,22 @@ export interface ImageModel {
 	is_default_design_model?: boolean;
 	points_cost_per_image?: number;
 }
+// Verified against the live NeoWoW image catalog. Language never selects a model.
+export const PREFERRED_IMAGE_MODELS = [
+	"gpt-image-2.5-flare",
+	"gpt-image-2.5-sunburst",
+] as const;
+export function selectImageModel(models: ImageModel[], preference = "auto") {
+	if (preference && !["auto", "nanobanana", "volcengine"].includes(preference))
+		return models.find((model) => model.model_name === preference);
+	return (
+		PREFERRED_IMAGE_MODELS.map((id) =>
+			models.find((model) => model.model_name === id),
+		).find(Boolean) ||
+		models.find((model) => model.is_default_design_model) ||
+		models[0]
+	);
+}
 interface GatewayResponse {
 	success?: boolean;
 	error?: string | { message?: string };
@@ -363,10 +379,7 @@ export async function generateImage(
 ): Promise<string> {
 	assertWebToken(token);
 	const models = await listModels(signal, token);
-	const model =
-		!modelName || ["auto", "nanobanana", "volcengine"].includes(modelName)
-			? models.find((m) => m.is_default_design_model) || models[0]
-			: models.find((m) => m.model_name === modelName);
+	const model = selectImageModel(models, modelName);
 	if (!model) throw new Error("所选模型不可用，请在故事设置中重新选择。");
 	if (
 		model.supported_aspect_ratios?.length &&

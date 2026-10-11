@@ -1,6 +1,6 @@
 # 当前 Market 提示词与超时处理（2026-10-11）
 
-本节对应 NeoWoW Market 在线版，默认豆包 2.1 Pro，可选 Kimi K3。后文 v2.2.1 是旧版本及本地供应商接口的历史说明，不应直接作为当前线上实现依据。
+本节对应 NeoWoW Market 在线版，文本默认豆包 2.1 Pro，可选 Kimi K3；图片默认优先 Neo Image 2.5 Flare，其次 Sunburst，不再按语言选择。后文 v2.2.1 是历史说明，其中“基于语言自动选择模型”已废弃。Market 以当前目录和手动选择为准，本地旧版按已配置供应商选择，不应直接套用历史示例。
 
 当前模板位于 `src/lib/mangaPrompts.ts`，调用编排位于 `src/lib/neowowGeneration.ts`，文本传输位于 `market/planning.ts`。
 
