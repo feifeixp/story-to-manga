@@ -174,14 +174,27 @@ pnpm start --port 8000
 
 ### NeoWoW Market 版本
 
-仓库新增独立静态入口 `market/`，复用四步工作台、本地项目保存和导出。Market 版本无需部署 Next.js 服务端；故事规划与图片生成调用 NeoWoW 网页 AI 接口。
+仓库提供独立静态入口 `market/`，复用四步工作台、本地项目保存和导出。**Market 版本无需 ECS、独立后端或 CLI Key**；用户关联自己的 NeoWoW 账号即可使用自己的额度和积分。
 
-- 点击右上角账户登录 NeoWoW。文本规划使用当前用户的 Coding Plan 额度；图像生成使用当前用户的积分，实际额度、会员权限与费用以平台为准。
+图片接入遵循[官方技术文档「方式二」](https://neowow.studio/account/api-docs)：
+
+| 操作 | NeoWoW 接口 |
+| --- | --- |
+| 模型列表 | `GET /agent/ai-image-generation/models/by-scenario?scenarioType=1` |
+| 提交图片 | `POST /agent/ai-image-generation/generate` |
+| 查询结果 | `GET /agent/ai-image-generation/result/{taskCode}` |
+| 可用积分 | `GET /agent/user/points/info` |
+
+媒体接口目标为 `https://neowow.cn`，请求头使用当前用户的 `accessToken`，从 `neoStudioSession.authorization` / 官方登录回传中读取。浏览器使用 NeoWoW 已有的 `https://app.neowow.studio/neo-api` 跨域网关转发；2026-10-11 实测直接源站的跨域响应不允许 Market 域名，平台网关允许。此网关由 NeoWoW 提供，不需要项目部署者另开服务器。
+
+故事拆解仍使用 Studio 应用原生 `/api/chat` 文本接口及当前用户的网页登录凭证，与多媒体请求分开。外部程序使用文档「方式一」`/api/me/chat/completions` 时，需要带 `chat:invoke` 权限的 `nws_dt_…` 部署令牌，不能把 CLI Key 或媒体登录 JWT 当作该部署令牌。
+
+- 点击右上角「关联 NeoWoW」登录或注册。关联面板可只读检查模型、可用积分和连接耗时。文本规划使用当前用户的 Coding Plan 额度；图像生成使用当前用户的积分，实际额度、会员权限与费用以平台为准。
 - 图像模型列表在登录后读取。参考图先通过临时 STS 凭证上传，再提交图像生成；不会内置开发者或发布者的 Key。
-- 图片请求不自动重试。已取得任务编号时保存在本机，轮询中断后同一请求先查询原任务；提交未返回编号时，先查平台任务记录再决定是否重试。
+- 图片兼容直接 JSON 与 `data` 包装两种响应；每 3 秒轮询一次，单轮最多 3 分钟。超时或中断保留任务编号，再次操作继续查询。提交前记录意图，网络错误或缺少编号时阻止重复提交；需在关联面板核对平台记录后显式允许新任务。
 - 角色参考图逐张保存，后续失败不会丢失已完成的角色参考。
 - 输出分辨率由模型默认配置决定；工作台设置选择画幅比例。模型不支持参考图数量或画幅时会显示错误。
-- 草稿仍保存在当前浏览器。分享通过导出文件完成；Market 版不会发布到原 Supabase 图库。
+- 草稿按 NeoWoW 账号保存到各自的浏览器工作区；旧版草稿与未登录草稿保留在访客工作区。它们不自动同步到其他设备，也不是针对同机浏览器数据访问的加密保险箱。分享通过导出文件完成；Market 版不会发布到原 Supabase 图库。
 - 「使用说明与源码」入口包含开源仓库、四步操作、本地安装及 CLI 专用 Key 设置说明。
 
 构建静态发布包：
@@ -253,3 +266,5 @@ CLI 使用 `api-key` 请求头，不接受网页登录的 `Authorization` / Bear
 本项目采用 [MIT License](LICENSE)。感谢原项目作者 [victorhuangwq](https://github.com/victorhuangwq/story-to-manga) 及所有贡献者。
 
 2026-10-11 本地关联面板改版：50 项自动化测试通过，包含同源 / 本机访问限制、CLI 凭证与个人字段过滤、异常状态及免登录分享回归验证。
+
+2026-10-11 方式二接入修订：兼容媒体接口两种响应格式，增加连接与积分查询、账号工作区、提交不确定时的防重复保护。模型列表按当前凭证缓存 60 秒，切换账户后清除。57 项自动化测试、Next.js 生产构建与 Market 单文件构建通过；实际付费生成仍需使用者验证。

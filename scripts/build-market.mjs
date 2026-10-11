@@ -16,8 +16,9 @@ const aliases = new Map([
 const bundled = await build({ entryPoints: ['market/main.tsx'], outfile: 'app.js', write: false, bundle: true, minify: true, format: 'esm', platform: 'browser', target: ['es2022'], jsx: 'automatic', loader: { '.svg': 'dataurl' }, define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'market-services', setup(b) { b.onResolve({ filter: /^(next\/|@\/components\/)/ }, args => { const resolved = aliases.get(args.path); return resolved ? { path: resolved } : null; }); } }] });
 const global = (await readFile('src/app/globals.css', 'utf8')).replace(/^@import url[^\n]+\n/, '');
 const styles = await postcss([tailwind()]).process(global, { from: path.join(root, 'src/app/globals.css') });
-const css = styles.css + '\n' + await readFile('src/app/app/studio.css', 'utf8') + '\n' + await readFile('market/market.css', 'utf8');
-const js = bundled.outputFiles[0].text;
+const bundledCss = bundled.outputFiles.filter(file => file.path.endsWith('.css')).map(file => file.text).join('\n');
+const css = styles.css + '\n' + await readFile('src/app/app/studio.css', 'utf8') + '\n' + bundledCss + '\n' + await readFile('market/market.css', 'utf8');
+const js = bundled.outputFiles.find(file => file.path.endsWith('.js')).text;
 const icon = `data:image/x-icon;base64,${(await readFile('src/app/favicon.ico')).toString('base64')}`;
 const license = (await readFile('LICENSE', 'utf8')).replace(/--/g, '—');
 const html = (await readFile('market/index.html', 'utf8'))

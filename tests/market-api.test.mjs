@@ -5,13 +5,13 @@ import { build } from 'esbuild';
 const bundled = await build({ entryPoints: ['market/api.ts'], bundle: true, format: 'cjs', platform: 'node', write: false, external: ['react', 'ali-oss/dist/aliyun-oss-sdk.min.js'] });
 const mod = { exports: {} };
 new Function('require', 'module', 'exports', bundled.outputFiles[0].text)(createRequire(import.meta.url), mod, mod.exports);
-const { platformJson, requestMarketApi, generateImage, imageSource, parseJsonReply, validateAnalysis } = mod.exports;
+const { platformJson, requestMarketApi, generateImage, imageSource, parseJsonReply, validateAnalysis, clearModelCache, getBalance, IMAGE_POLL_INTERVAL, IMAGE_POLL_TIMEOUT } = mod.exports;
 const originalFetch = globalThis.fetch;
 const data = new Map();
 globalThis.localStorage = { getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)), removeItem: k => data.delete(k) };
 globalThis.document = { cookie: '' };
 globalThis.FileReader = class { readAsDataURL(blob) { blob.arrayBuffer().then(b => { this.result = `data:${blob.type};base64,${Buffer.from(b).toString('base64')}`; this.onload(); }); } };
-function signIn() { data.clear(); data.set('neoStudioSession', JSON.stringify({ authorization: 'test-web-session', userId: 'user-a' })); }
+function signIn() { clearModelCache(); data.clear(); data.set('neoStudioSession', JSON.stringify({ authorization: 'test-web-session', userId: 'user-a' })); }
 const json = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
 const model = { model_name: 'mock-image', max_reference_images: 4, supported_aspect_ratios: ['1:1'] };
 test('Market AI never sends requests without a user web session', async () => {
@@ -59,5 +59,50 @@ test('incomplete story planning is rejected before image generation', () => {
   assert.deepEqual(parseJsonReply('```json\n{"a":1}\n```'), { a: 1 });
   assert.throws(() => parseJsonReply('{"a":'));
   assert.throws(() => validateAnalysis({ title: 'test', characters: [{ name: 'A' }], setting: { location: 'test' }, scenes: [] }));
+});
+test('method 2 accepts documented flat payloads and uses the hosted CORS gateway', async () => {
+  signIn(); const calls=[];
+  globalThis.fetch=async(url,opts)=>{
+   calls.push([url,opts]);
+   if(url.includes('models/by-scenario'))return json([model]);
+   if(url.endsWith('/generate'))return json({task_code:'flat-task'});
+   if(url.includes('/result/flat-task'))return json({status:'SUCCESS',image_urls:['https://images.example/flat.png']});
+   return new Response('image',{headers:{'Content-Type':'image/png'}});
+  };
+  assert.match(await generateImage('flat','mock-image','1:1',[],new AbortController().signal),/^data:image/);
+  for(const [url,opts] of calls.filter(([url])=>url.includes('/agent/'))) {
+   assert(url.startsWith('https://app.neowow.studio/neo-api/agent/'));
+   assert.equal(opts.headers.accessToken,'test-web-session');assert.equal(opts.headers['api-key'],undefined);
+  }
+  assert.equal(IMAGE_POLL_INTERVAL,3000);assert.equal(IMAGE_POLL_TIMEOUT,180000);
+});
+test('missing task status fails promptly and retains the task instead of polling for minutes',async()=>{
+ signIn(); let polls=0;
+ globalThis.fetch=async url=>url.includes('models/by-scenario')?json({data:[model]}):url.endsWith('/generate')?json({task_code:'invalid-status'}):(polls++,json({data:{unexpected:true}}));
+ await assert.rejects(generateImage('invalid','mock-image','1:1',[],new AbortController().signal),/有效任务状态/);assert.equal(polls,1);assert.equal([...data.keys()].filter(k=>k.startsWith('manga-neo-task-')).length,1);
+});
+test('uncertain submission is journaled before fetch and cannot be silently resubmitted',async()=>{
+ signIn();let submits=0;
+ globalThis.fetch=async url=>{if(url.includes('models/by-scenario'))return json([model]);submits++;throw new Error('lost submit response');};
+ await assert.rejects(generateImage('uncertain','mock-image','1:1',[],new AbortController().signal),/lost/);
+ await assert.rejects(generateImage('uncertain','mock-image','1:1',[],new AbortController().signal),/阻止重复扣费/);assert.equal(submits,1);
+ const task=[...data.entries()].find(([k])=>k.startsWith('manga-neo-task-'))[1];assert(!task.includes('test-web-session'));
+});
+test('a definite quota rejection permits an explicit next attempt',async()=>{
+ signIn();globalThis.fetch=async url=>url.includes('models/by-scenario')?json([model]):json({success:false,errCode:'INSUFFICIENT_POINTS',errMessage:'积分不足'});
+ await assert.rejects(generateImage('quota','mock-image','1:1',[],new AbortController().signal),/积分不足/);assert.equal([...data.keys()].filter(k=>k.startsWith('manga-neo-task-')).length,0);
+});
+test('models are cached per token for a minute and switching accounts cannot charge the new account mid-operation',async()=>{
+ signIn();let calls=0;
+ globalThis.fetch=async()=>{calls++;return json([model]);};
+ await mod.exports.listModels();await mod.exports.listModels();assert.equal(calls,1);
+ data.set('neoStudioSession',JSON.stringify({authorization:'user-b-token',userId:'b'}));
+ await mod.exports.listModels();assert.equal(calls,2);
+ await assert.rejects(platformJson('/api/chat',{},undefined,'test-web-session'),/切换/);assert.equal(calls,2);
+});
+test('credits use method 2 and expired login is reported clearly',async()=>{
+ signIn();globalThis.fetch=async url=>{assert(url.endsWith('/agent/user/points/info'));return json({data:{totalAvailablePoints:42}});};assert.equal(await getBalance(),42);
+ globalThis.fetch=async()=>json({success:false,errCode:2001,errMessage:'invalid'});
+ await assert.rejects(getBalance(),/登录已过期/);
 });
 test.after(() => { globalThis.fetch = originalFetch; });

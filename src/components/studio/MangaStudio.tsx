@@ -32,7 +32,10 @@ import { useI18n } from "@/components/I18nProvider";
 import ImageUpload from "@/components/ImageUpload";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { ShareComicModal } from "@/components/ShareComicModal";
-import { getProjectList } from "@/lib/projectStorage";
+import {
+	defaultProjectStorage,
+	type ProjectStorage,
+} from "@/lib/projectStorage";
 import {
 	downloadImage,
 	downloadProject,
@@ -148,11 +151,13 @@ export default function MangaStudio({
 	imageModels = [],
 	modelNotice = "",
 	previewImage = "/studio/story-preview.svg",
+	projectStorage = defaultProjectStorage,
 }: {
 	deployment?: "next" | "neowow";
 	imageModels?: { id: string; name: string }[];
 	modelNotice?: string;
 	previewImage?: string;
+	projectStorage?: ProjectStorage;
 } = {}) {
 	const market = deployment === "neowow";
 	const fieldPrefix = useId();
@@ -161,7 +166,7 @@ export default function MangaStudio({
 	const zh = language.startsWith("zh");
 	const copy = (cn: string, en: string) => (zh ? cn : en);
 	const { user } = useAuth();
-	const store = useStudioProject();
+	const store = useStudioProject(projectStorage);
 	const { project, current, update, save, loading, saveStatus, storageError } =
 		store;
 	const [busy, setBusy] = useState(false);
@@ -663,7 +668,7 @@ export default function MangaStudio({
 	async function showProjects() {
 		await run(async () => {
 			await save();
-			setProjects(getProjectList());
+			setProjects(projectStorage.getProjectList());
 			setDialog("projects");
 		});
 	}
@@ -698,7 +703,7 @@ export default function MangaStudio({
 					type="button"
 					className="studio-btn primary"
 					onClick={() => {
-						setProjects(getProjectList());
+						setProjects(projectStorage.getProjectList());
 						setDialog("projects");
 					}}
 				>

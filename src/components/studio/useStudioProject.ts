@@ -2,11 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	createProject,
-	getCurrentProjectId,
-	loadProjectData,
-	saveProjectData,
-	setCurrentProject,
+	defaultProjectStorage,
+	type ProjectStorage,
 } from "@/lib/projectStorage";
 import { loadState } from "@/lib/storage";
 import {
@@ -65,7 +62,16 @@ function restore(project: ProjectData): StudioProject {
 			: {}),
 	};
 }
-export function useStudioProject() {
+export function useStudioProject(
+	storage: ProjectStorage = defaultProjectStorage,
+) {
+	const {
+		createProject,
+		getCurrentProjectId,
+		loadProjectData,
+		saveProjectData,
+		setCurrentProject,
+	} = storage;
 	const [project, setProject] = useState<StudioProject | null>(null);
 	const current = useRef<StudioProject | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -129,7 +135,7 @@ export function useStudioProject() {
 			);
 			throw error;
 		}
-	}, []);
+	}, [saveProjectData]);
 	const update = useCallback(
 		(change: (value: StudioProject) => StudioProject) => {
 			if (!current.current) return;
@@ -152,7 +158,7 @@ export function useStudioProject() {
 			try {
 				const id = getCurrentProjectId();
 				const existing = id ? await loadProjectData(id) : null;
-				const legacy = !id ? await loadState() : null;
+				const legacy = !id && !storage.scope ? await loadState() : null;
 				if (!active) return;
 				if (id && !existing)
 					throw new Error(
@@ -198,7 +204,13 @@ export function useStudioProject() {
 		return () => {
 			active = false;
 		};
-	}, [save]);
+	}, [
+		save,
+		createProject,
+		getCurrentProjectId,
+		loadProjectData,
+		storage.scope,
+	]);
 	useEffect(() => {
 		const warn = (event: BeforeUnloadEvent) => {
 			if (revision.current !== savedRevision.current) {

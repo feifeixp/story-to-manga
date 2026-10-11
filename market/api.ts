@@ -1,12 +1,12 @@
+import {
+	createNeoWoWApi,
+	parseJsonReply,
+	validateAnalysis,
+} from "../src/lib/neowowGeneration";
+export { parseJsonReply, validateAnalysis };
+
 import type { ApiClient } from "../src/lib/studioWorkflow";
-import type {
-	CharacterReference,
-	StoryAnalysis,
-	StoryBreakdown,
-	UploadedCharacterReference,
-	UploadedSettingReference,
-} from "../src/types";
-import { PLATFORM, requireWebToken } from "./auth";
+import { assertWebToken, PLATFORM, requireWebToken } from "./auth";
 
 export interface ImageModel {
 	model_name: string;
@@ -28,56 +28,123 @@ function message(data: GatewayResponse, status: number) {
 		typeof data.error === "string" ? data.error : data.error?.message;
 	return data.errMessage || error || `NeoWoW 请求失败 (${status})`;
 }
+// Method 2: the platform's existing CORS gateway forwards these paths to
+// https://neowow.cn/agent. No application backend, ECS or CLI credentials.
+export const MEDIA_GATEWAY = `${PLATFORM}/neo-api`;
+export const IMAGE_POLL_INTERVAL = 3000;
+export const IMAGE_POLL_TIMEOUT = 180_000;
+class NeoApiError extends Error {
+	constructor(
+		message: string,
+		readonly rejected: boolean,
+	) {
+		super(message);
+	}
+}
 export async function platformJson<T>(
 	path: string,
 	body?: unknown,
 	signal?: AbortSignal,
+	token = requireWebToken(),
 ): Promise<T> {
-	const token = requireWebToken(); // No anonymous or owner-funded generation.
+	assertWebToken(token);
+	if (path !== "/api/chat" && !path.startsWith("/neo-api/agent/"))
+		throw new Error("不支持的 NeoWoW 接口。");
 	const headers: Record<string, string> = path.startsWith("/api/")
 		? { Authorization: `Bearer ${token}` }
 		: { accessToken: token };
 	if (body !== undefined) headers["Content-Type"] = "application/json";
-	const response = await fetch(`${PLATFORM}${path}`, {
-		method: body === undefined ? "GET" : "POST",
-		headers,
-		...(body === undefined ? {} : { body: JSON.stringify(body) }),
-		...(signal ? { signal } : {}),
-	});
+	const timeout = AbortSignal.timeout(body === undefined ? 15_000 : 60_000);
+	const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
+	let response: Response;
+	try {
+		response = await fetch(`${PLATFORM}${path}`, {
+			method: body === undefined ? "GET" : "POST",
+			headers,
+			...(body === undefined ? {} : { body: JSON.stringify(body) }),
+			signal: combined,
+		});
+	} catch (error) {
+		if (timeout.aborted && !signal?.aborted)
+			throw new NeoApiError(
+				"NeoWoW 响应超时。已有任务已保留，请稍后继续查询。",
+				false,
+			);
+		throw error;
+	}
 	const data = (await response.json()) as GatewayResponse;
-	if (!response.ok || data.success === false)
-		throw new Error(message(data, response.status));
+	assertWebToken(token);
+	if (!data || typeof data !== "object")
+		throw new NeoApiError("NeoWoW 返回格式异常，请查看平台任务记录。", false);
+	if (!response.ok || data.success === false) {
+		const auth =
+			response.status === 401 ||
+			["2001", "2002", "2003"].includes(String(data.errCode));
+		throw new NeoApiError(
+			auth
+				? "NeoWoW 登录已过期，请重新关联账户。"
+				: message(data, response.status),
+			data.success === false ||
+				[400, 401, 403, 422, 429].includes(response.status),
+		);
+	}
 	return data as T;
 }
-export async function listModels(signal?: AbortSignal): Promise<ImageModel[]> {
-	const result = await platformJson<{ data: ImageModel[] }>(
-		"/neo-api/agent/ai-image-generation/models/by-scenario?scenarioType=1",
+export function unwrapMedia<T>(value: T | { data: T }): T {
+	return value && typeof value === "object" && "data" in value
+		? value.data
+		: (value as T);
+}
+export async function mediaJson<T>(
+	path: string,
+	body?: unknown,
+	signal?: AbortSignal,
+	token = requireWebToken(),
+): Promise<T> {
+	return unwrapMedia(
+		await platformJson<T | { data: T }>(`/neo-api${path}`, body, signal, token),
+	);
+}
+const modelCache = new Map<string, { until: number; models: ImageModel[] }>();
+export function clearModelCache() {
+	modelCache.clear();
+}
+export async function listModels(
+	signal?: AbortSignal,
+	token = requireWebToken(),
+): Promise<ImageModel[]> {
+	assertWebToken(token);
+	const cached = modelCache.get(token);
+	if (cached && cached.until > Date.now()) return cached.models;
+	const result = await mediaJson<ImageModel[]>(
+		"/agent/ai-image-generation/models/by-scenario?scenarioType=1",
+		undefined,
+		signal,
+		token,
+	);
+	if (!Array.isArray(result))
+		throw new Error("未能获取 NeoWoW 图像模型列表，请重新关联后刷新。");
+	const models = result.filter((m) => m && typeof m.model_name === "string");
+	modelCache.clear();
+	modelCache.set(token, { until: Date.now() + 60_000, models });
+	return models;
+}
+export async function getBalance(signal?: AbortSignal) {
+	const data = await mediaJson<{ totalAvailablePoints?: number | string }>(
+		"/agent/user/points/info",
 		undefined,
 		signal,
 	);
-	if (!Array.isArray(result.data))
-		throw new Error("未能获取 NeoWoW 图像模型列表，请重新登录后刷新。");
-	return result.data.filter((m) => typeof m.model_name === "string");
-}
-export function parseJsonReply<T>(text: string): T {
-	const cleaned = text
-		.trim()
-		.replace(/^```(?:json)?\s*/i, "")
-		.replace(/\s*```$/, "");
-	const start = cleaned.indexOf("{");
-	const end = cleaned.lastIndexOf("}");
-	if (start < 0 || end < start)
-		throw new Error("文本模型没有返回 JSON，请调整故事后重试。");
-	try {
-		return JSON.parse(cleaned.slice(start, end + 1)) as T;
-	} catch {
-		throw new Error("故事规划格式不完整，请减少分镜数量后重试。");
-	}
+	const balance = Number(data?.totalAvailablePoints);
+	if (data?.totalAvailablePoints == null || !Number.isFinite(balance))
+		throw new Error("平台暂未返回可用积分。");
+	return balance;
 }
 async function plan<T>(
 	instruction: string,
 	body: unknown,
 	signal?: AbortSignal,
+	token = requireWebToken(),
 ): Promise<T> {
 	const result = await platformJson<{
 		choices?: { message?: { content?: string } }[];
@@ -96,43 +163,11 @@ async function plan<T>(
 			max_tokens: 8192,
 		},
 		signal,
+		token,
 	);
 	return parseJsonReply<T>(
 		result.choices?.[0]?.message?.content || result.content?.[0]?.text || "",
 	);
-}
-export function validateAnalysis(analysis: StoryAnalysis): StoryAnalysis {
-	const text = (value: unknown) =>
-		typeof value === "string" && value.trim().length > 0;
-	if (
-		!analysis ||
-		!text(analysis.title) ||
-		!Array.isArray(analysis.characters) ||
-		!analysis.setting ||
-		!Array.isArray(analysis.scenes) ||
-		analysis.characters.some(
-			(c) =>
-				!text(c.name) ||
-				!text(c.physicalDescription) ||
-				typeof c.personality !== "string" ||
-				typeof c.role !== "string",
-		) ||
-		!text(analysis.setting.location) ||
-		typeof analysis.setting.timePeriod !== "string" ||
-		typeof analysis.setting.mood !== "string" ||
-		analysis.scenes.some(
-			(s) =>
-				!text(s.id) ||
-				!text(s.description) ||
-				!text(s.name) ||
-				typeof s.location !== "string" ||
-				typeof s.mood !== "string" ||
-				!Array.isArray(s.visualElements) ||
-				s.visualElements.some((v) => typeof v !== "string"),
-		)
-	)
-		throw new Error("角色或场景信息不完整，请重新拆解故事。");
-	return analysis;
 }
 export function imageSource(source: string) {
 	if (source.startsWith("data:image/") || source.startsWith("blob:"))
@@ -148,10 +183,12 @@ const uploaded = new Map<string, string>();
 export async function referenceUrl(
 	source: string,
 	signal?: AbortSignal,
+	token = requireWebToken(),
 ): Promise<string> {
+	assertWebToken(token);
 	if (source.startsWith("https://")) return source;
 	if (!source.startsWith("data:image/")) throw new Error("无效的参考图片。");
-	const cacheKey = `${requireWebToken()}\n${source}`;
+	const cacheKey = `${token}\n${source}`;
 	const cached = uploaded.get(cacheKey);
 	if (cached) return cached;
 	const blob = await fetch(source, signal ? { signal } : {}).then((r) =>
@@ -164,7 +201,7 @@ export async function referenceUrl(
 			securityToken: string;
 			bucketName: string;
 		};
-	}>("/neo-api/agent/sts/oss/token", undefined, signal);
+	}>("/neo-api/agent/sts/oss/token", undefined, signal, token);
 	const { default: OSS } = await import("ali-oss/dist/aliyun-oss-sdk.min.js");
 	signal?.throwIfAborted();
 	const data = result.data;
@@ -189,10 +226,44 @@ export async function referenceUrl(
 	uploaded.set(cacheKey, url);
 	return url;
 }
-interface PendingTask {
-	taskCode: string;
+export interface PendingTask {
+	taskCode?: string;
 	model: string;
+	owner: string;
+	created: number;
+	uncertain?: boolean;
 }
+export async function accountTaskOwner(token = requireWebToken()) {
+	const digest = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(token),
+	);
+	return Array.from(new Uint8Array(digest), (b) =>
+		b.toString(16).padStart(2, "0"),
+	).join("");
+}
+export async function uncertainTasks() {
+	const owner = await accountTaskOwner();
+	const result: { key: string; model: string }[] = [];
+	for (let i = 0; i < localStorage.length; i++) {
+		const key = localStorage.key(i);
+		if (!key?.startsWith("manga-neo-task-")) continue;
+		try {
+			const task = JSON.parse(localStorage.getItem(key) || "null");
+			if (task?.owner === owner && task.uncertain)
+				result.push({ key, model: task.model });
+		} catch {
+			/* Ignore malformed entries. */
+		}
+	}
+	return result;
+}
+export async function releaseUncertainTask(key: string) {
+	if (!(await uncertainTasks()).some((task) => task.key === key))
+		throw new Error("任务不属于当前账户。");
+	localStorage.removeItem(key);
+}
+
 export function taskStoreKey(
 	userToken: string,
 	request: unknown,
@@ -227,8 +298,10 @@ export async function generateImage(
 	ratio: string,
 	refs: string[],
 	signal: AbortSignal,
+	token = requireWebToken(),
 ): Promise<string> {
-	const models = await listModels(signal);
+	assertWebToken(token);
+	const models = await listModels(signal, token);
 	const model =
 		!modelName || ["auto", "nanobanana", "volcengine"].includes(modelName)
 			? models.find((m) => m.is_default_design_model) || models[0]
@@ -248,48 +321,67 @@ export async function generateImage(
 		prompt,
 		numImages: "1",
 		aspectRatio: ratio,
-		imageUrls: await Promise.all(refs.map((ref) => referenceUrl(ref, signal))),
+		imageUrls: await Promise.all(
+			refs.map((ref) => referenceUrl(ref, signal, token)),
+		),
 	};
-	const key = await taskStoreKey(requireWebToken(), body);
+	const key = await taskStoreKey(token, body);
 	let pending: PendingTask | null = JSON.parse(
 		localStorage.getItem(key) || "null",
 	) as PendingTask | null;
+	if (pending?.uncertain)
+		throw new Error(
+			"上次提交结果不确定，已阻止重复扣费。请在关联面板查看 NeoWoW 记录，核对后再允许新任务。",
+		);
 	if (!pending?.taskCode) {
-		// Never retry a submission automatically: an uncertain paid response can be duplicated.
-		const submitted = await platformJson<{
-			data: { task_code?: string; taskCode?: string };
-		}>("/neo-api/agent/ai-image-generation/generate", body, signal);
-		const taskCode = submitted.data?.task_code || submitted.data?.taskCode;
-		if (!taskCode)
-			throw new Error(
-				"提交结果缺少任务编号，请先查看 NeoWoW 任务记录再决定是否重试。",
-			);
-		pending = { taskCode, model: model.model_name };
+		pending = {
+			model: model.model_name,
+			owner: await accountTaskOwner(token),
+			created: Date.now(),
+			uncertain: true,
+		};
+		// Record intent BEFORE a paid request; never automatically resubmit an uncertain response.
 		localStorage.setItem(key, JSON.stringify(pending));
+		try {
+			const submitted = await mediaJson<{
+				task_code?: string;
+				taskCode?: string;
+			}>("/agent/ai-image-generation/generate", body, signal, token);
+			const taskCode = submitted.task_code || submitted.taskCode;
+			if (!taskCode)
+				throw new Error("提交结果缺少任务编号，请先查看 NeoWoW 任务记录。");
+			pending = { ...pending, taskCode, uncertain: false };
+			localStorage.setItem(key, JSON.stringify(pending));
+		} catch (error) {
+			if (error instanceof NeoApiError && error.rejected)
+				localStorage.removeItem(key);
+			throw error;
+		}
 	}
-	const deadline = Date.now() + 600_000;
+	const deadline = Date.now() + IMAGE_POLL_TIMEOUT;
 	while (Date.now() < deadline) {
 		signal.throwIfAborted();
-		const result = await platformJson<{
-			data: {
-				status?: string;
-				image_urls?: string[];
-				urls?: string[];
-				failure_reason?: string;
-			};
+		const result = await mediaJson<{
+			status?: string;
+			image_urls?: string[];
+			urls?: string[];
+			failure_reason?: string;
 		}>(
-			`/neo-api/agent/ai-image-generation/result/${encodeURIComponent(pending.taskCode)}`,
+			`/agent/ai-image-generation/result/${encodeURIComponent(pending.taskCode!)}`,
 			undefined,
 			signal,
+			token,
 		);
-		const status = result.data?.status?.toUpperCase();
+		const status = result.status?.toUpperCase();
 		if (status === "SUCCESS" || status === "FINISHED") {
-			const url = result.data.image_urls?.[0] || result.data.urls?.[0];
+			const url = result.image_urls?.[0] || result.urls?.[0];
 			if (!url)
 				throw new Error("任务完成但没有返回图片，请检查 NeoWoW 任务记录。");
 			// Keep successful task ID until the image is cached; refresh resumes without paying twice.
 			try {
-				const response = await fetch(imageSource(url), { signal });
+				const response = await fetch(imageSource(url), {
+					signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
+				});
 				if (!response.ok) throw new Error("图片保存失败");
 				const blob = await response.blob();
 				if (!blob.type.startsWith("image/"))
@@ -312,129 +404,28 @@ export async function generateImage(
 		}
 		if (status === "FAILED") {
 			localStorage.removeItem(key);
-			throw new Error(result.data.failure_reason || "NeoWoW 图片生成失败。");
+			throw new Error(result.failure_reason || "NeoWoW 图片生成失败。");
 		}
-		await sleep(3000, signal);
+		if (!["PENDING", "RUNNING", "PROCESSING", "QUEUED"].includes(status || ""))
+			throw new Error(
+				"平台未返回有效任务状态。任务编号已保留，请稍后继续查询。",
+			);
+		await sleep(IMAGE_POLL_INTERVAL, signal);
 	}
 	throw new Error(
-		"生成仍在排队或处理中。再次生成会先查询原任务，不会自动重复提交。",
+		"已等待 3 分钟，任务仍在排队或处理中。再次点击会继续查询原任务，不会自动重复提交。",
 	);
 }
-interface ImageBody {
-	style?: string;
-	language?: string;
-	aiModel?: string;
-	imageSize?: { aspectRatio: string };
-	characters?: StoryAnalysis["characters"];
-	setting?: StoryAnalysis["setting"];
-	scenes?: StoryAnalysis["scenes"];
-	characterReferences?: CharacterReference[];
-	uploadedCharacterReferences?: UploadedCharacterReference[];
-	uploadedSettingReferences?: UploadedSettingReference[];
-	panel?: StoryBreakdown["panels"][number];
-	originalPrompt?: string;
-	originalImage?: string;
-	modificationPrompt?: string;
-	referenceImages?: string[];
-}
-const styles: Record<string, string> = {
-	healing: "gentle Japanese slice-of-life, soft pastel colors",
-	manga: "Japanese black-and-white manga with screentone",
-	wuxia: "Chinese ink painting wuxia",
-	comic: "retro American comic",
-	manhwa: "Korean webtoon",
-	cinematic: "cinematic storytelling",
-	shojo: "romantic shojo manga",
-	seinen: "realistic seinen manga",
-	chibi: "cute chibi",
-	fantasy: "fantasy adventure comic",
-};
 export const requestMarketApi: ApiClient = async <T>(
 	path: string,
-	raw: unknown,
-	external?: AbortSignal,
+	body: unknown,
+	signal?: AbortSignal,
 ): Promise<T> => {
-	requireWebToken();
-	const signal = external
-		? AbortSignal.any([external, AbortSignal.timeout(660_000)])
-		: AbortSignal.timeout(660_000);
-	if (path === "/api/analyze-story") {
-		const result = await plan<{ analysis: StoryAnalysis }>(
-			'Analyze the story. Return {"analysis":{"title":string,"characters":[{"name":string,"physicalDescription":string,"personality":string,"role":string}],"setting":{"timePeriod":string,"location":string,"mood":string},"scenes":[{"id":string,"name":string,"description":string,"location":string,"timeOfDay":string,"mood":string,"visualElements":string[]}]}}. Include clear character appearance for image generation. Use unique scene IDs.',
-			raw,
-			signal,
-		);
-		return { analysis: validateAnalysis(result.analysis) } as T;
-	}
-	if (path === "/api/chunk-story")
-		return await plan<T>(
-			'Create exactly panelCount comic panels (2–50), sequentially numbered from 1. Return {"storyBreakdown":{"panels":[{"panelNumber":integer,"characters":string[],"sceneId":string,"sceneDescription":string,"dialogue":string,"cameraAngle":string,"visualMood":string}]}}. Use only the supplied character names and scene IDs. Describe visible actions precisely. Keep dialogue short.',
-			raw,
-			signal,
-		);
-	const body = raw as ImageBody;
-	const style = styles[body.style || "healing"] || "comic illustration";
-	const base = `Comic artwork in ${style} style. Text language: ${body.language || "zh"}. Consistent character appearance. No watermark. Setting: ${JSON.stringify(body.setting || {})}.`;
-	const draw = (
-		prompt: string,
-		refs: string[],
-		ratio = body.imageSize?.aspectRatio || "1:1",
-	) =>
-		generateImage(
-			`${base}\n${prompt}`,
-			body.aiModel || "auto",
-			ratio,
-			[...new Set(refs)],
-			signal,
-		);
-	if (path === "/api/generate-character-refs") {
-		const references: CharacterReference[] = [];
-		for (const c of body.characters || []) {
-			const ref =
-				body.uploadedCharacterReferences
-					?.filter((r) => r.name === c.name)
-					.map((r) => r.image) || [];
-			references.push({
-				name: c.name,
-				description: c.physicalDescription,
-				image: await draw(
-					`Character reference sheet for ${c.name}: ${c.physicalDescription}. Personality: ${c.personality}. One character, full-body front view, plain background, no text.`,
-					ref,
-				),
-			});
-		}
-		return { characterReferences: references } as T;
-	}
-	if (path === "/api/generate-panel" && body.panel) {
-		const panel = body.panel;
-		const refs = [
-			...(body.characterReferences || [])
-				.filter((r) => panel.characters.includes(r.name))
-				.map((r) => r.image),
-			...(body.uploadedSettingReferences || []).map((r) => r.image),
-		];
-		const scene = body.scenes?.find((s) => s.id === panel.sceneId);
-		return {
-			generatedPanel: {
-				panelNumber: panel.panelNumber,
-				image: await draw(
-					`Draw exactly ONE comic panel, no collage. Scene: ${JSON.stringify(scene || {})}. Action: ${panel.sceneDescription}. Camera: ${panel.cameraAngle}. Mood: ${panel.visualMood}. Characters: ${panel.characters.join(", ")}. Dialogue in speech bubbles: ${panel.dialogue || "none"}. Match the provided character and scene reference images.`,
-					refs,
-				),
-			},
-		} as T;
-	}
-	if (path === "/api/redraw-image" || path === "/api/modify-image") {
-		const refs = [
-			...(body.originalImage ? [body.originalImage] : []),
-			...(body.referenceImages || []),
-		];
-		return {
-			imageData: await draw(
-				`ONE comic panel. ${body.originalPrompt || ""}. ${body.modificationPrompt ? `Edit the first reference image as follows: ${body.modificationPrompt}. Preserve everything else.` : "Redraw with the same story and consistent characters."}`,
-				refs,
-			),
-		} as T;
-	}
-	throw new Error(`Market 版本不支持此接口：${path}`);
+	const token = requireWebToken();
+	return createNeoWoWApi({
+		plan: <R>(instruction: string, raw: unknown, abort?: AbortSignal) =>
+			plan<R>(instruction, raw, abort, token),
+		image: (prompt, model, ratio, refs, abort) =>
+			generateImage(prompt, model, ratio, refs, abort, token),
+	})<T>(path, body, signal);
 };

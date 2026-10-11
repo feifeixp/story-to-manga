@@ -451,3 +451,23 @@ test("without Web Locks, autosaves retain old image revisions instead of unsafe 
 	assert.equal(idb.state.records.has(oldKeys[0]), true);
 	assert.equal((await firstTab.loadProjectData(id)).generatedPanels[0].image, "second-image");
 });
+
+
+test("NeoWoW accounts have independent project lists, current project and text documents", async () => {
+ const { storage, local } = await fixture();
+ const alice=storage.createProjectStorage("neo-alice");
+ const bob=storage.createProjectStorage("neo-bob");
+ const a=alice.createProject({name:"Alice story",style:"manga"});
+ const b=bob.createProject({name:"Bob story",style:"manga"});
+ assert.deepEqual(alice.getProjectList().map(p=>p.metadata.id),[a.id]);
+ assert.deepEqual(bob.getProjectList().map(p=>p.metadata.id),[b.id]);
+ assert.equal(alice.getCurrentProjectId(),a.id);assert.equal(bob.getCurrentProjectId(),b.id);
+ assert.equal(await bob.loadProjectData(a.id),null);
+ assert.equal(storage.getProjectList().length,0);
+ await alice.saveProjectData(a.id,"Alice's draft","manga",null,null,[],[]);
+ assert.equal((await alice.loadProjectData(a.id)).story,"Alice's draft");
+ assert.equal((await bob.loadProjectData(b.id)).story,"");
+ await alice.deleteProject(a.id);
+ assert.equal(bob.getProjectList().length,1);
+ assert(Object.keys(local).some(key=>key.startsWith("manga-workspace-neo-bob-")));
+});

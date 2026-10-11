@@ -36,6 +36,10 @@ export function webToken(): string {
 		return "";
 	}
 }
+export function assertWebToken(token: string) {
+	if (requireWebToken() !== token)
+		throw new Error("NeoWoW 账户已切换，请在当前账户下重新操作。");
+}
 export function requireWebToken(): string {
 	const token = webToken();
 	if (!token)
@@ -89,7 +93,7 @@ export function pickUpWebSession() {
 		);
 	}
 }
-function readUser() {
+export function readUser() {
 	const s = session();
 	return webToken()
 		? {
@@ -111,5 +115,5 @@ export function useAuth() {
 			window.removeEventListener("focus", refresh);
 		};
 	}, []);
-	return { user };
+	return { user, token: webToken() };
 }

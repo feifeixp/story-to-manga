@@ -1,6 +1,22 @@
+import {
+	ArrowUpRight,
+	BookOpen,
+	Check,
+	Link2,
+	Loader2,
+	RefreshCw,
+} from "lucide-react";
 import { type AnchorHTMLAttributes, useEffect, useState } from "react";
 import { useI18n } from "../src/components/I18nProvider";
 import { StudioDialog } from "../src/components/studio/StudioDialog";
+import {
+	clearModelCache,
+	getBalance,
+	listModels,
+	releaseUncertainTask,
+	uncertainTasks,
+} from "./api";
+import "../src/components/neowow-account.css";
 import { login, logout, useAuth } from "./auth";
 export const CLI_NOTICE =
 	"网页登录获取的凭证不能用于调用 neowow-cli。使用 CLI 前，请到 NeoWoW「用户中心 → CLI」生成专用 API Key，在自己的终端运行 neowow login 配置，再用 neowow whoami 确认。";
@@ -11,46 +27,189 @@ export function AuthModal({
 	isOpen: boolean;
 	onClose: () => void;
 }) {
-	const { user } = useAuth();
-	if (!isOpen) return null;
+	return isOpen ? <MarketAccount onClose={onClose} /> : null;
+}
+function MarketAccount({ onClose }: { onClose: () => void }) {
+	const { user, token } = useAuth();
+	const [checking, setChecking] = useState(false);
+	const [status, setStatus] = useState("");
+	const [pending, setPending] = useState<{ key: string; model: string }[]>([]);
+	const check = async () => {
+		setChecking(true);
+		setStatus("");
+		clearModelCache();
+		const started = performance.now();
+		const [models, balance] = await Promise.allSettled([
+			listModels(),
+			getBalance(),
+		]);
+		setStatus(
+			models.status === "fulfilled"
+				? `已连接 · ${models.value.length} 个图像模型 · ${(performance.now() - started).toFixed(0)} ms${balance.status === "fulfilled" ? ` · 可用 ${balance.value} 积分` : " · 积分余额暂不可用"}`
+				: models.reason instanceof Error
+					? models.reason.message
+					: "连接失败，请检查网络后重试。",
+		);
+		setChecking(false);
+	};
+	useEffect(() => {
+		let active = true;
+		if (token)
+			void uncertainTasks().then((tasks) => {
+				if (active) setPending(tasks);
+			});
+		else setPending([]);
+		return () => {
+			active = false;
+		};
+	}, [token]);
 	return (
-		<StudioDialog title="NeoWoW 账户与使用说明" onClose={onClose}>
-			<div className="neo-guide">
-				<p>
-					{user
-						? `已登录：${user.name}`
-						: "登录 NeoWoW 后可拆解故事与生成漫画。草稿编辑不需要登录。"}
+		<StudioDialog
+			title="关联 NeoWoW"
+			className="neo-account-dialog"
+			onClose={onClose}
+		>
+			<div className="neo-account-hero">
+				<p className="neo-account-eyebrow">
+					NEOWOW MARKET / YOUR CREATIVE SPACE
 				</p>
+				<div className="neo-account-visual" aria-hidden="true">
+					<span>
+						<BookOpen size={24} />
+					</span>
+					<i />
+					<Link2 size={18} />
+					<i />
+					<span>
+						<Check size={24} />
+					</span>
+				</div>
+				<h3>连接你的 NeoWoW，开始创作。</h3>
 				<p>
-					文本规划使用当前用户的 NeoWoW Coding Plan
-					额度；图片生成使用当前用户的积分。余额、会员权限和实际价格以平台为准。点击拆解或生成时才提交
-					AI 请求。
+					无需注册本站。使用你的 NeoWoW
+					账户生成漫画，额度与积分归属于你自己的账号。
 				</p>
-				<button
-					type="button"
-					className="studio-btn primary"
-					onClick={user ? logout : login}
-				>
-					{user ? "退出登录" : "登录 NeoWoW"}
-				</button>
-				<h3>CLI 需要单独设置 Key</h3>
-				<p>{CLI_NOTICE}</p>
-				<pre>neowow login{String.fromCharCode(10)}neowow whoami</pre>
+			</div>
+			<div className={`neo-account-status ${user ? "is-connected" : ""}`}>
+				<Link2 size={16} />
+				<output>{user ? `已关联 · ${user.name}` : "尚未关联 NeoWoW"}</output>
+			</div>
+			<div className="neo-account-steps">
+				<section>
+					<span className="neo-step-number">01</span>
+					<div>
+						<h4>关联 NeoWoW 账户</h4>
+						<p>已有账号可直接关联；还没有账号，推荐先注册 NeoWoW。</p>
+						<button
+							type="button"
+							className="studio-btn primary"
+							onClick={user ? logout : login}
+						>
+							{user ? "解除关联" : "关联 / 登录 NeoWoW"}
+						</button>
+						<a
+							className="neo-account-link"
+							href="https://neowow.cn/"
+							target="_blank"
+							rel="noreferrer"
+						>
+							注册 / 打开 NeoWoW
+							<ArrowUpRight size={15} />
+						</a>
+					</div>
+				</section>
+				<section>
+					<span className="neo-step-number">02</span>
+					<div>
+						<h4>用自己的积分生成图片</h4>
+						<p>
+							图片按平台实时模型与价格计费；故事规划使用自己的 Coding Plan
+							额度。切换账号会切换浏览器工作区，旧版草稿保留在未关联时的工作区。
+						</p>
+						{user && (
+							<>
+								<button
+									type="button"
+									className="studio-btn"
+									disabled={checking}
+									onClick={() => void check()}
+								>
+									{checking ? (
+										<Loader2 size={15} className="spin" />
+									) : (
+										<RefreshCw size={15} />
+									)}
+									检查连接与积分
+								</button>
+								<output>
+									{checking ? "正在查询模型与积分，不会发起生成…" : status}
+								</output>
+							</>
+						)}
+					</div>
+				</section>
+				{pending.length > 0 && (
+					<section>
+						<span className="neo-step-number">!</span>
+						<div>
+							<h4>有提交结果不确定的任务</h4>
+							<p>
+								为避免重复扣费，已暂停这些请求。请先打开 NeoWoW
+								核对生成记录；确认允许重新生成后再解除限制。
+							</p>
+							{pending.map((task) => (
+								<div key={task.key}>
+									<p>{task.model}</p>
+									<button
+										type="button"
+										className="studio-btn"
+										onClick={async () => {
+											await releaseUncertainTask(task.key);
+											setPending(await uncertainTasks());
+										}}
+									>
+										已核对记录，允许新任务
+									</button>
+								</div>
+							))}
+						</div>
+					</section>
+				)}
+				<section>
+					<span className="neo-step-number">03</span>
+					<div>
+						<h4>本地创作可搭配 neowow-cli</h4>
+						<p>{CLI_NOTICE}</p>
+						<details>
+							<summary>查看本地 CLI 命令</summary>
+							<pre>neowow login{String.fromCharCode(10)}neowow whoami</pre>
+						</details>
+					</div>
+				</section>
+			</div>
+			<div className="neo-account-footer">
 				<p>
-					网页登录不会自动配置本机 CLI。不要将 Key 填入故事、参考描述、Market
-					文案或项目备份，也不要提交到 GitHub。本应用的网页 AI 接口与 CLI
-					使用不同的凭证。
+					网页生成无需安装 CLI，也无需填写 CLI
+					Key。作品保存在当前浏览器，请及时导出备份。
 				</p>
-				<a href="https://neowow.cn/" target="_blank" rel="noreferrer">
-					打开 NeoWoW 用户中心
-				</a>
-				<a
-					href="https://github.com/feifeixp/story-to-manga#readme"
-					target="_blank"
-					rel="noreferrer"
-				>
-					开源项目与本地安装方法 ↗
-				</a>
+				<div>
+					<a
+						className="studio-btn"
+						href="https://neowow.studio/account/api-docs"
+						target="_blank"
+						rel="noreferrer"
+					>
+						官方接口文档
+						<ArrowUpRight size={15} />
+					</a>
+					<button
+						type="button"
+						className="studio-btn primary"
+						onClick={onClose}
+					>
+						继续创作
+					</button>
+				</div>
 			</div>
 		</StudioDialog>
 	);
@@ -157,10 +316,16 @@ export function About() {
 					AI 操作需要登录 NeoWoW。文本规划消耗当前用户的 Coding Plan
 					额度；图片消耗当前用户积分。模型权限、参考图数量和价格以平台为准。输出尺寸由图像模型的默认配置决定；界面选择的是画幅比例。
 				</p>
+				<h2>网页 API 接入</h2>
+				<p>
+					图片使用官方「方式二」neowow.cn/agent 接口，以当前账号 accessToken
+					鉴权，通过 NeoWoW 现有跨域网关访问，无需 ECS 或独立后端。异步任务每 3
+					秒查询，单轮最多等待 3 分钟，超时保留任务编号供继续查询。
+				</p>
 				<h2>项目保存</h2>
 				<p>
-					文字与图片保存在当前浏览器，不自动同步到其他设备或账户。请定期导出
-					JSON /
+					文字与图片按 NeoWoW
+					账号分工作区保存在当前浏览器，不自动同步到其他设备。请定期导出 JSON /
 					ZIP；清理浏览器数据会删除草稿。在线图片如不允许跨域下载，导出会报错，请打开原图保存。当前没有一键导入备份入口。
 				</p>
 				<h2>开源项目</h2>

@@ -1,10 +1,16 @@
-import { Component, type ReactNode, useEffect, useState } from "react";
+import { Component, type ReactNode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import previewImage from "../public/studio/story-preview.svg";
 import { I18nProvider } from "../src/components/I18nProvider";
 import MangaStudio from "../src/components/studio/MangaStudio";
+import {
+	createProjectStorage,
+	defaultProjectStorage,
+} from "../src/lib/projectStorage";
 import { configureStudioServices } from "../src/lib/studioWorkflow";
 import {
+	accountTaskOwner,
+	clearModelCache,
 	type ImageModel,
 	imageSource,
 	listModels,
@@ -42,26 +48,56 @@ class ErrorBoundary extends Component<
 }
 function App() {
 	const path = usePath();
-	const { user } = useAuth();
+	const { user, token } = useAuth();
+	const [workspace, setWorkspace] = useState<string | null>(null);
+	const storage = useMemo(
+		() =>
+			workspace && workspace !== "guest"
+				? createProjectStorage(`neo-${workspace}`)
+				: defaultProjectStorage,
+		[workspace],
+	);
 	const userId = user?.id;
 	const [models, setModels] = useState<ImageModel[]>([]);
 	const [modelError, setModelError] = useState("");
 	useEffect(() => {
 		setModels([]);
 		setModelError("");
-		if (!userId) return;
+		clearModelCache();
+		setWorkspace(null);
+		if (!userId || !token) {
+			setWorkspace("guest");
+			return;
+		}
 		const controller = new AbortController();
+		void accountTaskOwner(
+			userId === "neowow-user" ? token : `user:${userId}`,
+		).then((scope) => {
+			if (!controller.signal.aborted) setWorkspace(scope);
+		});
 		listModels(controller.signal)
 			.then(setModels)
-			.catch(() => {
+			.catch((error) => {
 				if (!controller.signal.aborted)
-					setModelError("模型列表读取失败，请重新登录后刷新。");
+					setModelError(
+						error instanceof Error
+							? error.message
+							: "模型列表读取失败，请检查网络或重新关联。",
+					);
 			});
 		return () => controller.abort();
-	}, [userId]);
+	}, [userId, token]);
 	if (path === "/about" || path === "/comics") return <About />;
+	if (!workspace)
+		return (
+			<main className="neo-about">
+				<output>正在打开 NeoWoW 工作区…</output>
+			</main>
+		);
 	return (
 		<MangaStudio
+			key={workspace}
+			projectStorage={storage}
 			deployment="neowow"
 			previewImage={previewImage}
 			imageModels={models.map((m) => ({
