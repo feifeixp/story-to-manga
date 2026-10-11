@@ -35,3 +35,21 @@ test('editing keeps the source first and scopes changes to the requested edit',a
  calls.length=0;await api('/api/modify-image',{originalImage:'source.png',referenceImages:['cat.png'],modificationPrompt:'让红伞收拢',originalPrompt:'小猫归还红伞'});
  assert.deepEqual(calls[0].refs,['source.png','cat.png']);assert.match(calls[0].prompt,/Edit only the first reference/);assert.match(calls[0].prompt,/让红伞收拢/);assert.match(calls[0].prompt,/Preserve all unrelated/);
 });
+
+test('nested generation uses bounded manga insets without contradicting single-frame constraints',async()=>{
+ for(const ratio of ['1:1','16:9','9:16']){
+  calls.length=0;const result=await api('/api/generate-panel',{panel,composition:'japanese',style:'healing',imageSize:{aspectRatio:ratio},aiModel:'gpt-image-2.5-flare'});
+  const c=calls[0];assert.equal(calls.length,1);assert.equal(c.model,'gpt-image-2.5-flare');assert.equal(c.ratio,ratio);
+  assert.match(c.prompt,/SAME frozen story beat/);assert.match(c.prompt,/warm muted pastels/);assert.match(c.prompt,/Print each supplied dialogue line only ONCE/);
+  assert.match(c.prompt,ratio==='16:9'?/exactly THREE subframes/:/exactly TWO subframes/);
+  assert.doesNotMatch(c.prompt,/no collage|no decorative border|ONE continuous comic panel/);assert.equal(result.generatedPanel.composition,'japanese');
+ }
+});
+test('manga recomposition keeps source first and changes layout without adding story or preserving old layout',async()=>{
+ calls.length=0;await api('/api/modify-image',{originalImage:'source.png',referenceImages:['cat.png'],originalPrompt:'小猫归还红伞',composition:'japanese',recompose:true,imageId:2,imageSize:{aspectRatio:'1:1'}});
+ assert.deepEqual(calls[0].refs,['source.png','cat.png']);assert.match(calls[0].prompt,/Recompose the FIRST reference/);assert.match(calls[0].prompt,/diagonal divider/);assert.match(calls[0].prompt,/No new event/);assert.doesNotMatch(calls[0].prompt,/Preserve all unrelated composition|no collage/);
+});
+test('editing an existing nested image preserves its inset count even after changing page layout',async()=>{
+ calls.length=0;await api('/api/modify-image',{originalImage:'nested.png',composition:'japanese',modificationPrompt:'让光线温暖',imageSize:{aspectRatio:'9:16'}});
+ assert.match(calls[0].prompt,/existing Japanese manga inset composition, subframe count/);assert.doesNotMatch(calls[0].prompt,/exactly TWO|exactly THREE|ONE continuous/);
+});

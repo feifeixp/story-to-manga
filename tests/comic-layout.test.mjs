@@ -50,3 +50,11 @@ test('page lettering wraps Chinese, English, emoji and newlines without losing t
  const text='奶奶：小满，你来了。\nHello, 小满 👋';const lines=renderer.comicTextLines(context,text,120);
  assert.equal(lines.join(''),text.replaceAll('\n',''));assert.ok(lines.every(line=>Array.from(line).length<=5));
 });
+
+test('nested art retains all source pixels and proportions across every page layout',()=>{
+ for(const [iw,ih] of [[1920,1080],[1080,1920],[1024,1024]])for(const {id} of layout.COMIC_LAYOUTS)for(const frame of layout.comicGeometry(id,4).frames){
+  const {source,target}=layout.comicImagePlacement(iw,ih,frame.width,frame.height,true);
+  assert.deepEqual(source,{x:0,y:0,width:iw,height:ih});assert.ok(target.x>=-0.001&&target.y>=-0.001&&target.x+target.width<=frame.width+0.001&&target.y+target.height<=frame.height+0.001);
+  assert.ok(Math.abs(target.width/target.height-iw/ih)<0.001);
+ }
+});

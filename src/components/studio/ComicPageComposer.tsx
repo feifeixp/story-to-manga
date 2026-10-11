@@ -44,14 +44,27 @@ export function ComicLayoutChoices({
 							viewBox={`-32 -32 ${geometry.width + 64} ${geometry.height + 64}`}
 							aria-hidden="true"
 						>
-							{geometry.frames.map((frame) => (
-								<rect
-									key={`${frame.x}-${frame.y}`}
-									x={frame.x}
-									y={frame.y}
-									width={frame.width}
-									height={frame.height}
-								/>
+							{geometry.frames.map((frame, i) => (
+								<g key={`${frame.x}-${frame.y}`}>
+									<rect
+										x={frame.x}
+										y={frame.y}
+										width={frame.width}
+										height={frame.height}
+									/>
+									{item.id === "japanese" && (
+										<path
+											d={
+												i % 2
+													? `M${frame.x + frame.width * 0.6},${frame.y} L${frame.x + frame.width * 0.4},${frame.y + frame.height}`
+													: `M${frame.x},${frame.y + frame.height * 0.32} H${frame.x + frame.width}`
+											}
+											stroke="#fffdf8"
+											strokeWidth="24"
+											fill="none"
+										/>
+									)}
+								</g>
 							))}
 						</svg>
 						<span>
@@ -88,6 +101,7 @@ export function ComicPageComposer({
 	} | null>(null);
 	const [error, setError] = useState("");
 	const [rendering, setRendering] = useState(false);
+	const nested = comicLayout(project) === "japanese";
 	const count = comicPageCount(project),
 		current = Math.min(page, Math.max(0, count - 1));
 	useEffect(() => {
@@ -153,7 +167,7 @@ export function ComicPageComposer({
 							: "Frames, image ratios and page breaks follow the layout automatically."}
 					</p>
 				</div>
-				<span>{zh ? "无需重新生成" : "No regeneration needed"}</span>
+				<span>{zh ? "外层排版即时预览" : "Instant page layout"}</span>
 			</div>
 			<ComicLayoutChoices
 				value={comicLayout(project)}
@@ -161,6 +175,13 @@ export function ComicPageComposer({
 				zh={zh}
 				disabled={disabled}
 			/>
+			{nested && (
+				<p className="comic-inset-note">
+					{zh
+						? "新画格将由模型生成主画面＋1–2 个特写小格，沿用所选画风与颜色。已有图片不会自动变化：点选画格后使用「日漫重排这一格」，会消耗生成额度，原图可恢复。"
+						: "New frames use a main scene plus 1–2 detail insets in your selected art style. Existing artwork stays intact: select a frame and choose Recompose with manga insets to regenerate using credits. Originals remain recoverable."}
+				</p>
+			)}
 			<div className="comic-page-toolbar">
 				<label>
 					<input

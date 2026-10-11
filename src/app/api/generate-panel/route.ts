@@ -1,3 +1,4 @@
+import { panelPrompt } from "@/lib/mangaPrompts";
 import { type NextRequest, NextResponse } from "next/server";
 import { getAIModelRouter } from "@/lib/aiModelRouter";
 import { cacheHelpers } from "@/lib/cacheManager";
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
 			language = "en", // 添加语言参数，默认为英文
 			aiModel = "auto", // 添加AI模型选择参数，默认为自动选择
 			imageSize, // 添加图片尺寸参数
+			composition,
 		} = requestData;
 
 		panelLogger.debug(
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// 检查面板图片缓存
-		const panelDescription = JSON.stringify({ sceneDescription: panel.sceneDescription || panel.description || panel.panelDescription, dialogue: panel.dialogue, cameraAngle: panel.cameraAngle, visualMood: panel.visualMood, characters: panel.characters, sceneId: panel.sceneId, setting, scenes, uploadedSettingReferences, language, aiModel });
+		const panelDescription = JSON.stringify({ sceneDescription: panel.sceneDescription || panel.description || panel.panelDescription, dialogue: panel.dialogue, cameraAngle: panel.cameraAngle, visualMood: panel.visualMood, characters: panel.characters, sceneId: panel.sceneId, setting, scenes, uploadedSettingReferences, language, aiModel, composition });
 		const cachedPanel = cacheHelpers.getCachedPanelImage(
 			panel.panelNumber,
 			panelDescription,
@@ -101,6 +103,7 @@ export async function POST(request: NextRequest) {
 					panelNumber: panel.panelNumber,
 					description: panelDescription,
 					image: cachedPanel,
+					composition: composition === "japanese" ? "japanese" : "single",
 				},
 				cached: true,
 			});
@@ -265,6 +268,11 @@ Generate a single comic panel image with proper framing and composition.
 			"Calling AI Model Router for panel generation with matched character references",
 		);
 
+		if (composition === "japanese") {
+			prompt = panelPrompt({ panel, setting, scene: panelScene || undefined, characters: characterReferences, style, language, composition, aspectRatio: imageSize?.aspectRatio,
+				references: referenceImages.map((image) => ({ image, label: characterReferences.find((ref: { image: string }) => ref.image === image)?.name || "Environment" })) });
+		}
+
 		// 使用AI模型路由器生成漫画面板
 		const aiRouter = getAIModelRouter();
 		const result = await aiRouter.generateComicPanel(
@@ -343,6 +351,7 @@ Generate a single comic panel image with proper framing and composition.
 			generatedPanel: {
 				panelNumber: panel.panelNumber,
 				image: result.imageData,
+				composition: composition === "japanese" ? "japanese" : "single",
 				modelUsed: result.modelUsed,
 			},
 		});

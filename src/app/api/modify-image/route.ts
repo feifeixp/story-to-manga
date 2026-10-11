@@ -1,3 +1,4 @@
+import { panelEditPrompt } from "@/lib/mangaPrompts";
 import { type NextRequest, NextResponse } from "next/server";
 import { getAIModelRouter } from "@/lib/aiModelRouter";
 import {
@@ -28,6 +29,8 @@ export async function POST(request: NextRequest) {
 			aiModel = "auto",
 			imageSize, // 图片尺寸配置
 			style = "manga", // 漫画风格，默认为manga
+			composition,
+			recompose,
 		} = requestData;
 
 		imageType = requestImageType;
@@ -55,7 +58,9 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Create a combined prompt that includes the original context and modification instructions
-		const combinedPrompt = originalPrompt 
+		const combinedPrompt = imageType === "panel" && composition === "japanese"
+			? panelEditPrompt({ style, language, composition, originalPrompt, modificationPrompt, recompose, aspectRatio: imageSize?.aspectRatio, panelNumber: Number(imageId) })
+			: originalPrompt
 			? `${originalPrompt}\n\nModification instructions: ${modificationPrompt}`
 			: `Modify the provided reference image with the following changes: ${modificationPrompt}`;
 

@@ -86,3 +86,24 @@ test('storyboard review and generation keep pagination independently of the comi
   const cards=h.nodes(h.render()).filter(n=>n.type==='button'&&n.props.className?.includes('board-card'));assert.equal(cards.length,1);assert.ok(h.text(cards[0]).includes('第 13 格'));
  }
 });
+
+function withArtwork(){const p=planned(4);p.characterReferences=[{name:'小满',description:'绿伞',image:'ref'}];p.generatedPanels=[{panelNumber:1,image:'paid-original',composition:'single'},{panelNumber:2,image:'untouched'}];return p;}
+test('selecting manga insets is free; explicit recompose retains originals and other panels',async()=>{
+ const h=harness(withArtwork());h.find(n=>n.props['data-component']==='ComicPageComposer').props.onLayout('japanese');assert.equal(h.calls.length,0);
+ const btn=h.button('日漫重排这一格');btn.props.onClick();btn.props.onClick();await h.settle();assert.equal(h.calls.length,1);
+ const {path,body}=h.calls[0];assert.equal(path,'/api/modify-image');assert.equal(body.originalImage,'paid-original');assert.equal(body.recompose,true);assert.equal(body.composition,'japanese');
+ assert.equal(h.state.project.generatedPanels[0].composition,'japanese');assert.equal(h.state.project.generatedPanels[1].image,'untouched');assert.equal(h.state.project.studio.panelVersions['1'][0].image,'paid-original');assert.equal(h.state.project.studio.panelVersions['1'][0].composition,'single');assert.ok(h.saves>0);
+ h.button('查看上一版').props.onClick();h.button('恢复这张图片').props.onClick();assert.equal(h.state.project.generatedPanels[0].image,'paid-original');assert.equal(h.state.project.generatedPanels[0].composition,'single');
+});
+test('a failed manga recomposition never replaces the current paid image or retries',async()=>{
+ const h=harness(withArtwork());h.provider(async()=>{throw new Error('upstream timed out')});h.button('日漫重排这一格').props.onClick();await h.settle();assert.equal(h.calls.length,1);assert.equal(h.state.project.generatedPanels[0].image,'paid-original');assert.deepEqual(h.state.project.studio.panelVersions,{});
+});
+test('new manga-inset frames receive composition and automatic ratios while characters stay single',async()=>{
+ const p=planned();p.studio.comicLayout='japanese';const h=harness(p);h.button('确认分镜，开始生成').props.onClick();h.button('开始生成').props.onClick();await h.settle();
+ assert.ok(h.calls.filter(c=>c.path==='/api/generate-panel').every(c=>c.body.composition==='japanese'&&c.body.imageSize.aspectRatio===comicLayout.panelImageSize(p,c.body.panel.panelNumber).aspectRatio));
+ assert.ok(h.state.project.generatedPanels.every(p=>p.composition==='japanese'));assert.equal(h.calls.find(c=>c.path==='/api/generate-character-refs').body.composition,undefined);
+});
+test('small edits preserve original inset mode instead of adopting newly selected layout',async()=>{
+ const p=withArtwork();p.generatedPanels[0].composition='japanese';p.studio.comicLayout='cinema';const h=harness(p);
+ h.find(n=>n.type==='textarea'&&n.props.placeholder==='例如：让光线再温暖一点').props.onChange({target:{value:'暖一些'}});h.button('修改当前画面').props.onClick();await h.settle();assert.equal(h.calls[0].body.composition,'japanese');assert.equal(h.calls[0].body.recompose,false);
+});

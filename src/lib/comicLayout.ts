@@ -1,7 +1,19 @@
 import type { ImageSizeConfig, ProjectData } from "@/types/project";
 
-export type ComicLayout = "manga" | "cinema" | "classic" | "webtoon";
+export type ComicLayout =
+	| "manga"
+	| "cinema"
+	| "classic"
+	| "webtoon"
+	| "japanese";
 export const COMIC_LAYOUTS = [
+	{
+		id: "japanese",
+		zh: "日漫嵌套",
+		en: "Manga insets",
+		detail: "AI 格内分镜 · 特写与斜切",
+		english: "AI insets, close-ups & diagonals",
+	},
 	{
 		id: "manga",
 		zh: "叙事分镜",
@@ -96,7 +108,7 @@ export function comicGeometry(
 			],
 		};
 		rows = templates[count]!;
-	} else if (layout === "classic") {
+	} else if (layout === "classic" || layout === "japanese") {
 		rows = Array.from({ length: Math.ceil(count / 2) }, (_, row) => ({
 			weights: row * 2 + 1 < count ? [0.5, 0.5] : [1],
 			height: 0.49,
@@ -203,4 +215,32 @@ export function supportedComicRatio(target: string, supported?: string[]) {
 			? next
 			: best,
 	);
+}
+
+/** Nested artwork must retain every inset and speech bubble, even in a different page layout. */
+export function comicImagePlacement(
+	iw: number,
+	ih: number,
+	width: number,
+	height: number,
+	nested: boolean,
+) {
+	if (!nested)
+		return {
+			source: comicCrop(iw, ih, width, height),
+			target: { x: 0, y: 0, width, height },
+		};
+	const scale = Math.min(width / iw, height / ih);
+	return {
+		source: { x: 0, y: 0, width: iw, height: ih },
+		target: {
+			x: (width - iw * scale) / 2,
+			y: (height - ih * scale) / 2,
+			width: iw * scale,
+			height: ih * scale,
+		},
+	};
+}
+export function panelComposition(project: ProjectData): "single" | "japanese" {
+	return comicLayout(project) === "japanese" ? "japanese" : "single";
 }

@@ -53,6 +53,7 @@ export interface StoryBreakdown {
 }
 
 export interface GeneratedPanel {
+	composition?: "single" | "japanese";
 	panelNumber: number;
 	image: string; // base64 data URL
 }

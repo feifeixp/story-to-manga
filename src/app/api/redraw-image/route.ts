@@ -1,3 +1,4 @@
+import { panelEditPrompt } from "@/lib/mangaPrompts";
 import { type NextRequest, NextResponse } from "next/server";
 import { getAIModelRouter, selectAIModel } from "@/lib/aiModelRouter";
 import { getStylePrompt } from "@/lib/styleConfig";
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
 			aiModel = "auto",
 			imageSize, // 图片尺寸配置
 			style = "manga", // 漫画风格
+			composition,
 		} = requestData;
 
 		imageType = requestImageType;
@@ -140,6 +142,10 @@ The panel should include:
 Generate a single panel image with proper framing and composition.`;
 
 			finalPrompt = panelInstructions;
+		}
+
+		if (imageType === "panel" && composition === "japanese") {
+			finalPrompt = panelEditPrompt({ style, language, composition, originalPrompt: newPrompt || originalPrompt, aspectRatio: imageSize?.aspectRatio, panelNumber: Number(imageId) });
 		}
 
 		// 处理参考图片：将代理URL转换为实际图片数据

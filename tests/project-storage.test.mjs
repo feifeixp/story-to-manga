@@ -188,9 +188,9 @@ test("metadata-only projects from the old creator remain loadable", async () => 
 test("images, URLs, workflow settings, uploads and panel versions round-trip", async () => {
 	const { storage, local } = await fixture();
 	const { id } = storage.createProject({ name: "Round trip" });
-	const studio = { aiModel: "auto", step: 4, approved: true, requestedPanelCount: 6, plannedStory: "Hello", stalePanels: [2], panelVersions: { "1": [{ panelNumber: 1, image: "data:image/png;base64,old" }] } };
+	const studio = { aiModel: "auto", step: 4, approved: true, comicLayout: "japanese", requestedPanelCount: 6, plannedStory: "Hello", stalePanels: [2], panelVersions: { "1": [{ panelNumber: 1, image: "data:image/png;base64,old", composition: "japanese" }] } };
 	const chars = [{ name: "Mina", description: "Lead", image: "https://images.example/character.png" }];
-	const panels = [{ panelNumber: 1, image: "https://images.example/panel.png" }];
+	const panels = [{ panelNumber: 1, image: "https://images.example/panel.png", composition: "japanese" }];
 	const uploaded = [{ id: "upload1", name: "Mina", fileName: "mina.png", image: "data:image/png;base64,upload" }];
 	const generationState = { isGenerating: false, isPaused: true, currentPanel: 1, totalPanels: 6, completedPanels: 1, failedPanels: [2] };
 	await storage.saveProjectData(id, "Hello", "comic", null, null, chars, panels, uploaded, uploaded, customSize, generationState, { studio });

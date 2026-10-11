@@ -71,8 +71,56 @@ export interface PromptReference {
 	image: string;
 	label: string;
 }
+/** Japanese panel grammar is independent of rendering style and never adds story beats. */
+export function panelCompositionPrompt(
+	composition?: string,
+	ratio = "1:1",
+	panelNumber = 1,
+) {
+	if (composition !== "japanese")
+		return "Draw exactly ONE continuous comic panel and ONE moment, no collage, split screen, inset, storyboard grid or duplicate character. Use a clear focal point, readable gestures and depth. Fill the image edge to edge, with no decorative border or letterbox bars; page borders are added later.";
+	const [w, h] = ratio.split(":").map(Number);
+	const wide = !!w && !!h && w / h >= 1.7;
+	const arrangements = [
+		"one small rectangular close-up inset near the upper corner; the dominant scene fills the remaining area",
+		"one restrained diagonal divider separating a small reaction/detail wedge from the dominant scene",
+		"one shallow detail strip above the dominant scene, separated by a clean white gutter",
+	];
+	return `Japanese manga inset composition INSIDE ONE outer page slot. Draw ${wide ? "exactly THREE subframes: one dominant scene and two small supporting close-ups" : "exactly TWO subframes: one dominant scene and one small supporting close-up"}. The dominant scene occupies 65–80% of the image. ${wide ? "Place the two small insets along one side, without covering the main subject." : arrangements[(Math.max(1, panelNumber) - 1) % arrangements.length]}.
+Use varied frame sizes, crisp ink boundaries and narrow white gutters, not an equal-size mini-grid. Keep all inset borders and lettering inside the image. Keep the selected art style and colors; Japanese layout does not require monochrome.
+All subframes depict the SAME frozen story beat: the main scene plus a simultaneous expression, hand, prop or environment detail already present. No new event, time jump, character, costume or location. A close-up may show the same subject again in its own subframe, never duplicate a person within one view. In an empty scene, use an existing environmental detail instead of inventing a reaction.
+Preserve outer story order; internal reading is top-to-bottom, left-to-right for this edition. Print each supplied dialogue line only ONCE across the entire image, in a readable bubble attached to its speaker. Silent scenes stay silent. No title, panel numbers, decorative lettering or invented sound effects.`;
+}
+export function panelEditPrompt(options: {
+	style?: string | undefined;
+	language?: string | undefined;
+	composition?: string | undefined;
+	aspectRatio?: string | undefined;
+	panelNumber?: number | undefined;
+	originalPrompt?: string | undefined;
+	modificationPrompt?: string | undefined;
+	recompose?: boolean | undefined;
+}) {
+	const {
+		style,
+		language,
+		composition,
+		aspectRatio,
+		panelNumber,
+		originalPrompt,
+		modificationPrompt,
+		recompose,
+	} = options;
+	return `${artDirection(style, language)}
+${composition === "japanese" && modificationPrompt && !recompose ? "Preserve the source image’s existing Japanese manga inset composition, subframe count, boundaries and reading order. Do not flatten the image into one continuous scene." : panelCompositionPrompt(composition, aspectRatio, panelNumber)}
+Story context: ${originalPrompt || ""}.
+${recompose ? "Recompose the FIRST reference image into the inset layout above. It is the source artwork, not an identity sheet. Keep its story content, character identities, wardrobe, props, palette, location and supplied dialogue. Change framing and arrange detail crops/reaction views only. Later references guide identity and environment. Do not copy the source as a full-page thumbnail or add scenes from neighboring story panels." : modificationPrompt ? `Edit only the first reference image as follows: ${modificationPrompt}. Preserve all unrelated composition, identities, wardrobe, props, background and lettering. Preserve the source's inset count and boundaries when present. Later references are identity/environment guides, never separate story panels.` : "Redraw the stated moment with the same story, cast and consistent designs. Reference images guide identity and environment."}
+Speaker labels assign bubble tails; do not print the labels. Preserve only the supplied spoken words, once; add no text when dialogue is empty. Respect the page-defined aspect ratio. Keep essential subjects and lettering within the central 80% safe area.`;
+}
 export function panelPrompt(options: {
 	panel: StoryBreakdown["panels"][number];
+	composition?: string | undefined;
+	aspectRatio?: string | undefined;
 	setting?: StoryAnalysis["setting"] | undefined;
 	scene?: Scene | undefined;
 	characters?: CharacterReference[] | undefined;
@@ -88,7 +136,7 @@ export function panelPrompt(options: {
 			"follow the stated scene description",
 	}));
 	return `${artDirection(style, language)}
-Draw exactly ONE continuous comic panel and ONE moment, no collage, split screen, inset, storyboard grid or duplicate character. Use a clear focal point, readable gestures and depth. Respect the requested aspect ratio. Fill the image edge to edge, with no decorative border or letterbox bars; page borders are added later. Keep faces, essential props and lettering within the central 80% safe area.
+${panelCompositionPrompt(options.composition, options.aspectRatio, panel.panelNumber)} Respect the requested aspect ratio. Keep faces, essential props and lettering within the central 80% safe area.
 Setting: ${JSON.stringify(setting || {})}. Location design: ${JSON.stringify(scene || {})}.
 Visible cast and fixed appearance: ${JSON.stringify(characters)}. Do not mix identities, costumes or species. Do not add characters absent from this cast.
 Action: ${panel.sceneDescription}

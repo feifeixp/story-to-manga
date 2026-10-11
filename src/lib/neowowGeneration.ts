@@ -7,10 +7,10 @@ import type {
 } from "../types";
 import {
 	ANALYSIS_INSTRUCTION,
-	artDirection,
 	BREAKDOWN_INSTRUCTION,
 	characterPrompt,
 	type PromptReference,
+	panelEditPrompt,
 	panelPrompt,
 } from "./mangaPrompts";
 import type { ApiClient } from "./studioWorkflow";
@@ -77,6 +77,9 @@ export function validateAnalysis(analysis: StoryAnalysis): StoryAnalysis {
 	return analysis;
 }
 interface ImageBody {
+	composition?: "single" | "japanese";
+	recompose?: boolean;
+	imageId?: number;
 	style?: string;
 	language?: string;
 	aiModel?: string;
@@ -166,9 +169,12 @@ export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 			return {
 				generatedPanel: {
 					panelNumber: panel.panelNumber,
+					composition: body.composition === "japanese" ? "japanese" : "single",
 					image: await draw(
 						panelPrompt({
 							panel,
+							composition: body.composition,
+							aspectRatio: body.imageSize?.aspectRatio,
 							setting: body.setting,
 							scene,
 							characters: body.characterReferences,
@@ -188,7 +194,11 @@ export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 			];
 			return {
 				imageData: await draw(
-					`${artDirection(body.style, body.language)}\nONE continuous comic panel, no collage. ${body.originalPrompt || ""}. ${body.modificationPrompt ? `Edit only the first reference image as follows: ${body.modificationPrompt}. Preserve all unrelated composition, identities, wardrobe, props, background and lettering. Later references are identity/environment guides, never separate panels.` : "Redraw the stated moment with the same story, cast and consistent designs. Reference images guide identity and environment."} Speaker labels assign bubble tails; do not print the labels. Preserve only the supplied spoken words; add no text when dialogue is empty.`,
+					panelEditPrompt({
+						...body,
+						aspectRatio: body.imageSize?.aspectRatio,
+						panelNumber: body.imageId,
+					}),
 					refs,
 				),
 			} as T;

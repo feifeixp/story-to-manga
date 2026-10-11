@@ -1,8 +1,8 @@
 import type { ProjectData } from "@/types/project";
 import {
 	type ComicFrame,
-	comicCrop,
 	comicGeometry,
+	comicImagePlacement,
 	comicLayout,
 	comicPanelNumbers,
 	panelsPerPage,
@@ -172,22 +172,24 @@ export async function renderComicPage(
 		ctx.fillStyle = "#fff";
 		ctx.fillRect(frame.x, frame.y, frame.width, frame.height);
 		if (image) {
-			const crop = comicCrop(
+			const placement = comicImagePlacement(
 				image.width,
 				image.height,
 				frame.width,
 				imageHeight,
+				project.generatedPanels.find((p) => p.panelNumber === frame.panelNumber)
+					?.composition === "japanese",
 			);
 			ctx.drawImage(
 				image,
-				crop.x,
-				crop.y,
-				crop.width,
-				crop.height,
-				frame.x,
-				frame.y,
-				frame.width,
-				imageHeight,
+				placement.source.x,
+				placement.source.y,
+				placement.source.width,
+				placement.source.height,
+				frame.x + placement.target.x,
+				frame.y + placement.target.y,
+				placement.target.width,
+				placement.target.height,
 			);
 		} else {
 			ctx.fillStyle = "#f0f0e9";

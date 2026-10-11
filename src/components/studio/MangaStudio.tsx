@@ -35,6 +35,7 @@ import { ShareComicModal } from "@/components/ShareComicModal";
 import {
 	type ComicLayout,
 	comicLayout,
+	panelComposition,
 	panelImageSize,
 } from "@/lib/comicLayout";
 import {
@@ -485,10 +486,14 @@ export default function MangaStudio({
 							language,
 							aiModel: snapshot.studio.aiModel,
 							imageSize: panelImageSize(snapshot, panel.panelNumber),
+							composition: panelComposition(snapshot),
 						},
 						controller.current?.signal,
 					);
-					return result.generatedPanel;
+					return {
+						...result.generatedPanel,
+						composition: panelComposition(snapshot),
+					};
 				},
 				onPanel: async (panel) => {
 					retainPanel(panel);
@@ -562,7 +567,7 @@ export default function MangaStudio({
 			},
 		}));
 	}
-	async function redraw(modify: boolean) {
+	async function redraw(modify: boolean, recompose = false) {
 		await run(async () => {
 			const snapshot = current.current;
 			const panel = snapshot?.storyBreakdown?.panels[selected];
@@ -586,10 +591,16 @@ export default function MangaStudio({
 			const old = snapshot.generatedPanels.find(
 				(item) => item.panelNumber === panel.panelNumber,
 			);
-			if (modify && (!old || !modifyPrompt.trim())) return;
+			if ((modify || recompose) && !old) return;
+			if (modify && !recompose && !modifyPrompt.trim()) return;
+			const composition = recompose
+				? "japanese"
+				: modify
+					? old?.composition || "single"
+					: panelComposition(snapshot);
 			setStatus(
 				copy(
-					`正在${modify ? "修改" : "重绘"}第 ${panel.panelNumber} 格…`,
+					`正在${recompose ? "重排" : modify ? "修改" : "重绘"}第 ${panel.panelNumber} 格…`,
 					`Refining panel ${panel.panelNumber}…`,
 				),
 			);
@@ -602,15 +613,18 @@ export default function MangaStudio({
 			const result = await requestStudioApi<{
 				imageData: string;
 			}>(
-				modify ? "/api/modify-image" : "/api/redraw-image",
+				modify || recompose ? "/api/modify-image" : "/api/redraw-image",
 				{
 					imageType: "panel",
 					imageId: panel.panelNumber,
 					originalPrompt,
-					...(modify
+					...(modify || recompose
 						? {
 								originalImage: old?.image,
-								modificationPrompt: modifyPrompt,
+								modificationPrompt: recompose
+									? "Recompose this artwork into Japanese manga insets."
+									: modifyPrompt,
+								recompose,
 							}
 						: {}),
 					referenceImages: [
@@ -624,6 +638,7 @@ export default function MangaStudio({
 					language,
 					aiModel: snapshot.studio.aiModel,
 					imageSize: panelImageSize(snapshot, panel.panelNumber),
+					composition,
 					style: snapshot.style,
 				},
 				controller.current?.signal,
@@ -631,6 +646,7 @@ export default function MangaStudio({
 			retainPanel({
 				panelNumber: panel.panelNumber,
 				image: result.imageData,
+				composition,
 			});
 			await save();
 			setModifyPrompt("");
@@ -1031,6 +1047,21 @@ export default function MangaStudio({
 					</button>
 					{generatedActive && (
 						<>
+							<button
+								type="button"
+								className="studio-btn full"
+								disabled={busy || !activePanel.sceneDescription.trim()}
+								onClick={() => void redraw(true, true)}
+							>
+								<Sparkles size={16} />
+								{copy("日漫重排这一格", "Recompose with manga insets")}
+							</button>
+							<p className="field-hint">
+								{copy(
+									"用当前图片重新生成主画面与特写小格，会消耗生成额度。原图保留在历史版本中。",
+									"Regenerates the current artwork with a main scene and detail insets. Uses generation credits; the original stays in version history.",
+								)}
+							</p>
 							<label>
 								{copy("或者，描述想修改的细节", "Or describe a small change")}
 								<textarea
