@@ -259,6 +259,80 @@ export function imageSource(source: string) {
 }
 // References must be public URLs. Signed upload URLs stay in memory only.
 const uploaded = new Map<string, string>();
+interface HostedReference {
+	md5: string;
+	url: string;
+	until: number;
+}
+function reusableReferenceUrl(source: string) {
+	try {
+		const url = new URL(source);
+		return (
+			url.protocol === "https:" && !url.search && !url.username && !url.password
+		);
+	} catch {
+		return false;
+	}
+}
+async function referenceFingerprint(blob: Blob) {
+	const bytes = new Uint8Array(await blob.arrayBuffer());
+	const words: number[] = [];
+	for (let i = 0; i < bytes.length; i++)
+		words[i >>> 2] = (words[i >>> 2] || 0) | (bytes[i]! << (24 - (i % 4) * 8));
+	// Match NeoWoW's content-deduplication key; MD5 is not used for authentication.
+	return MD5(CryptoJS.lib.WordArray.create(words, bytes.length)).toString();
+}
+async function hostedReferences(token: string) {
+	const key = `manga-neo-reference-${await accountTaskOwner(token)}`;
+	let entries: HostedReference[] = [];
+	try {
+		const stored: unknown = JSON.parse(localStorage.getItem(key) || "[]");
+		if (Array.isArray(stored))
+			entries = stored
+				.filter(
+					(item): item is HostedReference =>
+						item &&
+						typeof item.md5 === "string" &&
+						typeof item.url === "string" &&
+						typeof item.until === "number" &&
+						item.until > Date.now() &&
+						reusableReferenceUrl(item.url),
+				)
+				.slice(-100);
+	} catch {
+		/* Cache access must not block an otherwise usable image. */
+	}
+	return { key, entries };
+}
+async function rememberReference(
+	md5: string,
+	source: string,
+	url: string,
+	token: string,
+) {
+	if (!reusableReferenceUrl(url)) return;
+	assertWebToken(token);
+	uploaded.set(`${token}\n${source}`, url);
+	const { key, entries } = await hostedReferences(token);
+	try {
+		localStorage.setItem(
+			key,
+			JSON.stringify([
+				...entries.filter((item) => item.md5 !== md5).slice(-99),
+				{ md5, url, until: Date.now() + 7 * 24 * 60 * 60 * 1000 },
+			]),
+		);
+	} catch {
+		/* In-memory reuse still works if browser storage is full. */
+	}
+}
+// Allow a slow uplink (~32 KiB/s) plus setup time, while keeping a finite cap.
+function referenceUploadTimeout(bytes: number) {
+	return Math.min(
+		300_000,
+		Math.max(120_000, 45_000 + Math.ceil(bytes / 32_768) * 1000),
+	);
+}
 export async function referenceUrl(
 	source: string,
 	signal?: AbortSignal,
@@ -270,10 +344,13 @@ export async function referenceUrl(
 	const cacheKey = `${token}\n${source}`;
 	const cached = uploaded.get(cacheKey);
 	if (cached) return cached;
+	let stage = "读取参考图";
+	let size = "";
 	try {
 		const blob = await fetch(source, signal ? { signal } : {}).then((r) =>
 			r.blob(),
 		);
+		size = `${(blob.size / 1024 / 1024).toFixed(1)} MB`;
 		const extension = (
 			{
 				"image/png": "png",
@@ -283,15 +360,16 @@ export async function referenceUrl(
 			} as Record<string, string>
 		)[blob.type];
 		if (!extension) throw new Error("参考图仅支持 PNG、JPEG、WebP 或 GIF。");
-		const bytes = new Uint8Array(await blob.arrayBuffer());
-		const words: number[] = [];
-		for (let i = 0; i < bytes.length; i++)
-			words[i >>> 2] =
-				(words[i >>> 2] || 0) | (bytes[i]! << (24 - (i % 4) * 8));
-		// MD5 is the platform's content-deduplication key, not an auth credential.
-		const imageMd5 = MD5(
-			CryptoJS.lib.WordArray.create(words, bytes.length),
-		).toString();
+		const imageMd5 = await referenceFingerprint(blob);
+		const known = (await hostedReferences(token)).entries.find(
+			(item) => item.md5 === imageMd5,
+		);
+		assertWebToken(token);
+		if (known) {
+			uploaded.set(cacheKey, known.url);
+			return known.url;
+		}
+		stage = "查询已有参考图";
 		const existing = await mediaJson<{ imageUrl?: string } | null>(
 			`/agent/image-record/query?imageMd5=${imageMd5}`,
 			undefined,
@@ -299,9 +377,10 @@ export async function referenceUrl(
 			token,
 		);
 		if (existing?.imageUrl?.startsWith("https://")) {
-			uploaded.set(cacheKey, existing.imageUrl);
+			await rememberReference(imageMd5, source, existing.imageUrl, token);
 			return existing.imageUrl;
 		}
+		stage = "获取上传地址";
 		const upload = await mediaJson<{
 			uploadUrl: string;
 			fileUrl: string;
@@ -332,28 +411,41 @@ export async function referenceUrl(
 		}
 		assertWebToken(token);
 		signal?.throwIfAborted();
+		stage = "传输参考图";
+		const uploadDeadline = AbortSignal.timeout(
+			referenceUploadTimeout(blob.size),
+		);
 		const response = await fetch(target.href, {
 			method: "PUT",
 			body: blob,
 			headers: { "Content-Type": blob.type, ...upload.requiredHeaders },
 			signal: signal
-				? AbortSignal.any([signal, AbortSignal.timeout(60_000)])
-				: AbortSignal.timeout(60_000),
+				? AbortSignal.any([signal, uploadDeadline])
+				: uploadDeadline,
 		});
 		if (!response.ok)
 			throw new Error(`文件传输失败（HTTP ${response.status}）。`);
+		stage = "登记参考图";
 		await mediaJson(
 			"/agent/image-record/save",
 			{ imageMd5, imageUrl: upload.fileUrl },
 			signal,
 			token,
 		);
-		uploaded.set(cacheKey, upload.fileUrl);
+		await rememberReference(imageMd5, source, upload.fileUrl, token);
 		return upload.fileUrl;
 	} catch (error) {
 		if (signal?.aborted) throw error;
+		if (
+			error instanceof Error &&
+			(error.name === "TimeoutError" ||
+				/超时|timed?\s*out/i.test(error.message))
+		)
+			throw new Error(
+				`参考图${stage === "传输参考图" ? "传输" : stage.replace("参考图", "")}超时${size ? `（${size}）` : ""}。本次尚未提交新的图片生成请求；已完成的画面已保留，请稍后继续。`,
+			);
 		throw new Error(
-			`参考图上传失败：${error instanceof Error ? error.message : "请稍后重试"}`,
+			`参考图上传失败（${stage}）：${error instanceof Error ? error.message : "请稍后重试"}`,
 		);
 	}
 }
@@ -444,14 +536,16 @@ export async function generateImage(
 		throw new Error(
 			`此模型最多支持 ${model.max_reference_images || 0} 张参考图；请选择支持更多参考图的模型或减少参考图。`,
 		);
+	// Send references one at a time so large files do not compete for the uplink.
+	const imageUrls: string[] = [];
+	for (const ref of refs)
+		imageUrls.push(await referenceUrl(ref, signal, token));
 	const body = {
 		modelName: model.model_name,
 		prompt,
 		numImages: "1",
 		aspectRatio: ratio,
-		imageUrls: await Promise.all(
-			refs.map((ref) => referenceUrl(ref, signal, token)),
-		),
+		imageUrls,
 	};
 	const key = await taskStoreKey(token, body);
 	let pending: PendingTask | null = JSON.parse(
@@ -520,6 +614,15 @@ export async function generateImage(
 					reader.onerror = () => reject(new Error("图片保存失败"));
 					reader.readAsDataURL(blob);
 				});
+				// Keep the platform URL for subsequent references instead of uploading
+				// the freshly downloaded image back to the same platform.
+				if (reusableReferenceUrl(url))
+					await rememberReference(
+						await referenceFingerprint(blob),
+						image,
+						url,
+						token,
+					);
 				localStorage.removeItem(key);
 				return image;
 			} catch (error) {
