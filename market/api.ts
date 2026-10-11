@@ -32,8 +32,29 @@ function message(data: GatewayResponse, status: number) {
 	);
 }
 export const CODING_PLAN_PATH = "/api/me/chat/completions";
-// The documented lightweight model, available in every Coding Plan tier.
-export const PLANNING_MODEL = "deepseek-v4-flash";
+// Exact IDs verified against the NeoWoW Coding Plan catalog on 2026-10-11.
+export const PLANNING_MODELS = [
+	{ id: "doubao-seed-2-1-pro-260915", name: "豆包 2.1 Pro" },
+	{ id: "kimi-k3", name: "Kimi K3" },
+] as const;
+export const PLANNING_MODEL = PLANNING_MODELS[0].id;
+const PLANNING_MODEL_KEY = "manga-neo-planning-model";
+export function getPlanningModel(): string {
+	try {
+		const selected = localStorage.getItem(PLANNING_MODEL_KEY);
+		return (
+			PLANNING_MODELS.find((model) => model.id === selected)?.id ||
+			PLANNING_MODEL
+		);
+	} catch {
+		return PLANNING_MODEL;
+	}
+}
+export function setPlanningModel(model: string) {
+	if (!PLANNING_MODELS.some((option) => option.id === model))
+		throw new Error("请选择豆包 2.1 Pro 或 Kimi K3。");
+	localStorage.setItem(PLANNING_MODEL_KEY, model);
+}
 // Method 2: the platform's existing CORS gateway forwards these paths to
 // https://neowow.cn/agent. No application backend, ECS or CLI credentials.
 export const MEDIA_GATEWAY = `${PLATFORM}/neo-api`;
@@ -159,6 +180,7 @@ async function plan<T>(
 	body: unknown,
 	signal?: AbortSignal,
 	token = requireWebToken(),
+	model = getPlanningModel(),
 ): Promise<T> {
 	const result = await platformJson<{
 		choices?: { message?: { content?: string } }[];
@@ -166,7 +188,7 @@ async function plan<T>(
 	}>(
 		CODING_PLAN_PATH,
 		{
-			model: PLANNING_MODEL,
+			model,
 			stream: false,
 			messages: [
 				{
@@ -441,9 +463,10 @@ export const requestMarketApi: ApiClient = async <T>(
 	signal?: AbortSignal,
 ): Promise<T> => {
 	const token = requireWebToken();
+	const model = getPlanningModel();
 	return createNeoWoWApi({
 		plan: <R>(instruction: string, raw: unknown, abort?: AbortSignal) =>
-			plan<R>(instruction, raw, abort, token),
+			plan<R>(instruction, raw, abort, token, model),
 		image: (prompt, model, ratio, refs, abort) =>
 			generateImage(prompt, model, ratio, refs, abort, token),
 	})<T>(path, body, signal);

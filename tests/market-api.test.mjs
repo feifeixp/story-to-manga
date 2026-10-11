@@ -117,7 +117,7 @@ test('story planning uses method 1 Coding Plan with explicit model and OpenAI me
   assert.equal(calls[0].url, 'https://app.neowow.studio/api/me/chat/completions');
   assert.equal(calls[0].headers.Authorization, 'Bearer test-web-session');
   assert.equal(calls[0].headers.accessToken, undefined);
-  assert.equal(calls[0].body.model, 'deepseek-v4-flash');
+  assert.equal(calls[0].body.model, 'doubao-seed-2-1-pro-260915');
   assert.equal(calls[0].body.stream, false);
   assert.equal(calls[0].body.messages[0].role, 'system');
   assert.equal(calls[0].body.messages[1].role, 'user');
@@ -134,6 +134,23 @@ test('LLM upstream balance errors are distinguished from image credits and never
   globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ error: '402 Insufficient Balance (request_id: test-llm-request)' }), { status: 502 }); };
   await assert.rejects(requestMarketApi('/api/chunk-story', {}), error => /文本模型服务/.test(error.message) && /图片积分/.test(error.message) && /test-llm-request/.test(error.message));
   assert.equal(calls, 1);
+});
+
+test('Kimi K3 selection is persisted and sent to Coding Plan without changing image model selection', async () => {
+  signIn(); mod.exports.setPlanningModel('kimi-k3');
+  assert.equal(mod.exports.getPlanningModel(), 'kimi-k3');
+  globalThis.fetch = async (url, options) => {
+    assert(url.endsWith('/api/me/chat/completions'));
+    assert.equal(JSON.parse(options.body).model, 'kimi-k3');
+    return json({ choices: [{ message: { content: '{"storyBreakdown":{"panels":[]}}' } }] });
+  };
+  await requestMarketApi('/api/chunk-story', { aiModel: 'image-only-model' });
+  assert.throws(() => mod.exports.setPlanningModel('unverified-model'), /请选择/);
+  assert.equal(mod.exports.getPlanningModel(), 'kimi-k3');
+});
+test('stale or invalid text model preferences restore the verified Doubao default', () => {
+  signIn(); data.set('manga-neo-planning-model', 'deepseek-v4-flash');
+  assert.equal(mod.exports.getPlanningModel(), 'doubao-seed-2-1-pro-260915');
 });
 
 test.after(() => { globalThis.fetch = originalFetch; });

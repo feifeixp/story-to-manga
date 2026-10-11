@@ -187,7 +187,7 @@ pnpm start --port 8000
 
 媒体接口目标为 `https://neowow.cn`，请求头使用当前用户的 `accessToken`，从 `neoStudioSession.authorization` / 官方登录回传中读取。浏览器使用 NeoWoW 已有的 `https://app.neowow.studio/neo-api` 跨域网关转发；2026-10-11 实测直接源站的跨域响应不允许 Market 域名，平台网关允许。此网关由 NeoWoW 提供，不需要项目部署者另开服务器。
 
-故事拆解与分镜规划使用文档「方式一」`POST https://app.neowow.studio/api/me/chat/completions`，采用 OpenAI 格式的 `messages`、显式模型 `deepseek-v4-flash` 和 `stream: false`。Market 网页携带当前用户的 `Authorization: Bearer <登录 JWT>`；平台该接口原生支持网页登录身份，按各自 Coding Plan 计费。外部程序按文档使用带 `chat:invoke` 权限的 `nws_dt_…` 部署令牌。两种凭证均不写入发布包，也不以 CLI Key 替代。
+故事拆解与分镜规划使用文档「方式一」`POST https://app.neowow.studio/api/me/chat/completions`，采用 OpenAI 格式的 `messages`、默认模型 `doubao-seed-2-1-pro-260915`（豆包 2.1 Pro） 和 `stream: false`。Market 网页携带当前用户的 `Authorization: Bearer <登录 JWT>`；平台该接口原生支持网页登录身份，按各自 Coding Plan 计费。外部程序按文档使用带 `chat:invoke` 权限的 `nws_dt_…` 部署令牌。两种凭证均不写入发布包，也不以 CLI Key 替代。可在右上角账户面板的「故事拆解模型」切换为 `kimi-k3`（Kimi K3）；选择保存在当前浏览器，只影响文本规划。两种模型 ID 已于 2026-10-11 在当前账户 Coding Plan 目录核对，其他用户的权限以各自套餐为准。
 
 若故事拆解出现 `402 Insufficient Balance`，这是文本模型服务返回的余额错误，不能用图片积分余额判断；旧 `/api/chat` 会直接透传上游错误。当前版本改走方式一并保留平台的详细错误提示。若仍发生，需由 NeoWoW 检查上游模型账户，应用不会通过自动重复请求尝试绕过。
 
@@ -271,4 +271,6 @@ CLI 使用 `api-key` 请求头，不接受网页登录的 `Authorization` / Bear
 
 2026-10-11 方式二接入修订：兼容媒体接口两种响应格式，增加连接与积分查询、账号工作区、提交不确定时的防重复保护。模型列表按当前凭证缓存 60 秒，切换账户后清除。57 项自动化测试、Next.js 生产构建与 Market 单文件构建通过；实际付费生成仍需使用者验证。
 
-2026-10-11 文本接入修订：故事拆解与分镜改走方式一 Coding Plan，60 项测试、类型检查与 Market 构建通过。线上实际复测确认接口接入成功，但平台返回「平台模型额度需要补充」，文本生成暂受上游 LLM 账户余额限制；补充图片积分不能解决该问题。
+2026-10-11 文本接入修订：故事拆解与分镜改走方式一 Coding Plan，60 项测试、类型检查与 Market 构建通过。最初使用 `deepseek-v4-flash` 复测时返回「平台模型额度需要补充」；此结果仅代表该次模型调用，不能据此判断所有文本模型不可用。
+
+2026-10-11 文本模型更新：默认使用豆包 2.1 Pro（`doubao-seed-2-1-pro-260915`），可在「账户 → 故事拆解模型」切换 Kimi K3（`kimi-k3`），选择保存在当前浏览器。62 项自动化测试、类型检查与 Market 构建通过。线上豆包实测成功生成 2 位角色与 4 格分镜；Kimi 本次实测触发 60 秒响应超时，暂未验证成功。图片生成未在本轮实测。

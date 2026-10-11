@@ -6,14 +6,17 @@ import {
 	Loader2,
 	RefreshCw,
 } from "lucide-react";
-import { type AnchorHTMLAttributes, useEffect, useState } from "react";
+import { type AnchorHTMLAttributes, useEffect, useId, useState } from "react";
 import { useI18n } from "../src/components/I18nProvider";
 import { StudioDialog } from "../src/components/studio/StudioDialog";
 import {
 	clearModelCache,
 	getBalance,
+	getPlanningModel,
 	listModels,
+	PLANNING_MODELS,
 	releaseUncertainTask,
+	setPlanningModel,
 	uncertainTasks,
 } from "./api";
 import "../src/components/neowow-account.css";
@@ -30,9 +33,11 @@ export function AuthModal({
 	return isOpen ? <MarketAccount onClose={onClose} /> : null;
 }
 function MarketAccount({ onClose }: { onClose: () => void }) {
+	const planningModelId = useId();
 	const { user, token } = useAuth();
 	const [checking, setChecking] = useState(false);
 	const [status, setStatus] = useState("");
+	const [planningModel, updatePlanningModel] = useState(getPlanningModel);
 	const [pending, setPending] = useState<{ key: string; model: string }[]>([]);
 	const check = async () => {
 		setChecking(true);
@@ -121,11 +126,35 @@ function MarketAccount({ onClose }: { onClose: () => void }) {
 				<section>
 					<span className="neo-step-number">02</span>
 					<div>
-						<h4>用自己的积分生成图片</h4>
+						<h4>选择创作模型</h4>
+						<label className="neo-planning-field" htmlFor={planningModelId}>
+							故事拆解模型
+							<select
+								id={planningModelId}
+								value={planningModel}
+								onChange={(event) => {
+									try {
+										setPlanningModel(event.target.value);
+										updatePlanningModel(event.target.value);
+									} catch {
+										setStatus("模型选择未保存，请检查浏览器存储权限。");
+									}
+								}}
+							>
+								{PLANNING_MODELS.map((model) => (
+									<option key={model.id} value={model.id}>
+										{model.name}
+									</option>
+								))}
+							</select>
+						</label>
 						<p>
 							图片按平台实时模型与价格计费；故事规划通过方式一使用自己的 Coding
 							Plan
 							额度，与图片积分分开计费。切换账号会切换浏览器工作区，旧版草稿保留在未关联时的工作区。
+						</p>
+						<p>
+							用于故事拆解与分镜规划，选择会保存在当前浏览器。图片模型在创作设置中选择。
 						</p>
 						{user && (
 							<>
@@ -319,9 +348,10 @@ export function About() {
 				</p>
 				<h2>网页 API 接入</h2>
 				<p>
-					故事拆解与分镜规划通过官方「方式一」Coding Plan 接口，使用
-					deepseek-v4-flash。Market 网页使用当前登录身份；外部程序使用带
-					chat:invoke 权限的部署令牌。文本额度与图片积分分别计费。
+					故事拆解与分镜规划通过官方「方式一」Coding Plan 接口，默认使用 豆包
+					2.1 Pro，可在右上角账户面板切换为 Kimi K3。Market
+					网页使用当前登录身份；外部程序使用带 chat:invoke
+					权限的部署令牌。文本额度与图片积分分别计费。
 				</p>
 				<p>
 					图片使用官方「方式二」neowow.cn/agent 接口，以当前账号 accessToken
