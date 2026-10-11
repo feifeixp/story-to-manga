@@ -33,5 +33,7 @@ const html = (await readFile('market/index.html', 'utf8'))
   .replace('href="/favicon.ico"', () => `href="${icon}"`)
   .replace('<script type="module" src="/app.js"></script>', () => `<script type="module">${js.replace(/<\/script/gi, '<\\/script')}</script>`)
   .replace('</body>', () => `<!-- Original project license:\n${license}\n--></body>`);
+// NeoWoW stores a page in a 2 MiB content column; leave room for its deployment wrapper.
+if (Buffer.byteLength(html) > 2_000_000) throw new Error(`Market page is too large (${Buffer.byteLength(html)} bytes). Compress artwork before deploying; the host limit is 2 MiB.`);
 await writeFile(path.join(out, 'index.html'), html);
 console.log(`Single-file Market build: ${path.join(out, 'index.html')} (${Buffer.byteLength(html)} bytes)`);
