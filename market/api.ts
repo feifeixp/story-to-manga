@@ -5,6 +5,8 @@ import {
 } from "../src/lib/neowowGeneration";
 export { parseJsonReply, validateAnalysis };
 
+import CryptoJS from "crypto-js/core";
+import MD5 from "crypto-js/md5";
 import { PLANNING_SYSTEM } from "../src/lib/mangaPrompts";
 import type { ApiClient } from "../src/lib/studioWorkflow";
 import { assertWebToken, PLATFORM, requireWebToken } from "./auth";
@@ -255,7 +257,7 @@ export function imageSource(source: string) {
 		return `${PLATFORM}/oss${url.pathname}${url.search}`;
 	return url.href;
 }
-// References must be public URLs; STS stays in memory and is never backed up.
+// References must be public URLs. Signed upload URLs stay in memory only.
 const uploaded = new Map<string, string>();
 export async function referenceUrl(
 	source: string,
@@ -268,40 +270,92 @@ export async function referenceUrl(
 	const cacheKey = `${token}\n${source}`;
 	const cached = uploaded.get(cacheKey);
 	if (cached) return cached;
-	const blob = await fetch(source, signal ? { signal } : {}).then((r) =>
-		r.blob(),
-	);
-	const result = await platformJson<{
-		data: {
-			accessKeyId: string;
-			accessKeySecret: string;
-			securityToken: string;
-			bucketName: string;
-		};
-	}>("/neo-api/agent/sts/oss/token", undefined, signal, token);
-	const { default: OSS } = await import("ali-oss/dist/aliyun-oss-sdk.min.js");
-	signal?.throwIfAborted();
-	const data = result.data;
-	const client = new OSS({
-		region: "oss-cn-shanghai",
-		bucket: data.bucketName,
-		accessKeyId: data.accessKeyId,
-		accessKeySecret: data.accessKeySecret,
-		stsToken: data.securityToken,
-		secure: true,
-	});
-	const extension = blob.type.includes("jpeg")
-		? "jpg"
-		: blob.type.includes("webp")
-			? "webp"
-			: "png";
-	const upload = await client.put(
-		`story-to-manga/${crypto.randomUUID()}.${extension}`,
-		blob,
-	);
-	const url = upload.url.replace(/^http:/, "https:");
-	uploaded.set(cacheKey, url);
-	return url;
+	try {
+		const blob = await fetch(source, signal ? { signal } : {}).then((r) =>
+			r.blob(),
+		);
+		const extension = (
+			{
+				"image/png": "png",
+				"image/jpeg": "jpg",
+				"image/webp": "webp",
+				"image/gif": "gif",
+			} as Record<string, string>
+		)[blob.type];
+		if (!extension) throw new Error("参考图仅支持 PNG、JPEG、WebP 或 GIF。");
+		const bytes = new Uint8Array(await blob.arrayBuffer());
+		const words: number[] = [];
+		for (let i = 0; i < bytes.length; i++)
+			words[i >>> 2] =
+				(words[i >>> 2] || 0) | (bytes[i]! << (24 - (i % 4) * 8));
+		// MD5 is the platform's content-deduplication key, not an auth credential.
+		const imageMd5 = MD5(
+			CryptoJS.lib.WordArray.create(words, bytes.length),
+		).toString();
+		const existing = await mediaJson<{ imageUrl?: string } | null>(
+			`/agent/image-record/query?imageMd5=${imageMd5}`,
+			undefined,
+			signal,
+			token,
+		);
+		if (existing?.imageUrl?.startsWith("https://")) {
+			uploaded.set(cacheKey, existing.imageUrl);
+			return existing.imageUrl;
+		}
+		const upload = await mediaJson<{
+			uploadUrl: string;
+			fileUrl: string;
+			method?: string;
+			requiredHeaders?: Record<string, string>;
+		}>(
+			"/agent/oss/upload-url",
+			{ fileName: `${imageMd5}.${extension}`, bizType: "uploads" },
+			signal,
+			token,
+		);
+		const target = new URL(upload.uploadUrl);
+		if (
+			target.protocol !== "https:" ||
+			!upload.fileUrl?.startsWith("https://") ||
+			(upload.method && upload.method !== "PUT")
+		)
+			throw new Error("平台返回的上传地址无效。");
+		// Match the official CLI's normalization for duplicated OSS bucket prefixes.
+		const parts = target.hostname.split(".");
+		if (
+			parts[0] === parts[1] &&
+			parts[2]?.startsWith("oss-") &&
+			target.hostname.endsWith(".aliyuncs.com")
+		) {
+			parts.shift();
+			target.hostname = parts.join(".");
+		}
+		assertWebToken(token);
+		signal?.throwIfAborted();
+		const response = await fetch(target.href, {
+			method: "PUT",
+			body: blob,
+			headers: { "Content-Type": blob.type, ...upload.requiredHeaders },
+			signal: signal
+				? AbortSignal.any([signal, AbortSignal.timeout(60_000)])
+				: AbortSignal.timeout(60_000),
+		});
+		if (!response.ok)
+			throw new Error(`文件传输失败（HTTP ${response.status}）。`);
+		await mediaJson(
+			"/agent/image-record/save",
+			{ imageMd5, imageUrl: upload.fileUrl },
+			signal,
+			token,
+		);
+		uploaded.set(cacheKey, upload.fileUrl);
+		return upload.fileUrl;
+	} catch (error) {
+		if (signal?.aborted) throw error;
+		throw new Error(
+			`参考图上传失败：${error instanceof Error ? error.message : "请稍后重试"}`,
+		);
+	}
 }
 export interface PendingTask {
 	taskCode?: string;
