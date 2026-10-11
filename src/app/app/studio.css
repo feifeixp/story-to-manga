@@ -714,7 +714,24 @@
 .character-avatar img {
   width:100%;
   height:100%;
-  object-fit:cover
+  object-fit:contain
+}
+.manga-studio .character-preview-button {
+  position:relative;
+  padding:0;
+  border:0;
+  cursor:zoom-in
+}
+.character-preview-button:hover {box-shadow:0 0 0 2px #719b88}
+.character-zoom-badge {
+  position:absolute;
+  right:3px;
+  bottom:3px;
+  display:flex;
+  padding:3px;
+  color:var(--green);
+  background:#ffffffeb;
+  border-radius:4px
 }
 .character-card>div:nth-child(2) {
   flex:1;
@@ -1228,6 +1245,19 @@
   display:block;
   margin:auto
 }
+.studio-dialog.image-preview-dialog {
+  width:min(1040px,calc(100vw - 32px));
+  max-width:1040px
+}
+.image-preview-dialog .full-preview {
+  width:100%;
+  height:auto;
+  max-height:72vh;
+  max-height:72dvh;
+  background:var(--paper);
+  border-radius:8px
+}
+.image-preview-dialog .dialog-heading h2 {overflow-wrap:anywhere}
 .studio-loading {
   background:#f7f8f4;
   min-height:100vh;

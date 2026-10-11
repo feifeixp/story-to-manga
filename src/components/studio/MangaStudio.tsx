@@ -22,6 +22,7 @@ import {
 	Sparkles,
 	Upload,
 	UserRound,
+	ZoomIn,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -202,7 +203,10 @@ export default function MangaStudio({
 	});
 	const [modifyPrompt, setModifyPrompt] = useState("");
 	const [failed, setFailed] = useState<number[]>([]);
-	const [preview, setPreview] = useState<string | null>(null);
+	const [preview, setPreview] = useState<{
+		image: string;
+		title: string;
+	} | null>(null);
 	const [view, setView] = useState<"page" | "panels">("page");
 	const mounted = useRef(true);
 	useEffect(() => {
@@ -1090,7 +1094,12 @@ export default function MangaStudio({
 									type="button"
 									className="studio-btn"
 									disabled={busy}
-									onClick={() => setPreview(generatedActive.image)}
+									onClick={() =>
+										setPreview({
+											image: generatedActive.image,
+											title: copy("画面预览", "Image preview"),
+										})
+									}
 								>
 									{copy("查看大图", "Preview")}
 								</button>
@@ -1860,16 +1869,41 @@ export default function MangaStudio({
 												);
 												return (
 													<div className="character-card" key={character.name}>
-														<div className="character-avatar">
-															{reference ? (
+														{reference?.image ? (
+															<button
+																type="button"
+																className="character-avatar character-preview-button"
+																aria-label={copy(
+																	`放大查看${character.name}的参考图`,
+																	`View ${character.name}'s reference image`,
+																)}
+																title={copy("点击查看大图", "View full image")}
+																onClick={() =>
+																	setPreview({
+																		image: reference.image,
+																		title: copy(
+																			`${character.name} · 角色参考图`,
+																			`${character.name} · Character reference`,
+																		),
+																	})
+																}
+															>
 																<img
 																	src={reference.image}
 																	alt={character.name}
 																/>
-															) : (
+																<span
+																	className="character-zoom-badge"
+																	aria-hidden="true"
+																>
+																	<ZoomIn size={13} />
+																</span>
+															</button>
+														) : (
+															<div className="character-avatar">
 																<UserRound size={30} />
-															)}
-														</div>
+															</div>
+														)}
 														<div>
 															<h3>{character.name}</h3>
 															<p>{character.physicalDescription}</p>
@@ -1898,10 +1932,17 @@ export default function MangaStudio({
 										)}
 									</div>
 									<p className="muted micro">
-										{copy(
-											"确认生成后才会绘制角色参考图。",
-											"Character reference images are drawn after you confirm generation.",
-										)}
+										{project.characterReferences.some(
+											(reference) => reference.image,
+										)
+											? copy(
+													"点击角色图片可放大查看；缺失的参考图将在确认生成后绘制。",
+													"Click a character image to view it larger. Missing references are drawn after you confirm generation.",
+												)
+											: copy(
+													"确认生成后才会绘制角色参考图。",
+													"Character reference images are drawn after you confirm generation.",
+												)}
 									</p>
 								</section>
 								<div className="section-top boards-heading">
@@ -2700,13 +2741,14 @@ export default function MangaStudio({
 			)}
 			{preview && (
 				<StudioDialog
-					title={copy("画面预览", "Image preview")}
+					className="image-preview-dialog"
+					title={preview.title}
 					onClose={() => setPreview(null)}
 				>
 					<img
 						className="full-preview"
-						src={preview}
-						alt={copy("当前分镜大图", "Current panel preview")}
+						src={preview.image}
+						alt={preview.title}
 					/>
 				</StudioDialog>
 			)}
