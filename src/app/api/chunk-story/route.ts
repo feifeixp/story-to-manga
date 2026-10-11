@@ -1,3 +1,4 @@
+import { CHARACTER_STATE_INSTRUCTION } from "@/lib/mangaPrompts";
 import { GoogleGenAI, Type } from "@google/genai";
 import { type NextRequest, NextResponse } from "next/server";
 import { parseGeminiJSON } from "@/lib/json-parser";
@@ -11,6 +12,7 @@ import {
 interface Panel {
 	panelNumber: number;
 	characters: string[];
+	characterStates?: { name: string; appearance: string }[];
 	sceneId: string; // 引用具体场景ID
 	sceneDescription: string;
 	dialogue: string;
@@ -284,7 +286,7 @@ Provide all content in English and return as a flat array of panels with sequent
 
 		const result = await genAI.models.generateContent({
 			model: model,
-			contents: prompt,
+			contents: `${prompt}\nCharacter design catalog: ${JSON.stringify(characters)}\n${CHARACTER_STATE_INSTRUCTION}`,
 			config: {
 				thinkingConfig: {
 					thinkingBudget: 8192, // Give model time to think through panel layout
@@ -307,6 +309,7 @@ Provide all content in English and return as a flat array of panels with sequent
 											type: Type.STRING,
 										},
 									},
+									characterStates: { type: Type.ARRAY, items: { type: Type.OBJECT, required: ["name", "appearance"], properties: { name: { type: Type.STRING }, appearance: { type: Type.STRING } } } },
 									sceneId: {
 										type: Type.STRING,
 									},
@@ -326,6 +329,7 @@ Provide all content in English and return as a flat array of panels with sequent
 								propertyOrdering: [
 									"panelNumber",
 									"characters",
+									"characterStates",
 									"sceneId",
 									"sceneDescription",
 									"dialogue",

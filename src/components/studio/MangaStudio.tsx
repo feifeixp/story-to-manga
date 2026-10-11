@@ -39,6 +39,7 @@ import {
 	panelComposition,
 	panelImageSize,
 } from "@/lib/comicLayout";
+import { characterContinuityPrompt } from "@/lib/mangaPrompts";
 import {
 	defaultProjectStorage,
 	type ProjectStorage,
@@ -59,6 +60,7 @@ import {
 	validateBreakdown,
 } from "@/lib/studioWorkflow";
 import type {
+	Character,
 	CharacterReference,
 	ComicStyle,
 	GeneratedPanel,
@@ -195,7 +197,8 @@ export default function MangaStudio({
 	const [panelPage, setPanelPage] = useState(0);
 	const [projects, setProjects] = useState<ProjectListItem[]>([]);
 	const [editingCharacter, setEditingCharacter] = useState<number | null>(null);
-	const [characterDraft, setCharacterDraft] = useState({
+	const [sheetCharacter, setSheetCharacter] = useState<string | null>(null);
+	const [characterDraft, setCharacterDraft] = useState<Character>({
 		name: "",
 		physicalDescription: "",
 		personality: "",
@@ -384,6 +387,110 @@ export default function MangaStudio({
 			await save();
 		});
 	}
+	async function requestCharacterSheet(
+		snapshot: StudioProject,
+		character: Character,
+	) {
+		setStatus(
+			copy(
+				`正在绘制${character.name}的设定图…`,
+				`Creating ${character.name}'s model sheet…`,
+			),
+		);
+		const previous = snapshot.characterReferences.find(
+			(ref) => ref.name === character.name,
+		);
+		const result = await requestStudioApi<{
+			characterReferences: CharacterReference[];
+		}>(
+			"/api/generate-character-refs",
+			{
+				characters: [character],
+				setting: snapshot.storyAnalysis?.setting,
+				style: snapshot.style,
+				uploadedCharacterReferences: [
+					...(previous?.image
+						? [
+								{
+									id: `previous-${character.name}`,
+									name: character.name,
+									image: previous.image,
+									fileName: "previous-reference",
+								},
+							]
+						: []),
+					...snapshot.uploadedCharacterReferences,
+				],
+				language,
+				aiModel: snapshot.studio.aiModel,
+			},
+			controller.current?.signal,
+		);
+		const reference =
+			Array.isArray(result.characterReferences) &&
+			result.characterReferences.find(
+				(ref) => ref.name === character.name && ref.image?.trim(),
+			);
+		if (!reference)
+			throw new Error(
+				copy(
+					"未收到有效的角色设定图，旧图已保留。",
+					"No valid model sheet received. Your previous reference is kept.",
+				),
+			);
+		return {
+			...reference,
+			...(character.design ? { design: character.design } : {}),
+			sheetVersion: 1 as const,
+			needsUpdate: false,
+		};
+	}
+	async function updateCharacterSheet() {
+		const name = sheetCharacter;
+		setSheetCharacter(null);
+		await run(async () => {
+			const snapshot = current.current;
+			const character = snapshot?.storyAnalysis?.characters.find(
+				(c) => c.name === name,
+			);
+			if (!snapshot || !character) return;
+			const reference = await requestCharacterSheet(snapshot, character);
+			if (current.current?.metadata.id !== snapshot.metadata.id) return;
+			update((value) => ({
+				...value,
+				characterReferences: [
+					...value.characterReferences.filter((ref) => ref.name !== name),
+					reference,
+				],
+				studio: {
+					...value.studio,
+					approved: false,
+					stalePanels: [
+						...new Set([
+							...value.studio.stalePanels,
+							...(value.storyBreakdown?.panels
+								.filter(
+									(panel) =>
+										panel.characters.includes(character.name) &&
+										value.generatedPanels.some(
+											(image) => image.panelNumber === panel.panelNumber,
+										),
+								)
+								.map((panel) => panel.panelNumber) || []),
+						]),
+					],
+				},
+			}));
+			await save();
+			setPreview({
+				image: reference.image,
+				title: copy(
+					`${character.name} · 角色设定图`,
+					`${character.name} · Model sheet`,
+				),
+			});
+		});
+	}
 	async function generate() {
 		setDialog(null);
 		await run(async () => {
@@ -411,43 +518,18 @@ export default function MangaStudio({
 			const missingCharacters = analysis.characters.filter(
 				(character) =>
 					!references.some(
-						(reference) => reference.name === character.name && reference.image,
+						(reference) =>
+							reference.name === character.name &&
+							reference.image &&
+							!reference.needsUpdate,
 					),
 			);
 			for (const character of missingCharacters) {
 				if (pause.current) return;
-				setStatus(
-					copy("正在绘制角色参考图…", "Creating character reference images…"),
-				);
-				const result = await requestStudioApi<{
-					characterReferences: CharacterReference[];
-				}>(
-					"/api/generate-character-refs",
-					{
-						characters: [character],
-						setting: analysis.setting,
-						style: snapshot.style,
-						uploadedCharacterReferences: snapshot.uploadedCharacterReferences,
-						language,
-						aiModel: snapshot.studio.aiModel,
-					},
-					controller.current?.signal,
-				);
-				if (!Array.isArray(result.characterReferences))
-					throw new Error(
-						copy(
-							"未收到角色参考图。",
-							"No character reference images received.",
-						),
-					);
+				const reference = await requestCharacterSheet(snapshot, character);
 				references = [
-					...references.filter(
-						(reference) =>
-							!result.characterReferences.some(
-								(item) => item.name === reference.name,
-							),
-					),
-					...result.characterReferences.filter((reference) => reference.image),
+					...references.filter((item) => item.name !== character.name),
+					reference,
 				];
 				patch({
 					characterReferences: references,
@@ -583,7 +665,9 @@ export default function MangaStudio({
 					(character) =>
 						!snapshot.characterReferences.some(
 							(reference) =>
-								reference.name === character.name && reference.image,
+								reference.name === character.name &&
+								reference.image &&
+								!reference.needsUpdate,
 						),
 				)
 			)
@@ -614,6 +698,7 @@ export default function MangaStudio({
 				`Camera: ${panel.cameraAngle}`,
 				`Mood: ${panel.visualMood}`,
 				`Dialogue: ${panel.dialogue || ""}`,
+				characterContinuityPrompt(panel, snapshot.characterReferences),
 			].join("\n");
 			const result = await requestStudioApi<{
 				imageData: string;
@@ -692,8 +777,16 @@ export default function MangaStudio({
 								: character,
 					),
 				},
-				characterReferences: value.characterReferences.filter(
-					(reference) => reference.name !== previous.name,
+				characterReferences: value.characterReferences.map((reference) =>
+					reference.name === previous.name
+						? { ...reference, name, needsUpdate: true }
+						: reference,
+				),
+				uploadedCharacterReferences: value.uploadedCharacterReferences.map(
+					(reference) =>
+						reference.name === previous.name
+							? { ...reference, name }
+							: reference,
 				),
 				storyBreakdown: value.storyBreakdown
 					? {
@@ -702,6 +795,15 @@ export default function MangaStudio({
 								characters: panel.characters.map((character) =>
 									character === previous.name ? name : character,
 								),
+								...(panel.characterStates
+									? {
+											characterStates: panel.characterStates.map((state) =>
+												state.name === previous.name
+													? { ...state, name }
+													: state,
+											),
+										}
+									: {}),
 							})),
 						}
 					: null,
@@ -1025,6 +1127,21 @@ export default function MangaStudio({
 											: activePanel.characters.filter(
 													(name) => name !== character.name,
 												),
+										...(activePanel.characterStates
+											? {
+													characterStates: event.target.checked
+														? [
+																...activePanel.characterStates,
+																{
+																	name: character.name,
+																	appearance: copy("基础设定", "Base design"),
+																},
+															]
+														: activePanel.characterStates.filter(
+																(state) => state.name !== character.name,
+															),
+												}
+											: {}),
 									})
 								}
 							/>
@@ -1032,6 +1149,53 @@ export default function MangaStudio({
 						</label>
 					))}
 				</div>
+				{activePanel.characters.map((name) => (
+					<label key={name}>
+						{copy(
+							`${name} · 本格服装 / 形态 / 状态`,
+							`${name} · Outfit / form / state in this frame`,
+						)}
+						<input
+							value={
+								activePanel.characterStates?.find(
+									(state) => state.name === name,
+								)?.appearance ?? ""
+							}
+							placeholder={copy(
+								"沿用基础设定；有变化时填写已定义的名称",
+								"Base design; specify defined variants when needed",
+							)}
+							onBlur={(event) => {
+								if (!event.target.value.trim() && activePanel.characterStates)
+									editPanel(activePanel.panelNumber, {
+										characterStates: activePanel.characterStates.map((state) =>
+											state.name === name
+												? {
+														...state,
+														appearance: copy("基础设定", "Base design"),
+													}
+												: state,
+										),
+									});
+							}}
+							onChange={(event) =>
+								editPanel(activePanel.panelNumber, {
+									characterStates: activePanel.characters.map(
+										(characterName) => ({
+											name: characterName,
+											appearance:
+												characterName === name
+													? event.target.value
+													: activePanel.characterStates?.find(
+															(state) => state.name === characterName,
+														)?.appearance || copy("基础设定", "Base design"),
+										}),
+									),
+								})
+							}
+						/>
+					</label>
+				))}
 			</fieldset>
 			<p className="muted micro">
 				{copy(
@@ -1908,6 +2072,60 @@ export default function MangaStudio({
 															<h3>{character.name}</h3>
 															<p>{character.physicalDescription}</p>
 															<small>{character.role}</small>
+															{character.design && (
+																<details className="character-design-details">
+																	<summary>
+																		{copy(
+																			"查看一致性设定",
+																			"View continuity details",
+																		)}
+																	</summary>
+																	{(
+																		[
+																			[
+																				"identity",
+																				copy("固定特征", "Identity"),
+																			],
+																			["outfits", copy("服装", "Outfits")],
+																			["forms", copy("形态", "Forms")],
+																			["states", copy("特殊状态", "States")],
+																		] as const
+																	).map(([key, label]) =>
+																		character.design?.[key] ? (
+																			<p key={key}>
+																				<strong>{label}：</strong>
+																				{character.design[key]}
+																			</p>
+																		) : null,
+																	)}
+																</details>
+															)}
+															{reference?.needsUpdate && (
+																<p className="micro">
+																	{copy(
+																		"设定已修改，旧图保留至更新成功。",
+																		"Design changed; the previous image is kept until its update succeeds.",
+																	)}
+																</p>
+															)}
+															<button
+																type="button"
+																className="studio-btn character-sheet-action"
+																disabled={busy}
+																onClick={() =>
+																	setSheetCharacter(character.name)
+																}
+															>
+																<RefreshCw size={14} />
+																{reference?.sheetVersion === 1
+																	? copy("更新设定图", "Update model sheet")
+																	: reference?.image
+																		? copy(
+																				"升级为设定图",
+																				"Upgrade to model sheet",
+																			)
+																		: copy("生成设定图", "Create model sheet")}
+															</button>
 														</div>
 														<button
 															type="button"
@@ -1936,12 +2154,12 @@ export default function MangaStudio({
 											(reference) => reference.image,
 										)
 											? copy(
-													"点击角色图片可放大查看；缺失的参考图将在确认生成后绘制。",
-													"Click a character image to view it larger. Missing references are drawn after you confirm generation.",
+													"点击图片可放大。设定图包含正侧背三视图、表情与细节，以及故事需要的服装、形态或状态；旧图可逐个升级。",
+													"Click images to enlarge. Model sheets include front, side and back views, expressions, details and story-required variants. Upgrade older references individually.",
 												)
 											: copy(
-													"确认生成后才会绘制角色参考图。",
-													"Character reference images are drawn after you confirm generation.",
+													"确认后绘制角色设定图：正侧背三视图、表情与细节，以及故事需要的服装、形态或状态。",
+													"After confirmation, create model sheets with front, side and back views, expressions, details and story-required variants.",
 												)}
 									</p>
 								</section>
@@ -2686,6 +2904,76 @@ export default function MangaStudio({
 								}
 							/>
 						</label>
+						{(
+							[
+								[
+									"identity",
+									copy(
+										"固定特征 · 各角度保持一致",
+										"Identity · consistent across views",
+									),
+									copy(
+										"体型比例、脸型、发型或毛色、左右侧标记",
+										"Proportions, face, hair/fur, anatomical left/right marks",
+									),
+								],
+								[
+									"outfits",
+									copy(
+										"服装设定 · 基础与必要换装",
+										"Outfits · base and required alternatives",
+									),
+									copy(
+										"为每套服装命名，注明款式、材质、配色与配饰",
+										"Name each outfit with layers, materials, colors and accessories",
+									),
+								],
+								[
+									"forms",
+									copy(
+										"形态变化 · 没有则留空",
+										"Other forms · leave empty if none",
+									),
+									copy(
+										"仅定义故事需要的变身，以及变化后保留的身份特征",
+										"Only story-required transformations and retained identity anchors",
+									),
+								],
+								[
+									"states",
+									copy(
+										"特殊状态 · 没有则留空",
+										"Temporary states · leave empty if none",
+									),
+									copy(
+										"例如淋湿、受伤；只写发生变化的部位",
+										"For example wet or injured; specify only the visible changes",
+									),
+								],
+							] as const
+						).map(([key, label, placeholder]) => (
+							<label key={key}>
+								{label}
+								<textarea
+									rows={2}
+									value={characterDraft.design?.[key] || ""}
+									placeholder={placeholder}
+									onChange={(event) =>
+										setCharacterDraft((value) => ({
+											...value,
+											design: {
+												identity: "",
+												outfits: "",
+												forms: "",
+												states: "",
+												...value.design,
+												[key]: event.target.value,
+											},
+										}))
+									}
+								/>
+							</label>
+						))}
 						<label>
 							{copy("性格", "Personality")}
 							<input
@@ -2713,8 +3001,8 @@ export default function MangaStudio({
 					</div>
 					<p className="muted micro">
 						{copy(
-							"角色变化后需重新生成角色参考，已有分镜会标记为待重绘。",
-							"Character changes regenerate their reference and mark existing frames for redraw.",
+							"保存只更新文字设定，旧图会保留。确认生成后更新设定图；已有分镜标记为待重绘，不会自动扣费重画。",
+							"Saving changes text only and keeps the previous image. Confirm generation to update its sheet; existing frames are marked for redraw without automatic paid requests.",
 						)}
 					</p>
 					<div className="dialog-actions">
@@ -2735,6 +3023,45 @@ export default function MangaStudio({
 							onClick={saveCharacter}
 						>
 							{copy("保存角色", "Save character")}
+						</button>
+					</div>
+				</StudioDialog>
+			)}
+			{sheetCharacter && (
+				<StudioDialog
+					title={copy(
+						`${sheetCharacter} · 生成角色设定图`,
+						`${sheetCharacter} · Create model sheet`,
+					)}
+					onClose={() => setSheetCharacter(null)}
+				>
+					<p>
+						{copy(
+							"生成一张横版设定表：正面、侧面、背面三视图，面部表情与关键细节；有明确设定的换装、形态或特殊状态会放在独立区域。",
+							"Generate one landscape model sheet with front, side and back views, expressions and key details. Defined outfits, forms or temporary states appear in separate studies.",
+						)}
+					</p>
+					<p className="muted">
+						{copy(
+							"会使用一次图片生成额度。旧图将在新图成功后替换；已有漫画画面会保留，相关分镜标记为待重绘。",
+							"Uses one image generation request. The old reference is replaced only after success. Existing comic artwork stays; affected frames are marked for redraw.",
+						)}
+					</p>
+					<div className="dialog-actions">
+						<button
+							type="button"
+							className="studio-btn"
+							onClick={() => setSheetCharacter(null)}
+						>
+							{copy("取消", "Cancel")}
+						</button>
+						<button
+							type="button"
+							className="studio-btn primary"
+							disabled={busy}
+							onClick={() => void updateCharacterSheet()}
+						>
+							{copy("确认生成设定图", "Generate model sheet")}
 						</button>
 					</div>
 				</StudioDialog>

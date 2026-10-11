@@ -20,6 +20,8 @@ const layoutSource=stripTypeScriptTypes(readFileSync(new URL('../src/lib/comicLa
 const comicLayout=await import(`data:text/javascript;base64,${Buffer.from(layoutSource).toString('base64')}`);
 const artworkSource=stripTypeScriptTypes(readFileSync(new URL('../src/lib/studioArtwork.ts',import.meta.url),'utf8'),{mode:'transform'});
 const studioArtwork=await import(`data:text/javascript;base64,${Buffer.from(artworkSource).toString('base64')}`);
+const promptSource=stripTypeScriptTypes(readFileSync(new URL('../src/lib/mangaPrompts.ts',import.meta.url),'utf8'),{mode:'transform'});
+const mangaPrompts=await import(`data:text/javascript;base64,${Buffer.from(promptSource).toString('base64')}`);
 const analysis={title:'雨巷里的来信',characters:[{name:'小满',physicalDescription:'短发、绿伞',personality:'温柔',role:'主角'}],setting:{timePeriod:'现代',location:'雨巷',mood:'温暖'},scenes:[{id:'scene1',name:'旧书店',description:'雨中的旧书店',location:'雨巷',mood:'温暖',visualElements:['书','伞']}]};
 const panel=(n)=>({panelNumber:n,characters:['小满'],sceneId:'scene1',sceneDescription:`第 ${n} 格，旧书店的门轻轻打开。`,dialogue:'雨停之前，来巷子的尽头。',cameraAngle:'中景',visualMood:'温暖'});
 const base=()=>({metadata:{id:'project-a',name:'雨巷里的来信',createdAt:1,updatedAt:1,panelCount:0,characterCount:0,style:'healing',imageSize:{width:1024,height:1024,aspectRatio:'1:1',volcEngineSize:'1K'}},story:'小满在雨巷里收到一封信，她撑起一把旧绿伞，跟着一只橘猫找到了奶奶。',style:'healing',imageSize:{width:1024,height:1024,aspectRatio:'1:1',volcEngineSize:'1K'},storyAnalysis:null,storyBreakdown:null,characterReferences:[],generatedPanels:[],uploadedCharacterReferences:[],uploadedSettingReferences:[],studio:{aiModel:'auto',step:1,approved:false,requestedPanelCount:4,stalePanels:[],panelVersions:{}}});
@@ -31,7 +33,7 @@ function harness(initial=base()) {
   const jsx=(type,props)=>({type,props:props||{}});
   const external=(name)=>(props)=>jsx('mock-component',{'data-component':name,...props});
   let provider=async(path,body)=>{if(path==='/api/analyze-story')return{analysis};if(path==='/api/chunk-story')return{storyBreakdown:{panels:[panel(1),panel(2),panel(3),panel(4)]}};if(path==='/api/generate-character-refs')return{characterReferences:[{name:'小满',description:'短发',image:'data:image/png;base64,REF'}]};if(path==='/api/generate-panel')return{generatedPanel:{panelNumber:body.panel.panelNumber,image:`data:image/png;base64,PANEL${body.panel.panelNumber}`}};return{imageData:'data:image/png;base64,EDIT'}};
-  const modules={react,'@/lib/studioArtwork':studioArtwork,'@/lib/comicLayout':comicLayout,'./ComicPageComposer':{ComicLayoutChoices:external('ComicLayoutChoices'),ComicPageComposer:external('ComicPageComposer')},'next/link':props=>jsx('a',props),'next/navigation':{useRouter:()=>({push:url=>routes.push(url)})},'lucide-react':new Proxy({}, {get:(_target,name)=>props=>jsx('svg',{'data-icon':name,width:props.size||18,height:props.size||18,'aria-hidden':true})}),'@/components/AuthModal':{AuthModal:external('AuthModal')},'@/components/AuthProvider':{useAuth:()=>({user:null})},'@/components/I18nProvider':{useI18n:()=>({language:'zh'})},'@/components/ImageUpload':external('ImageUpload'),'@/components/LanguageSwitcher':()=>jsx('span',{children:'中文'}),'@/components/ShareComicModal':{ShareComicModal:external('ShareComicModal')},'@/lib/projectStorage':{getProjectList:()=>[]},'@/lib/studioExport':{downloadImage:async()=>{},downloadProject:()=>{},exportComicPages:async()=>{},exportPanels:async()=>{}},'@/lib/studioWorkflow':{...workflow,requestStudioApi:async(path,body)=>{calls.push({path,body});return provider(path,body)}},'@/types/project':{IMAGE_SIZE_PRESETS:{square_1_1:initial.imageSize}},'./StudioDialog':{StudioDialog:props=>jsx('section',{...props,role:'dialog'})},'./useStudioProject':{useStudioProject:()=>store,defaultStudio:()=>base().studio}};
+  const modules={react,'@/lib/mangaPrompts':mangaPrompts,'@/lib/studioArtwork':studioArtwork,'@/lib/comicLayout':comicLayout,'./ComicPageComposer':{ComicLayoutChoices:external('ComicLayoutChoices'),ComicPageComposer:external('ComicPageComposer')},'next/link':props=>jsx('a',props),'next/navigation':{useRouter:()=>({push:url=>routes.push(url)})},'lucide-react':new Proxy({}, {get:(_target,name)=>props=>jsx('svg',{'data-icon':name,width:props.size||18,height:props.size||18,'aria-hidden':true})}),'@/components/AuthModal':{AuthModal:external('AuthModal')},'@/components/AuthProvider':{useAuth:()=>({user:null})},'@/components/I18nProvider':{useI18n:()=>({language:'zh'})},'@/components/ImageUpload':external('ImageUpload'),'@/components/LanguageSwitcher':()=>jsx('span',{children:'中文'}),'@/components/ShareComicModal':{ShareComicModal:external('ShareComicModal')},'@/lib/projectStorage':{getProjectList:()=>[]},'@/lib/studioExport':{downloadImage:async()=>{},downloadProject:()=>{},exportComicPages:async()=>{},exportPanels:async()=>{}},'@/lib/studioWorkflow':{...workflow,requestStudioApi:async(path,body)=>{calls.push({path,body});return provider(path,body)}},'@/types/project':{IMAGE_SIZE_PRESETS:{square_1_1:initial.imageSize}},'./StudioDialog':{StudioDialog:props=>jsx('section',{...props,role:'dialog'})},'./useStudioProject':{useStudioProject:()=>store,defaultStudio:()=>base().studio}};
   const exports={};
   const filename=resolve('src/components/studio/MangaStudio.tsx');
   vm.runInNewContext(compile(readFileSync(filename,'utf8'),filename),{exports,require:name=>name.includes('jsx-runtime')?{jsx,jsxs:jsx,Fragment:'fragment'}:name in modules?modules[name]:(()=>{throw new Error(`Unexpected import ${name}`)})(),AbortController,window:{scrollTo(){},addEventListener(){},removeEventListener(){}},setTimeout,clearTimeout,console},{filename});
@@ -90,6 +92,35 @@ test('storyboard review and generation keep pagination independently of the comi
 });
 
 function withArtwork(){const p=planned(4);p.characterReferences=[{name:'小满',description:'绿伞',image:'ref'}];p.generatedPanels=[{panelNumber:1,image:'paid-original',composition:'single'},{panelNumber:2,image:'untouched'}];return p;}
+test('explicit character upgrade uses the old image once and preserves artwork without automatically redrawing',async()=>{
+ const p=withArtwork();p.studio.step=2;p.storyBreakdown.panels[1].characters=[];
+ const h=harness(p);h.button('升级为设定图').props.onClick();assert.equal(h.calls.length,0);
+ const confirm=h.button('确认生成设定图');confirm.props.onClick();confirm.props.onClick();await h.settle();
+ assert.equal(h.calls.length,1);assert.equal(h.calls[0].body.uploadedCharacterReferences[0].image,'ref');assert.equal(h.state.project.characterReferences[0].sheetVersion,1);assert.deepEqual(Array.from(h.state.project.studio.stalePanels),[1]);assert.equal(h.state.project.generatedPanels[0].image,'paid-original');assert.equal(h.state.project.generatedPanels[1].image,'untouched');assert.ok(h.saves>0);
+});
+test('failed or invalid character updates keep the previous reference and never retry',async()=>{
+ for(const provider of [async()=>{throw new Error('timeout')},async()=>({characterReferences:[]})]) {
+  const p=withArtwork();p.studio.step=2;const h=harness(p);h.provider(provider);h.button('升级为设定图').props.onClick();h.button('确认生成设定图').props.onClick();await h.settle();
+  assert.equal(h.calls.length,1);assert.equal(h.state.project.characterReferences[0].image,'ref');assert.equal(h.state.project.generatedPanels[0].image,'paid-original');assert.equal(h.state.project.studio.stalePanels.length,0);
+ }
+});
+test('legacy portraits remain reusable without a paid automatic upgrade',async()=>{
+ const p=withArtwork();p.studio.step=2;const h=harness(p);h.button('确认分镜，开始生成').props.onClick();h.button('开始生成').props.onClick();await h.settle();
+ assert.equal(h.calls.filter(c=>c.path==='/api/generate-character-refs').length,0);assert.equal(h.state.project.characterReferences[0].image,'ref');
+});
+test('editing a design keeps the old image as a stale anchor and renames per-panel state bindings',()=>{
+ const p=withArtwork();p.studio.step=2;p.storyBreakdown.panels[0].characterStates=[{name:'小满',appearance:'雨衣；淋湿'}];const h=harness(p);
+ h.find(n=>n.props['aria-label']==='编辑小满').props.onClick();h.find(n=>n.type==='input'&&n.props.value==='小满').props.onChange({target:{value:'小雨'}});h.button('保存角色').props.onClick();
+ assert.equal(h.calls.length,0);assert.equal(h.state.project.characterReferences[0].image,'ref');assert.equal(h.state.project.characterReferences[0].needsUpdate,true);assert.equal(h.state.project.characterReferences[0].name,'小雨');assert.equal(h.state.project.storyBreakdown.panels[0].characterStates[0].name,'小雨');
+});
+test('redrawing carries identity anchors and the selected appearance into the edit request',async()=>{
+ const p=withArtwork();p.characterReferences[0].design={identity:'左眼下的痣',outfits:'雨衣',forms:'',states:'淋湿'};p.storyBreakdown.panels[0].characterStates=[{name:'小满',appearance:'雨衣；淋湿'}];const h=harness(p);h.button('只重绘这一格').props.onClick();await h.settle();
+ assert.match(h.calls[0].body.originalPrompt,/左眼下的痣/);assert.match(h.calls[0].body.originalPrompt,/雨衣；淋湿/);assert.match(h.calls[0].body.originalPrompt,/NEVER copy the sheet grid/);
+});
+test('clearing a frame appearance restores the base design instead of leaving an invalid plan',()=>{
+ const p=planned();p.storyBreakdown.panels[0].characterStates=[{name:'小满',appearance:'雨衣'}];const h=harness(p);const field=()=>h.find(n=>n.type==='input'&&n.props.placeholder==='沿用基础设定；有变化时填写已定义的名称');field().props.onChange({target:{value:''}});field().props.onBlur({target:{value:''}});
+ assert.equal(h.state.project.storyBreakdown.panels[0].characterStates[0].appearance,'基础设定');assert.doesNotThrow(()=>workflow.validateBreakdown(h.state.project.storyBreakdown));
+});
 test('selecting manga insets is free; explicit recompose retains originals and other panels',async()=>{
  const h=harness(withArtwork());h.find(n=>n.props['data-component']==='ComicPageComposer').props.onLayout('japanese');assert.equal(h.calls.length,0);
  const btn=h.button('日漫重排这一格');btn.props.onClick();btn.props.onClick();await h.settle();assert.equal(h.calls.length,1);

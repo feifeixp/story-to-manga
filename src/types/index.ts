@@ -1,14 +1,32 @@
 // === Core Types ===
 
-export type ComicStyle = "manga" | "comic" | "wuxia" | "healing" | "manhwa" | "cinematic" | "shojo" | "seinen" | "chibi" | "fantasy";
+export type ComicStyle =
+	| "manga"
+	| "comic"
+	| "wuxia"
+	| "healing"
+	| "manhwa"
+	| "cinematic"
+	| "shojo"
+	| "seinen"
+	| "chibi"
+	| "fantasy";
 
 // === Domain Types ===
 
-interface Character {
+export interface CharacterDesign {
+	identity: string;
+	outfits: string;
+	forms: string;
+	states: string;
+}
+
+export interface Character {
 	name: string;
 	physicalDescription: string;
 	personality: string;
 	role: string;
+	design?: CharacterDesign;
 }
 
 interface Setting {
@@ -38,12 +56,16 @@ export interface CharacterReference {
 	name: string;
 	image: string; // base64 data URL
 	description: string;
+	design?: CharacterDesign;
+	sheetVersion?: 1;
+	needsUpdate?: boolean;
 }
 
 export interface StoryBreakdown {
 	panels: {
 		panelNumber: number;
 		characters: string[];
+		characterStates?: { name: string; appearance: string }[];
 		sceneId: string; // 引用具体场景ID
 		sceneDescription: string;
 		dialogue?: string;

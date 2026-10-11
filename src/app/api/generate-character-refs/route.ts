@@ -5,10 +5,10 @@ import {
 	logApiResponse,
 	logError,
 } from "@/lib/logger";
-import { getStylePrompt } from "@/lib/styleConfig";
+import { characterPrompt } from "@/lib/mangaPrompts";
 import { cacheHelpers } from "@/lib/cacheManager";
 import { getAIModelRouter, selectAIModel, type AIModel } from "@/lib/aiModelRouter";
-import type { ComicStyle } from "@/types";
+import type { CharacterReference, ComicStyle } from "@/types";
 
 export async function POST(request: NextRequest) {
 	const startTime = Date.now();
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const { characters, setting, style, uploadedCharacterRefs = [], aiModel = "auto", language = "en" } = body;
+		const { characters, setting, style, uploadedCharacterReferences, uploadedCharacterRefs = [], aiModel = "auto", language = "en" } = body;
 
 		characterGenLogger.debug({
 			characters_count: characters?.length || 0,
@@ -36,8 +36,10 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Check cache first
-		const cachedRefs = cacheHelpers.getCachedCharacterRef(characters, setting, style);
+		const uploads: { name?: string; characterName?: string; image: string }[] = uploadedCharacterReferences || uploadedCharacterRefs;
+		const cacheContext = JSON.stringify({ setting, language, aiModel, uploads, sheetVersion: 1 });
+		// Version the prompt contract so old portrait cache entries cannot become sheets.
+		const cachedRefs = cacheHelpers.getCachedCharacterRef(characters, cacheContext, style);
 		if (cachedRefs) {
 			characterGenLogger.info("Returning cached character references");
 			return NextResponse.json({
@@ -56,22 +58,7 @@ export async function POST(request: NextRequest) {
 			characters_to_generate: characters.length,
 		}, "Starting character reference generation");
 
-		const characterReferences: Array<{
-			name: string;
-			image: string;
-			description: string;
-		}> = [];
-
-		const stylePrefix = getStylePrompt(style as ComicStyle, 'character', language as "en" | "zh");
-
-		// 详细日志记录风格和语言信息
-		characterGenLogger.info({
-			style,
-			language,
-			selected_model: selectedModel,
-			style_prefix_preview: stylePrefix.substring(0, 100) + "...",
-			characters_count: characters.length,
-		}, "Starting character generation with style and language settings");
+		const characterReferences: CharacterReference[] = [];
 
 		for (const character of characters) {
 			const characterStartTime = Date.now();
@@ -84,23 +71,14 @@ export async function POST(request: NextRequest) {
 			}, "Generating character reference");
 
 			try {
-				// Create prompt for character generation
-				const settingDescription = setting
-					? `Setting: ${setting.timePeriod} in ${setting.location}. Mood: ${setting.mood}.`
-					: "Generic fantasy setting.";
-				const prompt = `Character reference sheet: ${stylePrefix}. Create a character design for ${character.name}. Focus on: ${character.physicalDescription}. Character personality: ${character.personality}. Role: ${character.role}. ${settingDescription} Full body character reference sheet with multiple angles and expressions.`;
-
-				// Find matching uploaded images for this character
-				const matchingUploads = uploadedCharacterRefs.filter((ref: any) => 
-					ref.characterName === character.name
-				);
+				const prompt = characterPrompt(character, style, language);
+				const matchingUploads = uploads.filter((ref) => (ref.name || ref.characterName) === character.name);
 
 				characterGenLogger.info({
 					character_name: character.name,
 					prompt_length: prompt.length,
 					style: style,
 					language: language,
-					style_prefix: stylePrefix.substring(0, 100) + "...",
 					matching_uploads: matchingUploads.length,
 					total_uploads: uploadedCharacterRefs.length,
 					selected_model: selectedModel,
@@ -117,7 +95,7 @@ export async function POST(request: NextRequest) {
 					referenceImages,
 					language as "en" | "zh", // 使用传入的语言参数
 					selectedModel,
-					undefined, // imageSize
+					{ width: 1536, height: 1024, aspectRatio: "3:2", volcEngineSize: "2K" },
 					style as ComicStyle // 传递风格参数
 				);
 
@@ -130,6 +108,8 @@ export async function POST(request: NextRequest) {
 						name: character.name,
 						image: result.imageData,
 						description: character.physicalDescription,
+						...(character.design ? { design: character.design } : {}),
+						sheetVersion: 1,
 					});
 
 					characterGenLogger.info({
@@ -174,7 +154,7 @@ export async function POST(request: NextRequest) {
 
 		// 缓存生成结果
 		if (characterReferences.length > 0) {
-			cacheHelpers.cacheCharacterRef(characters, setting, style, characterReferences);
+			cacheHelpers.cacheCharacterRef(characters, cacheContext, style, characterReferences);
 			characterGenLogger.info("Cached character references for future use");
 		}
 

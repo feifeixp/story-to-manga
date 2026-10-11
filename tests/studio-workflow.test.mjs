@@ -48,6 +48,12 @@ test('storyboard validation rejects empty, duplicate, incomplete or oversized pl
   for(const invalid of [{panels:[]},{panels:[panel(1),panel(1)]},{panels:[{...panel(1),sceneDescription:''}]},{panels:Array.from({length:51},(_,i)=>panel(i+1))}]) assert.throws(()=>validateBreakdown(invalid));
   assert.deepEqual(validateBreakdown({panels:[panel(3),panel(1)]}).panels.map(p=>p.panelNumber),[1,3]);
 });
+test('character states must bind every visible character once while legacy panels remain valid',()=>{
+ const base={...panel(1),characters:['cat']};
+ for(const states of [[],[{name:'other',appearance:'wet'}],[{name:'cat',appearance:''}],[{name:'cat',appearance:'wet'},{name:'cat',appearance:'dry'}],null]) assert.throws(()=>validateBreakdown({panels:[{...base,characterStates:states}]}));
+ assert.equal(validateBreakdown({panels:[base]}).panels.length,1);
+ const valid={...base,characterStates:[{name:'cat',appearance:'base; wet'}]};assert.deepEqual(validateBreakdown({panels:[valid]}).panels[0],valid);
+});
 test('provider error surfaces exact response, with one request only', async () => {
   const original=globalThis.fetch;let calls=0;
   globalThis.fetch=async()=>{calls++;return new Response(JSON.stringify({error:'Quota exceeded'}),{status:429})};

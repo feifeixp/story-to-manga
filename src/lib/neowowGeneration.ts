@@ -57,7 +57,13 @@ export function validateAnalysis(analysis: StoryAnalysis): StoryAnalysis {
 				!text(c.name) ||
 				!text(c.physicalDescription) ||
 				typeof c.personality !== "string" ||
-				typeof c.role !== "string",
+				typeof c.role !== "string" ||
+				(c.design !== undefined &&
+					(!c.design ||
+						["identity", "outfits", "forms", "states"].some(
+							(key) =>
+								typeof c.design?.[key as keyof typeof c.design] !== "string",
+						))),
 		) ||
 		!text(analysis.setting.location) ||
 		typeof analysis.setting.timePeriod !== "string" ||
@@ -140,7 +146,13 @@ export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 				references.push({
 					name: c.name,
 					description: c.physicalDescription,
-					image: await draw(characterPrompt(c, body.style, body.language), ref),
+					...(c.design ? { design: c.design } : {}),
+					sheetVersion: 1,
+					image: await draw(
+						characterPrompt(c, body.style, body.language),
+						ref,
+						"3:2",
+					),
 				});
 			}
 			return { characterReferences: references } as T;

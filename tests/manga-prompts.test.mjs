@@ -27,9 +27,22 @@ test('silent panels request no lettering or empty bubbles',async()=>{
  calls.length=0;await api('/api/generate-panel',{panel:{...panel,dialogue:'',characters:[]},language:'en'});
  assert.match(calls[0].prompt,/Silent panel: no text/);assert.doesNotMatch(calls[0].prompt,/Lettering script:/);assert.deepEqual(calls[0].refs,[]);
 });
-test('character references use one design and only that character upload, without adding scene scenery',async()=>{
- calls.length=0;await api('/api/generate-character-refs',{characters:[{name:'小猫',physicalDescription:'橘白短毛',personality:'善良',role:'主角'}],setting:{location:'DO_NOT_DRAW_BOOKSTORE'},uploadedCharacterReferences:[{name:'小猫',image:'cat.png'},{name:'爷爷',image:'grandpa.png'}]});
- assert.deepEqual(calls[0].refs,['cat.png']);assert.match(calls[0].prompt,/one full-body/);assert.match(calls[0].prompt,/plain neutral background/);assert.doesNotMatch(calls[0].prompt,/DO_NOT_DRAW_BOOKSTORE/);
+test('character sheets request aligned turnarounds and only story-defined variants for one identity',async()=>{
+ const design={identity:'左耳缺口、橘白短毛',outfits:'基础：无服装；红项圈',forms:'',states:'淋湿：毛发贴身，不改变花纹'};
+ calls.length=0;const result=await api('/api/generate-character-refs',{characters:[{name:'小猫',physicalDescription:'橘白短毛',personality:'善良',role:'主角',design}],setting:{location:'DO_NOT_DRAW_BOOKSTORE'},uploadedCharacterReferences:[{name:'小猫',image:'cat.png'},{name:'爷爷',image:'grandpa.png'}],imageSize:{aspectRatio:'9:16'}});
+ assert.equal(calls.length,1);assert.equal(calls[0].ratio,'3:2');assert.deepEqual(calls[0].refs,['cat.png']);assert.match(calls[0].prompt,/FRONT, SIDE PROFILE and BACK/);assert.match(calls[0].prompt,/equally scaled/);assert.match(calls[0].prompt,/Anatomical left\/right/);assert.match(calls[0].prompt,/Do not invent variations/);assert.match(calls[0].prompt,/淋湿/);assert.doesNotMatch(calls[0].prompt,/DO_NOT_DRAW_BOOKSTORE|No collage, turnaround/);
+ assert.equal(result.characterReferences[0].sheetVersion,1);assert.deepEqual(result.characterReferences[0].design,design);
+});
+test('panel requests use the active variant and never copy model sheet layout into the comic',async()=>{
+ calls.length=0;await api('/api/generate-panel',{panel:{...panel,characterStates:[{name:'小猫',appearance:'红项圈；基础猫形；淋湿'},{name:'爷爷',appearance:'蓝外套；正常'}]},characterReferences:[{name:'小猫',image:'sheet.png',description:'橘猫',design:{identity:'左耳缺口',outfits:'红项圈',forms:'',states:'淋湿：毛发贴身'}}]});
+ assert.match(calls[0].prompt,/红项圈；基础猫形；淋湿/);assert.match(calls[0].prompt,/左耳缺口/);assert.match(calls[0].prompt,/NEVER copy the sheet grid/);assert.match(calls[0].prompt,/do not blend variants/);
+});
+test('planning asks for design metadata and persistent per-panel appearances without breaking legacy analysis',async()=>{
+ const instructions=[];const old={title:'Cat',characters:[{name:'cat',physicalDescription:'orange',personality:'kind',role:'lead'}],setting:{location:'home',timePeriod:'today',mood:'warm'},scenes:[]};
+ const planner=mod.exports.createNeoWoWApi({plan:async(instruction)=>{instructions.push(instruction);return {analysis:old,storyBreakdown:{panels:[]}}},image:()=>assert.fail()});
+ await planner('/api/analyze-story',{});await planner('/api/chunk-story',{});
+ assert.match(instructions[0],/identity:string, outfits:string, forms:string, states:string/);assert.match(instructions[1],/Preserve the previous state until an explicit story event/);
+ assert.throws(()=>mod.exports.validateAnalysis({...old,characters:[{...old.characters[0],design:{identity:123}}]}));
 });
 test('editing keeps the source first and scopes changes to the requested edit',async()=>{
  calls.length=0;await api('/api/modify-image',{originalImage:'source.png',referenceImages:['cat.png'],modificationPrompt:'让红伞收拢',originalPrompt:'小猫归还红伞'});

@@ -8,12 +8,8 @@ import {
 	storyAnalysisLogger,
 } from "@/lib/logger";
 
-interface Character {
-	name: string;
-	physicalDescription: string;
-	personality: string;
-	role: string;
-}
+import type { Character } from "@/types";
+import { CHARACTER_DESIGN_INSTRUCTION } from "@/lib/mangaPrompts";
 
 interface Setting {
 	timePeriod: string;
@@ -196,7 +192,7 @@ Provide all content in English and ensure character descriptions are detailed an
 				// 使用完整的JSON schema确保结构化输出
 				const apiCallPromise = genAI.models.generateContent({
 					model: model,
-					contents: prompt,
+					contents: `${prompt}\n${CHARACTER_DESIGN_INSTRUCTION}`,
 					config: {
 						responseMimeType: "application/json",
 						responseSchema: {
@@ -212,6 +208,9 @@ Provide all content in English and ensure character descriptions are detailed an
 											physicalDescription: { type: Type.STRING },
 											personality: { type: Type.STRING },
 											role: { type: Type.STRING },
+											design: { type: Type.OBJECT, required: ["identity", "outfits", "forms", "states"], properties: {
+												identity: { type: Type.STRING }, outfits: { type: Type.STRING }, forms: { type: Type.STRING }, states: { type: Type.STRING },
+											} },
 										},
 									},
 								},

@@ -1809,3 +1809,9 @@
 .comic-inset-note {padding:12px 14px;border-left:3px solid #749174;background:#f0f3e9;color:#526552;font-size:12px;line-height:1.8;border-radius:0 6px 6px 0}
 
 @media(max-width:600px) {.style-grid {grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.character-design-details { margin-top:10px; font-size:12px; line-height:1.7; }
+.character-design-details summary { color:var(--ink); cursor:pointer; }
+.character-design-details summary:focus-visible { outline:2px solid var(--green); outline-offset:4px; }
+.character-design-details p { margin:8px 0 0; }
+.character-sheet-action { margin-top:12px; font-size:12px; padding:7px 12px; }

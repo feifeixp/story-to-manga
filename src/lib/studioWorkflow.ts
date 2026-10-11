@@ -107,7 +107,19 @@ export function validateBreakdown(value: StoryBreakdown): StoryBreakdown {
 			panel.panelNumber < 1 ||
 			numbers.has(panel.panelNumber) ||
 			!panel.sceneDescription?.trim() ||
-			!Array.isArray(panel.characters)
+			!Array.isArray(panel.characters) ||
+			(panel.characterStates !== undefined &&
+				(!Array.isArray(panel.characterStates) ||
+					panel.characterStates.length !== panel.characters.length ||
+					new Set(panel.characterStates.map((state) => state?.name)).size !==
+						panel.characterStates.length ||
+					panel.characterStates.some(
+						(state) =>
+							!state ||
+							!panel.characters.includes(state.name) ||
+							typeof state.appearance !== "string" ||
+							!state.appearance.trim(),
+					)))
 		)
 			throw new Error("分镜格式无效，请重新拆解 / Invalid storyboard response");
 		numbers.add(panel.panelNumber);

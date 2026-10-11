@@ -1,4 +1,4 @@
-import { panelPrompt } from "@/lib/mangaPrompts";
+import { characterContinuityPrompt, panelPrompt } from "@/lib/mangaPrompts";
 import { type NextRequest, NextResponse } from "next/server";
 import { getAIModelRouter } from "@/lib/aiModelRouter";
 import { cacheHelpers } from "@/lib/cacheManager";
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// 检查面板图片缓存
-		const panelDescription = JSON.stringify({ sceneDescription: panel.sceneDescription || panel.description || panel.panelDescription, dialogue: panel.dialogue, cameraAngle: panel.cameraAngle, visualMood: panel.visualMood, characters: panel.characters, sceneId: panel.sceneId, setting, scenes, uploadedSettingReferences, language, aiModel, composition });
+		const panelDescription = JSON.stringify({ sceneDescription: panel.sceneDescription || panel.description || panel.panelDescription, dialogue: panel.dialogue, cameraAngle: panel.cameraAngle, visualMood: panel.visualMood, characters: panel.characters, characterStates: panel.characterStates, designContract: 1, sceneId: panel.sceneId, setting, scenes, uploadedSettingReferences, language, aiModel, composition });
 		const cachedPanel = cacheHelpers.getCachedPanelImage(
 			panel.panelNumber,
 			panelDescription,
@@ -268,6 +268,7 @@ Generate a single comic panel image with proper framing and composition.
 			"Calling AI Model Router for panel generation with matched character references",
 		);
 
+		prompt += `\n${characterContinuityPrompt(panel, characterReferences)}`;
 		if (composition === "japanese") {
 			prompt = panelPrompt({ panel, setting, scene: panelScene || undefined, characters: characterReferences, style, language, composition, aspectRatio: imageSize?.aspectRatio,
 				references: referenceImages.map((image) => ({ image, label: characterReferences.find((ref: { image: string }) => ref.image === image)?.name || "Environment" })) });
