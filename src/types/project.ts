@@ -48,6 +48,8 @@ export interface GenerationState {
 
 /** Studio workflow state. Optional so projects from earlier versions still load. */
 export interface ProjectStudioState {
+	comicLayout?: import("@/lib/comicLayout").ComicLayout;
+	comicCaptions?: boolean;
 	aiModel: string;
 	step: 1 | 2 | 3 | 4;
 	approved: boolean;

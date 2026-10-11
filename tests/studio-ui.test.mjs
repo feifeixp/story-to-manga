@@ -16,6 +16,8 @@ if (process.env.STUDIO_TRANSFORM_MODULE) {
 }
 const source = stripTypeScriptTypes(readFileSync(new URL('../src/lib/studioWorkflow.ts',import.meta.url),'utf8'),{mode:'transform'});
 const workflow = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const layoutSource=stripTypeScriptTypes(readFileSync(new URL('../src/lib/comicLayout.ts',import.meta.url),'utf8'),{mode:'transform'});
+const comicLayout=await import(`data:text/javascript;base64,${Buffer.from(layoutSource).toString('base64')}`);
 const analysis={title:'雨巷里的来信',characters:[{name:'小满',physicalDescription:'短发、绿伞',personality:'温柔',role:'主角'}],setting:{timePeriod:'现代',location:'雨巷',mood:'温暖'},scenes:[{id:'scene1',name:'旧书店',description:'雨中的旧书店',location:'雨巷',mood:'温暖',visualElements:['书','伞']}]};
 const panel=(n)=>({panelNumber:n,characters:['小满'],sceneId:'scene1',sceneDescription:`第 ${n} 格，旧书店的门轻轻打开。`,dialogue:'雨停之前，来巷子的尽头。',cameraAngle:'中景',visualMood:'温暖'});
 const base=()=>({metadata:{id:'project-a',name:'雨巷里的来信',createdAt:1,updatedAt:1,panelCount:0,characterCount:0,style:'healing',imageSize:{width:1024,height:1024,aspectRatio:'1:1',volcEngineSize:'1K'}},story:'小满在雨巷里收到一封信，她撑起一把旧绿伞，跟着一只橘猫找到了奶奶。',style:'healing',imageSize:{width:1024,height:1024,aspectRatio:'1:1',volcEngineSize:'1K'},storyAnalysis:null,storyBreakdown:null,characterReferences:[],generatedPanels:[],uploadedCharacterReferences:[],uploadedSettingReferences:[],studio:{aiModel:'auto',step:1,approved:false,requestedPanelCount:4,stalePanels:[],panelVersions:{}}});
@@ -27,7 +29,7 @@ function harness(initial=base()) {
   const jsx=(type,props)=>({type,props:props||{}});
   const external=(name)=>(props)=>jsx('mock-component',{'data-component':name,...props});
   let provider=async(path,body)=>{if(path==='/api/analyze-story')return{analysis};if(path==='/api/chunk-story')return{storyBreakdown:{panels:[panel(1),panel(2),panel(3),panel(4)]}};if(path==='/api/generate-character-refs')return{characterReferences:[{name:'小满',description:'短发',image:'data:image/png;base64,REF'}]};if(path==='/api/generate-panel')return{generatedPanel:{panelNumber:body.panel.panelNumber,image:`data:image/png;base64,PANEL${body.panel.panelNumber}`}};return{imageData:'data:image/png;base64,EDIT'}};
-  const modules={react,'next/link':props=>jsx('a',props),'next/navigation':{useRouter:()=>({push:url=>routes.push(url)})},'lucide-react':new Proxy({}, {get:(_target,name)=>props=>jsx('svg',{'data-icon':name,width:props.size||18,height:props.size||18,'aria-hidden':true})}),'@/components/AuthModal':{AuthModal:external('AuthModal')},'@/components/AuthProvider':{useAuth:()=>({user:null})},'@/components/I18nProvider':{useI18n:()=>({language:'zh'})},'@/components/ImageUpload':external('ImageUpload'),'@/components/LanguageSwitcher':()=>jsx('span',{children:'中文'}),'@/components/ShareComicModal':{ShareComicModal:external('ShareComicModal')},'@/lib/projectStorage':{getProjectList:()=>[]},'@/lib/studioExport':{downloadImage:async()=>{},downloadProject:()=>{},exportComicPages:async()=>{},exportPanels:async()=>{}},'@/lib/studioWorkflow':{...workflow,requestStudioApi:async(path,body)=>{calls.push({path,body});return provider(path,body)}},'@/types/project':{IMAGE_SIZE_PRESETS:{square_1_1:initial.imageSize}},'./StudioDialog':{StudioDialog:props=>jsx('section',{...props,role:'dialog'})},'./useStudioProject':{useStudioProject:()=>store,defaultStudio:()=>base().studio}};
+  const modules={react,'@/lib/comicLayout':comicLayout,'./ComicPageComposer':{ComicLayoutChoices:external('ComicLayoutChoices'),ComicPageComposer:external('ComicPageComposer')},'next/link':props=>jsx('a',props),'next/navigation':{useRouter:()=>({push:url=>routes.push(url)})},'lucide-react':new Proxy({}, {get:(_target,name)=>props=>jsx('svg',{'data-icon':name,width:props.size||18,height:props.size||18,'aria-hidden':true})}),'@/components/AuthModal':{AuthModal:external('AuthModal')},'@/components/AuthProvider':{useAuth:()=>({user:null})},'@/components/I18nProvider':{useI18n:()=>({language:'zh'})},'@/components/ImageUpload':external('ImageUpload'),'@/components/LanguageSwitcher':()=>jsx('span',{children:'中文'}),'@/components/ShareComicModal':{ShareComicModal:external('ShareComicModal')},'@/lib/projectStorage':{getProjectList:()=>[]},'@/lib/studioExport':{downloadImage:async()=>{},downloadProject:()=>{},exportComicPages:async()=>{},exportPanels:async()=>{}},'@/lib/studioWorkflow':{...workflow,requestStudioApi:async(path,body)=>{calls.push({path,body});return provider(path,body)}},'@/types/project':{IMAGE_SIZE_PRESETS:{square_1_1:initial.imageSize}},'./StudioDialog':{StudioDialog:props=>jsx('section',{...props,role:'dialog'})},'./useStudioProject':{useStudioProject:()=>store,defaultStudio:()=>base().studio}};
   const exports={};
   const filename=resolve('src/components/studio/MangaStudio.tsx');
   vm.runInNewContext(compile(readFileSync(filename,'utf8'),filename),{exports,require:name=>name.includes('jsx-runtime')?{jsx,jsxs:jsx,Fragment:'fragment'}:name in modules?modules[name]:(()=>{throw new Error(`Unexpected import ${name}`)})(),AbortController,window:{scrollTo(){},addEventListener(){},removeEventListener(){}},setTimeout,clearTimeout,console},{filename});
@@ -62,3 +64,25 @@ if(process.env.STUDIO_SNAPSHOT_DIR){
   const css=readFileSync('src/app/app/studio.css','utf8');
   for(const step of [1,2,3,4]){const p=step===1?base():planned(step);if(step>=3){p.studio.approved=true;p.generatedPanels=[1,2,3,4].map(panelNumber=>({panelNumber,image:'/studio/story-preview.svg'}))}const h=harness(p);writeFileSync(`${folder}/step-${step}.html`,`<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}*{box-sizing:border-box}button,input,textarea,select{font:inherit}${css}</style>${html(h.render())}</html>`)}
 }
+
+test('layout controls replace manual aspect ratios and preserve paid images when recomposing',()=>{
+ const p=planned(4);p.generatedPanels=[{panelNumber:1,image:'paid-original'}];const h=harness(p);
+ const composer=h.find(n=>n.props['data-component']==='ComicPageComposer');composer.props.onLayout('cinema');
+ assert.equal(h.state.project.studio.comicLayout,'cinema');assert.equal(h.state.project.generatedPanels[0].image,'paid-original');assert.deepEqual(h.state.project.studio.stalePanels,[]);assert.equal(h.calls.length,0);
+ const story=harness();assert.equal(story.nodes(story.render()).filter(n=>n.type==='select'&&n.props.id?.endsWith('-ratio')).length,0);
+});
+test('generation derives different panel ratios from page geometry instead of legacy project size',async()=>{
+ const p=planned();p.imageSize.aspectRatio='9:16';const h=harness(p);
+ h.button('确认分镜，开始生成').props.onClick();h.button('开始生成').props.onClick();await h.settle();
+ const requests=h.calls.filter(c=>c.path==='/api/generate-panel');assert.equal(requests.length,4);
+ assert.deepEqual(requests.map(c=>c.body.imageSize.aspectRatio),[1,2,3,4].map(n=>comicLayout.panelImageSize(p,n).aspectRatio));
+ assert.ok(new Set(requests.map(c=>c.body.imageSize.aspectRatio)).size>=3);
+});
+
+test('storyboard review and generation keep pagination independently of the comic page view',()=>{
+ for(const step of [2,3]){
+  const p=planned(step);p.storyBreakdown.panels=Array.from({length:13},(_,i)=>panel(i+1));const h=harness(p);
+  assert.equal(h.button('下一页').props.disabled,false);h.button('下一页').props.onClick();
+  const cards=h.nodes(h.render()).filter(n=>n.type==='button'&&n.props.className?.includes('board-card'));assert.equal(cards.length,1);assert.ok(h.text(cards[0]).includes('第 13 格'));
+ }
+});

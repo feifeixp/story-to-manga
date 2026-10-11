@@ -33,6 +33,11 @@ import ImageUpload from "@/components/ImageUpload";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { ShareComicModal } from "@/components/ShareComicModal";
 import {
+	type ComicLayout,
+	comicLayout,
+	panelImageSize,
+} from "@/lib/comicLayout";
+import {
 	defaultProjectStorage,
 	type ProjectStorage,
 } from "@/lib/projectStorage";
@@ -57,7 +62,8 @@ import type {
 	StoryAnalysis,
 	StoryBreakdown,
 } from "@/types";
-import { IMAGE_SIZE_PRESETS, type ProjectListItem } from "@/types/project";
+import type { ProjectListItem } from "@/types/project";
+import { ComicLayoutChoices, ComicPageComposer } from "./ComicPageComposer";
 import { StudioDialog } from "./StudioDialog";
 import {
 	defaultStudio,
@@ -280,6 +286,12 @@ export default function MangaStudio({
 			stalePanels: value.generatedPanels.map((panel) => panel.panelNumber),
 		};
 	}
+	function changeComicLayout(layout: ComicLayout) {
+		update((value) => ({
+			...value,
+			studio: { ...value.studio, comicLayout: layout },
+		}));
+	}
 	async function analyze() {
 		setDialog(null);
 		await run(async () => {
@@ -324,6 +336,16 @@ export default function MangaStudio({
 					style: snapshot.style,
 					language,
 					panelCount: snapshot.studio.requestedPanelCount,
+					panelComposition: Array.from(
+						{ length: snapshot.studio.requestedPanelCount },
+						(_, i) => ({
+							panelNumber: i + 1,
+							aspectRatio: panelImageSize(
+								{ ...snapshot, storyBreakdown: null, generatedPanels: [] },
+								i + 1,
+							).aspectRatio,
+						}),
+					),
 				},
 				controller.current?.signal,
 			);
@@ -462,7 +484,7 @@ export default function MangaStudio({
 							uploadedSettingReferences: snapshot.uploadedSettingReferences,
 							language,
 							aiModel: snapshot.studio.aiModel,
-							imageSize: snapshot.imageSize,
+							imageSize: panelImageSize(snapshot, panel.panelNumber),
 						},
 						controller.current?.signal,
 					);
@@ -601,7 +623,7 @@ export default function MangaStudio({
 					].slice(0, 4),
 					language,
 					aiModel: snapshot.studio.aiModel,
-					imageSize: snapshot.imageSize,
+					imageSize: panelImageSize(snapshot, panel.panelNumber),
 					style: snapshot.style,
 				},
 				controller.current?.signal,
@@ -1656,38 +1678,23 @@ export default function MangaStudio({
 													"A planning target. Review the actual count before generation.",
 												)}
 											</p>
-											<label htmlFor={`${fieldPrefix}-ratio`}>
-												{copy("画面比例", "Image ratio")}
-											</label>
-											<select
-												id={`${fieldPrefix}-ratio`}
-												value={
-													Object.keys(IMAGE_SIZE_PRESETS).find(
-														(key) =>
-															IMAGE_SIZE_PRESETS[key]?.aspectRatio ===
-															project.imageSize.aspectRatio,
-													) || "landscape_16_9"
-												}
-												onChange={(event) => {
-													const size = IMAGE_SIZE_PRESETS[event.target.value];
-													if (size)
-														update((value) => ({
-															...value,
-															imageSize: size,
-															studio: markAllStale(value),
-														}));
-												}}
-											>
-												{Object.entries(IMAGE_SIZE_PRESETS).map(
-													([key, size]) => (
-														<option key={key} value={key}>
-															{market
-																? size.aspectRatio
-																: `${size.aspectRatio} · ${size.width} × ${size.height}`}
-														</option>
-													),
-												)}
-											</select>
+											<div className="layout-setting">
+												<span className="layout-setting-label">
+													{copy("漫画排版", "Comic layout")}
+												</span>
+												<ComicLayoutChoices
+													value={comicLayout(project)}
+													onChange={changeComicLayout}
+													zh={zh}
+													disabled={busy}
+												/>
+												<p className="muted micro">
+													{copy(
+														"单格图片比例由排版自动安排，无需单独设置。",
+														"The layout automatically defines each image’s aspect ratio.",
+													)}
+												</p>
+											</div>
 											<label htmlFor={`${fieldPrefix}-model`}>
 												{copy("图像模型", "Image provider")}
 											</label>
@@ -1955,7 +1962,7 @@ export default function MangaStudio({
 												className={view === "page" ? "selected" : ""}
 												onClick={() => setView("page")}
 											>
-												{copy("整页", "Page")}
+												{copy("漫画排版", "Comic pages")}
 											</button>
 											<button
 												type="button"
@@ -1968,67 +1975,27 @@ export default function MangaStudio({
 										</div>
 									</div>
 									{view === "page" ? (
-										<div className="comic-sheet">
-											<div className="comic-sheet-title">
-												<strong>{project.metadata.name}</strong>
-												<span>A STORY IN {panels.length} FRAMES</span>
-											</div>
-											<div className="comic-grid">
-												{visiblePanels.map((panel, index) => {
-													const image = project.generatedPanels.find(
-														(item) => item.panelNumber === panel.panelNumber,
-													);
-													return (
-														<button
-															key={panel.panelNumber}
-															type="button"
-															disabled={busy}
-															className={`comic-cell ${selected === panelPage * 12 + index ? "selected" : ""}`}
-															aria-label={copy(
-																`编辑第 ${panel.panelNumber} 格`,
-																`Edit panel ${panel.panelNumber}`,
-															)}
-															aria-pressed={selected === panelPage * 12 + index}
-															onClick={() => {
-																setSelected(panelPage * 12 + index);
-																setModifyPrompt("");
-															}}
-														>
-															<div className="comic-cell-image">
-																{image ? (
-																	<img
-																		src={image.image}
-																		alt={panel.sceneDescription}
-																		loading="lazy"
-																	/>
-																) : (
-																	<span>
-																		{copy("尚未生成", "Not generated")}
-																	</span>
-																)}
-																<span className="panel-badge">
-																	{String(panel.panelNumber).padStart(2, "0")}
-																</span>
-																{project.studio.stalePanels.includes(
-																	panel.panelNumber,
-																) && (
-																	<span className="stale-label">
-																		{copy("待重绘", "Needs redraw")}
-																	</span>
-																)}
-															</div>
-															{panel.dialogue && <p>{panel.dialogue}</p>}
-														</button>
-													);
-												})}
-											</div>
-											<div className="sheet-footer">
-												<span>STORY TO MANGA</span>
-												<span>
-													{copy("未完的想象，下次继续", "Until the next story")}
-												</span>
-											</div>
-										</div>
+										<ComicPageComposer
+											key={project.metadata.id}
+											project={project}
+											zh={zh}
+											disabled={busy}
+											onLayout={changeComicLayout}
+											onCaptions={(show) =>
+												update((value) => ({
+													...value,
+													studio: { ...value.studio, comicCaptions: show },
+												}))
+											}
+											onSelect={(number) => {
+												setSelected(
+													panels.findIndex(
+														(panel) => panel.panelNumber === number,
+													),
+												);
+												setModifyPrompt("");
+											}}
+										/>
 									) : (
 										<div className="boards-grid">
 											{visiblePanels.map((panel, index) =>
@@ -2036,7 +2003,7 @@ export default function MangaStudio({
 											)}
 										</div>
 									)}
-									{pager}
+									{view === "panels" && pager}
 									<div className="studio-tip">
 										<ShieldCheck size={18} />
 										<span>
@@ -2177,6 +2144,7 @@ export default function MangaStudio({
 			</div>
 			{dialog && dialog !== "share" && (
 				<StudioDialog
+					className={dialog === "export" ? "comic-export-dialog" : ""}
 					title={
 						dialog === "projects"
 							? copy("我的项目", "My projects")
@@ -2400,6 +2368,19 @@ export default function MangaStudio({
 									</span>
 								)}
 							</p>
+							<ComicPageComposer
+								key={project.metadata.id}
+								project={project}
+								zh={zh}
+								disabled={busy}
+								onLayout={changeComicLayout}
+								onCaptions={(show) =>
+									update((value) => ({
+										...value,
+										studio: { ...value.studio, comicCaptions: show },
+									}))
+								}
+							/>
 							<div className="export-options">
 								<button
 									type="button"
@@ -2422,8 +2403,8 @@ export default function MangaStudio({
 										</strong>
 										<small>
 											{copy(
-												"每页最多六格，长篇自动分成多个页面打包",
-												"Up to six frames per page; longer stories export as a ZIP",
+												"使用上方排版导出，长篇自动分页打包",
+												"Export the layout above; longer stories export as a ZIP",
 											)}
 										</small>
 									</span>

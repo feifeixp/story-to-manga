@@ -1,3 +1,4 @@
+import { supportedComicRatio } from "@/lib/comicLayout";
 import {
 	createNeoWoWApi,
 	parseJsonReply,
@@ -527,11 +528,7 @@ export async function generateImage(
 	const models = await listModels(signal, token);
 	const model = selectImageModel(models, modelName);
 	if (!model) throw new Error("所选模型不可用，请在故事设置中重新选择。");
-	if (
-		model.supported_aspect_ratios?.length &&
-		!model.supported_aspect_ratios.includes(ratio)
-	)
-		throw new Error(`所选模型不支持 ${ratio}，请更换画幅或模型。`);
+	ratio = supportedComicRatio(ratio, model.supported_aspect_ratios);
 	if (refs.length && (model.max_reference_images || 0) < refs.length)
 		throw new Error(
 			`此模型最多支持 ${model.max_reference_images || 0} 张参考图；请选择支持更多参考图的模型或减少参考图。`,

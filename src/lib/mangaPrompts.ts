@@ -27,6 +27,7 @@ Each panel is ONE frozen drawable moment: who is where, doing what, looking at w
 Use only supplied character names and scene IDs. characters lists only characters actually visible in that frame; [] is valid for an environment/prop insert. Reuse the same scene ID while the place and time stay the same.
 Track clothing, positions, direction of movement and who holds each prop across panels. Describe a transfer once, then preserve the new owner. Keep distinctive object colors and shapes stable.
 Use establishing/medium/close-up/detail shots when they serve the story. Keep a coherent screen direction; avoid arbitrary angle changes. cameraAngle describes shot size and viewpoint, not an impossible camera movement in a still image. Style affects rendering and pacing, not story facts.
+When panelComposition is supplied, compose each numbered shot for its aspectRatio: use wide frames for environment and spatial action, compact or portrait frames for reactions and clear focal subjects. These are predetermined page slots, not extra panels; keep all story events in order. Keep faces, key props and lettering away from edges for final framing.
 dialogue: empty string for silence; otherwise at most two short lines. Each spoken line is "Exact character name: spoken words" (Chinese may use ：); narration starts "旁白:" for zh or "Narration:" for en. Aim for <=20 Chinese characters or <=12 English words per spoken line. Preserve key meaning and speaker; do not repeat what the picture already shows. No invented exposition or sound effects.
 visualMood: a short lighting/emotion cue consistent with the scene.
 Return {"storyBreakdown":{"panels":[{"panelNumber":integer,"characters":string[],"sceneId":string,"sceneDescription":string,"dialogue":string,"cameraAngle":string,"visualMood":string}]}}.`;
@@ -87,7 +88,7 @@ export function panelPrompt(options: {
 			"follow the stated scene description",
 	}));
 	return `${artDirection(style, language)}
-Draw exactly ONE continuous comic panel and ONE moment, no collage, split screen, inset, storyboard grid or duplicate character. Use a clear focal point, readable gestures and depth. Respect the requested aspect ratio.
+Draw exactly ONE continuous comic panel and ONE moment, no collage, split screen, inset, storyboard grid or duplicate character. Use a clear focal point, readable gestures and depth. Respect the requested aspect ratio. Fill the image edge to edge, with no decorative border or letterbox bars; page borders are added later. Keep faces, essential props and lettering within the central 80% safe area.
 Setting: ${JSON.stringify(setting || {})}. Location design: ${JSON.stringify(scene || {})}.
 Visible cast and fixed appearance: ${JSON.stringify(characters)}. Do not mix identities, costumes or species. Do not add characters absent from this cast.
 Action: ${panel.sceneDescription}

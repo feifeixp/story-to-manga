@@ -121,7 +121,7 @@ export function createNeoWoWApi(driver: GenerationDriver): ApiClient {
 			ratio = body.imageSize?.aspectRatio || "1:1",
 		) =>
 			generateImage(
-				prompt,
+				`${prompt}\nCompose for the page-defined ${ratio} frame. Keep essential subjects and lettering within the central 80% safe area.`,
 				body.aiModel || "auto",
 				ratio,
 				[...new Set(refs)],
